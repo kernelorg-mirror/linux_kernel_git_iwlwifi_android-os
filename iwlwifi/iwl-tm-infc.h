@@ -463,8 +463,8 @@ struct iwl_tm_mod_tx_request {
 struct iwl_xvt_tx_mod_task_data {
 	__u32 lmac_id;
 	struct iwl_xvt *xvt;
-	struct iwl_tm_mod_tx_request tx_req;
 	struct completion *completion;
+	struct iwl_tm_mod_tx_request tx_req;
 } __packed __aligned(4);
 
 /*
