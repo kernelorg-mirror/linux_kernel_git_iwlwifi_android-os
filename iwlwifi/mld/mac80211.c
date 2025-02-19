@@ -844,6 +844,8 @@ void iwl_mld_mac80211_remove_interface(struct ieee80211_hw *hw,
 #endif
 
 	iwl_mld_rm_vif(mld, vif);
+
+	mld->monitor.phy.valid = false;
 }
 
 struct iwl_mld_mc_iter_data {
