@@ -144,8 +144,8 @@ struct iwl_mld_emlsr {
  * @dbgfs_slink_mvm: debugfs symlink for legacy tests support
  * @ftm_unprotected: if set, use unprotected FTM negotiation even if the peer
  *	has an active security context.
- * @roc_activity: the id of the roc_activity running. Relevant for p2p device
- *	only. Set to %ROC_NUM_ACTIVITIES when not in use.
+ * @roc_activity: the id of the roc_activity running. Relevant for STA and
+ *	p2p device only. Set to %ROC_NUM_ACTIVITIES when not in use.
  * @aux_sta: station used for remain on channel. Used in P2P device.
  */
 struct iwl_mld_vif {
