@@ -443,20 +443,41 @@ static ssize_t iwl_dbgfs_rs_data_read(struct ieee80211_link_sta *link_sta,
 	return ret;
 }
 
-static int iwl_rs_set_fixed_rate(struct iwl_mvm *mvm,
-				 struct iwl_lq_sta_rs_fw *lq_sta,
-				 bool partial)
+static ssize_t
+_iwl_dbgfs_fixed_rate_write(struct ieee80211_link_sta *link_sta,
+			    struct iwl_mvm_sta *mvmsta,
+			    struct iwl_mvm *mvm,
+			    struct iwl_mvm_link_sta *mvm_link_sta,
+			    char *buf, size_t count,
+			    loff_t *ppos, bool v3)
 {
-	u32 type = partial ? IWL_TLC_DEBUG_PARTIAL_FIXED_RATE :
-			     IWL_TLC_DEBUG_FIXED_RATE;
-	int ret = iwl_rs_send_dhc(mvm, lq_sta->pers.sta_id, type,
-				  lq_sta->pers.dbg_fixed_rate);
-
+	struct iwl_lq_sta_rs_fw *lq_sta = &mvm_link_sta->lq_sta.rs_fw;
+	u32 rate, partial = 0, type;
 	char pretty_rate[100];
+	int ret;
+
+	/* no longer support this file for v1 firmware */
+	if (mvm->fw_rates_ver == 1)
+		return -EINVAL;
+
+	if (sscanf(buf, "%i %i", &rate, &partial) == 0)
+		rate = 0;
+
+	/* input is in FW format v2 or v3) so convert to v3 */
+	rate = iwl_v3_rate_from_v2_v3(cpu_to_le32(rate), v3);
+	/* and then to running FW expectation */
+	rate = le32_to_cpu(iwl_mvm_v3_rate_to_fw(rate, mvm->fw_rates_ver));
+
+	lq_sta->pers.dbg_fixed_rate = rate;
+
+	type = partial ? IWL_TLC_DEBUG_PARTIAL_FIXED_RATE :
+			 IWL_TLC_DEBUG_FIXED_RATE;
 
 	rs_pretty_print_rate(pretty_rate, sizeof(pretty_rate),
 			     lq_sta->pers.dbg_fixed_rate);
 
+	ret = iwl_rs_send_dhc(mvm, lq_sta->pers.sta_id, type,
+			      lq_sta->pers.dbg_fixed_rate);
 	IWL_DEBUG_RATE(mvm, "sta_id %d rate %s partial: %d, ret:%d\n",
 		       lq_sta->pers.sta_id, pretty_rate, partial, ret);
 
@@ -465,29 +486,31 @@ static int iwl_rs_set_fixed_rate(struct iwl_mvm *mvm,
 		return -EINVAL;
 	}
 
-	return 0;
+	return count;
 }
 
-static ssize_t iwl_dbgfs_fixed_rate_write(struct ieee80211_link_sta *link_sta,
-					  struct iwl_mvm_sta *mvmsta,
-					  struct iwl_mvm *mvm,
-					  struct iwl_mvm_link_sta *mvm_link_sta,
-					  char *buf, size_t count,
-					  loff_t *ppos)
+static ssize_t
+iwl_dbgfs_fixed_rate_write(struct ieee80211_link_sta *link_sta,
+			   struct iwl_mvm_sta *mvmsta,
+			   struct iwl_mvm *mvm,
+			   struct iwl_mvm_link_sta *mvm_link_sta,
+			   char *buf, size_t count,
+			   loff_t *ppos)
 {
-	struct iwl_lq_sta_rs_fw *lq_sta = &mvm_link_sta->lq_sta.rs_fw;
-	u32 parsed_rate;
-	u32 partial = false;
+	return _iwl_dbgfs_fixed_rate_write(link_sta, mvmsta, mvm, mvm_link_sta,
+					   buf, count, ppos, false);
+}
 
-	if (sscanf(buf, "%i %i", &parsed_rate, &partial) == 0)
-		lq_sta->pers.dbg_fixed_rate = 0;
-	else
-		lq_sta->pers.dbg_fixed_rate = parsed_rate;
-
-	if (iwl_rs_set_fixed_rate(mvm, lq_sta, !!partial))
-		return -EINVAL;
-
-	return count;
+static ssize_t
+iwl_dbgfs_fixed_rate_v3_write(struct ieee80211_link_sta *link_sta,
+			      struct iwl_mvm_sta *mvmsta,
+			      struct iwl_mvm *mvm,
+			      struct iwl_mvm_link_sta *mvm_link_sta,
+			      char *buf, size_t count,
+			      loff_t *ppos)
+{
+	return _iwl_dbgfs_fixed_rate_write(link_sta, mvmsta, mvm, mvm_link_sta,
+					   buf, count, ppos, true);
 }
 
 static void iwl_rs_disable_rts(struct iwl_mvm *mvm,
@@ -2440,6 +2463,7 @@ MVM_DEBUGFS_READ_FILE_OPS(wifi_6e_enable);
 #endif
 
 MVM_DEBUGFS_WRITE_LINK_STA_FILE_OPS(fixed_rate, 64);
+MVM_DEBUGFS_WRITE_LINK_STA_FILE_OPS(fixed_rate_v3, 64);
 MVM_DEBUGFS_WRITE_LINK_STA_FILE_OPS(ampdu_size, 64);
 MVM_DEBUGFS_WRITE_LINK_STA_FILE_OPS(disable_rts, 8);
 MVM_DEBUGFS_WRITE_LINK_STA_FILE_OPS(tlc_dhc, 64);
@@ -2601,6 +2625,7 @@ void iwl_mvm_link_sta_add_debugfs(struct ieee80211_hw *hw,
 	if (iwl_mvm_has_tlc_offload(mvm)) {
 		MVM_DEBUGFS_ADD_LINK_STA_FILE(rs_data, dir, 0400);
 		MVM_DEBUGFS_ADD_LINK_STA_FILE(fixed_rate, dir, 0200);
+		MVM_DEBUGFS_ADD_LINK_STA_FILE(fixed_rate_v3, dir, 0200);
 		MVM_DEBUGFS_ADD_LINK_STA_FILE(ampdu_size, dir, 0400);
 		MVM_DEBUGFS_ADD_LINK_STA_FILE(disable_rts, dir, 0400);
 		MVM_DEBUGFS_ADD_LINK_STA_FILE(tlc_dhc, dir, 0200);

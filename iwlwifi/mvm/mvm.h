@@ -1056,6 +1056,8 @@ struct iwl_mvm {
 
 	u8 cca_40mhz_workaround;
 
+	u8 fw_rates_ver;
+
 	u32 ampdu_ref;
 	bool ampdu_toggle;
 
