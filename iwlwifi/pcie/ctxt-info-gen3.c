@@ -198,10 +198,10 @@ int iwl_pcie_ctxt_info_gen3_alloc(struct iwl_trans *trans,
 		control_flags |= IWL_PRPH_SCRATCH_SILENT_MODE;
 #endif
 
-	if (trans->dsbr_urm_fw_dependent)
+	if (trans->conf.dsbr_urm_fw_dependent)
 		control_flags_ext |= IWL_PRPH_SCRATCH_EXT_URM_FW;
 
-	if (trans->dsbr_urm_permanent)
+	if (trans->conf.dsbr_urm_permanent)
 		control_flags_ext |= IWL_PRPH_SCRATCH_EXT_URM_PERM;
 
 	if (trans->ext_32khz_clock_valid)
@@ -252,8 +252,10 @@ int iwl_pcie_ctxt_info_gen3_alloc(struct iwl_trans *trans,
 #endif
 
 	/* initialize the Step equalizer data */
-	prph_sc_ctrl->step_cfg.mbx_addr_0 = cpu_to_le32(trans->mbx_addr_0_step);
-	prph_sc_ctrl->step_cfg.mbx_addr_1 = cpu_to_le32(trans->mbx_addr_1_step);
+	prph_sc_ctrl->step_cfg.mbx_addr_0 =
+		cpu_to_le32(trans->conf.mbx_addr_0_step);
+	prph_sc_ctrl->step_cfg.mbx_addr_1 =
+		cpu_to_le32(trans->conf.mbx_addr_1_step);
 
 #ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
 	prph_scratch->step_analog_params =

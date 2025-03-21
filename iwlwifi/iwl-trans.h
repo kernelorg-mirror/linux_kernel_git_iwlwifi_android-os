@@ -427,6 +427,10 @@ struct iwl_dump_sanitize_ops {
  *	starting the firmware, used for tracing
  * @rx_mpdu_cmd_hdr_size: used for tracing, amount of data before the
  *	start of the 802.11 header in the @rx_mpdu_cmd
+ * @dsbr_urm_fw_dependent: switch to URM based on fw settings
+ * @dsbr_urm_permanent: switch to URM permanently
+ * @mbx_addr_0_step: step address data 0
+ * @mbx_addr_1_step: step address data 1
  */
 struct iwl_trans_config {
 	u8 cmd_queue;
@@ -445,6 +449,12 @@ struct iwl_trans_config {
 
 	bool wide_cmd_header;
 	u8 rx_mpdu_cmd, rx_mpdu_cmd_hdr_size;
+
+	u8 dsbr_urm_fw_dependent:1,
+	   dsbr_urm_permanent:1;
+
+	u32 mbx_addr_0_step;
+	u32 mbx_addr_1_step;
 
 #ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
 	/**
@@ -882,8 +892,6 @@ struct iwl_trans_info {
  * @sync_cmd_lockdep_map: lockdep map for checking sync commands
  * @dbg: additional debug data, see &struct iwl_trans_debug
  * @init_dram: FW initialization DMA data
- * @mbx_addr_0_step: step address data 0
- * @mbx_addr_1_step: step address data 1
  * @reduced_cap_sku: reduced capability supported SKU
  * @step_urm: STEP is in URM, no support for MCS>9 in 320 MHz
  * @restart: restart worker data
@@ -891,8 +899,6 @@ struct iwl_trans_info {
  * @restart.mode: reset/restart error mode information
  * @restart.during_reset: error occurred during previous software reset
  * @trans_specific: data for the specific transport this is allocated for/with
- * @dsbr_urm_fw_dependent: switch to URM based on fw settings
- * @dsbr_urm_permanent: switch to URM permanently
  * @ext_32khz_clock_valid: if true, the external 32 KHz clock can be used
  * @request_top_reset: TOP reset was requested, used by the reset
  *	worker that should be scheduled (with appropriate reason)
@@ -915,9 +921,6 @@ struct iwl_trans {
 	u32 sku_id[3];
 	bool reduced_cap_sku;
 	bool step_urm;
-
-	u8 dsbr_urm_fw_dependent:1,
-	   dsbr_urm_permanent:1;
 
 	bool ext_32khz_clock_valid;
 
@@ -957,9 +960,6 @@ struct iwl_trans {
 	 */
 	struct iwl_testmode testmode;
 #endif
-
-	u32 mbx_addr_0_step;
-	u32 mbx_addr_1_step;
 
 #if IS_ENABLED(CPTCFG_IWLXVT)
 	/**
