@@ -193,7 +193,6 @@ static int iwl_xvt_load_ucode_wait_alive(struct iwl_xvt *xvt,
 {
 	struct iwl_notification_wait alive_wait;
 	struct iwl_xvt_alive_data alive_data;
-	const struct fw_img *fw;
 	int ret;
 	enum iwl_ucode_type old_type = xvt->fwrt.cur_fw_img;
 	static const u16 alive_cmd[] = { UCODE_ALIVE_NTFY };
@@ -209,10 +208,6 @@ static int iwl_xvt_load_ucode_wait_alive(struct iwl_xvt *xvt,
 			};
 
 	iwl_fw_set_current_image(&xvt->fwrt, ucode_type);
-	fw = iwl_get_ucode_image(xvt->fw, ucode_type);
-
-	if (!fw)
-		return -EINVAL;
 
 	if (xvt->sw_stack_cfg.fw_dbg_flags & ~IWL_XVT_DBG_FLAGS_NO_DEFAULT_TXQ)
 		return -EOPNOTSUPP;
@@ -221,7 +216,7 @@ static int iwl_xvt_load_ucode_wait_alive(struct iwl_xvt *xvt,
 				   alive_cmd, ARRAY_SIZE(alive_cmd),
 				   iwl_alive_fn, &alive_data);
 
-	ret = iwl_trans_start_fw(xvt->trans, fw,
+	ret = iwl_trans_start_fw(xvt->trans, xvt->fw, ucode_type,
 				 ucode_type == IWL_UCODE_INIT);
 	if (ret) {
 		iwl_fw_set_current_image(&xvt->fwrt, old_type);
