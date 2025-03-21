@@ -17,6 +17,7 @@
 #define XVT_UCODE_ALIVE_TIMEOUT	(HZ * CPTCFG_IWL_TIMEOUT_FACTOR)
 
 struct iwl_xvt_alive_data {
+	__le32 sku_id[3];
 	bool valid;
 };
 
@@ -117,16 +118,17 @@ static bool iwl_alive_fn(struct iwl_notif_wait_data *notif_wait,
 			xvt->trans->dbg.lmac_error_event_table[1] =
 				le32_to_cpu(lmac2_err_ptr);
 
-			xvt->trans->sku_id[0] = le32_to_cpu(palive5->sku_id.data[0]);
-			xvt->trans->sku_id[1] = le32_to_cpu(palive5->sku_id.data[1]);
-			xvt->trans->sku_id[2] = le32_to_cpu(palive5->sku_id.data[2]);
+			BUILD_BUG_ON(sizeof(alive_data->sku_id) !=
+				     sizeof(palive5->sku_id.data));
+			memcpy(alive_data->sku_id, palive5->sku_id.data,
+			       sizeof(palive5->sku_id.data));
 
 			IWL_DEBUG_FW(xvt,
 				     "Alive VER%d - Got sku_id: 0x0%x 0x0%x 0x0%x\n",
 				     version,
-				     xvt->trans->sku_id[0],
-				     xvt->trans->sku_id[1],
-				     xvt->trans->sku_id[2]);
+				     le32_to_cpu(alive_data->sku_id[0]),
+				     le32_to_cpu(alive_data->sku_id[1]),
+				     le32_to_cpu(alive_data->sku_id[2]));
 		} else if (rx_packet_payload_size == sizeof(*palive8)) {
 			/* v8 compatible (only platform_id addition) */
 			__le32 lmac2_err_ptr;
@@ -141,19 +143,17 @@ static bool iwl_alive_fn(struct iwl_notif_wait_data *notif_wait,
 			xvt->trans->dbg.lmac_error_event_table[1] =
 				le32_to_cpu(lmac2_err_ptr);
 
-			xvt->trans->sku_id[0] =
-				le32_to_cpu(palive8->sku_id.data[0]);
-			xvt->trans->sku_id[1] =
-				le32_to_cpu(palive8->sku_id.data[1]);
-			xvt->trans->sku_id[2] =
-				le32_to_cpu(palive8->sku_id.data[2]);
+			BUILD_BUG_ON(sizeof(alive_data->sku_id) !=
+				     sizeof(palive8->sku_id.data));
+			memcpy(alive_data->sku_id, palive8->sku_id.data,
+			       sizeof(palive8->sku_id.data));
 
 			IWL_DEBUG_FW(xvt,
 				     "Alive VER%d - Got sku_id: 0x0%x 0x0%x 0x0%x\n",
 				     version,
-				     xvt->trans->sku_id[0],
-				     xvt->trans->sku_id[1],
-				     xvt->trans->sku_id[2]);
+				     le32_to_cpu(alive_data->sku_id[0]),
+				     le32_to_cpu(alive_data->sku_id[1]),
+				     le32_to_cpu(alive_data->sku_id[2]));
 		} else {
 			IWL_ERR(xvt, "unrecognized alive notificatio\n");
 			return false;
@@ -188,7 +188,7 @@ static int iwl_xvt_load_ucode_wait_alive(struct iwl_xvt *xvt,
 					 enum iwl_ucode_type ucode_type)
 {
 	struct iwl_notification_wait alive_wait;
-	struct iwl_xvt_alive_data alive_data;
+	struct iwl_xvt_alive_data alive_data = {};
 	int ret;
 	enum iwl_ucode_type old_type = xvt->fwrt.cur_fw_img;
 	static const u16 alive_cmd[] = { UCODE_ALIVE_NTFY };
@@ -244,7 +244,8 @@ static int iwl_xvt_load_ucode_wait_alive(struct iwl_xvt *xvt,
 	iwl_trans_fw_alive(xvt->trans);
 
 	ret = iwl_xvt_pnvm_load(xvt->trans, &xvt->notif_wait,
-				&xvt->fw->ucode_capa);
+				&xvt->fw->ucode_capa,
+				alive_data.sku_id);
 	if (ret) {
 		IWL_ERR(xvt, "Timeout waiting for PNVM load!\n");
 		iwl_fw_set_current_image(&xvt->fwrt, old_type);
