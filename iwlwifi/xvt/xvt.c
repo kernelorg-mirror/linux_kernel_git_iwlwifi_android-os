@@ -192,11 +192,6 @@ static struct iwl_op_mode *iwl_xvt_start(struct iwl_trans *trans,
 {
 	struct iwl_op_mode *op_mode;
 	struct iwl_xvt *xvt;
-	struct iwl_trans_config trans_cfg = {
-#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
-		.fseq_img = &fw->fseq,
-#endif
-	};
 	static const u8 no_reclaim_cmds[] = {
 		TX_CMD,
 	};
@@ -228,42 +223,49 @@ static struct iwl_op_mode *iwl_xvt_start(struct iwl_trans *trans,
 	 * Populate the state variables that the
 	 * transport layer needs to know about.
 	 */
-	trans_cfg.op_mode = op_mode;
-	trans_cfg.no_reclaim_cmds = no_reclaim_cmds;
-	trans_cfg.n_no_reclaim_cmds = ARRAY_SIZE(no_reclaim_cmds);
-	trans_cfg.command_groups = iwl_xvt_cmd_groups;
-	trans_cfg.command_groups_size = ARRAY_SIZE(iwl_xvt_cmd_groups);
-	trans_cfg.cmd_queue = IWL_MVM_DQA_CMD_QUEUE;
+	BUILD_BUG_ON(sizeof(no_reclaim_cmds) >
+		     sizeof(trans->conf.no_reclaim_cmds));
+	memcpy(trans->conf.no_reclaim_cmds, no_reclaim_cmds,
+	       sizeof(no_reclaim_cmds));
+	trans->conf.n_no_reclaim_cmds = ARRAY_SIZE(no_reclaim_cmds);
+	trans->conf.command_groups = iwl_xvt_cmd_groups;
+	trans->conf.command_groups_size = ARRAY_SIZE(iwl_xvt_cmd_groups);
+	trans->conf.cmd_queue = IWL_MVM_DQA_CMD_QUEUE;
 	IWL_DEBUG_INFO(xvt, "dqa supported\n");
-	trans_cfg.cmd_fifo = IWL_MVM_TX_FIFO_CMD;
-	trans_cfg.scd_set_active = true;
-	trans->wide_cmd_header = true;
+	trans->conf.cmd_fifo = IWL_MVM_TX_FIFO_CMD;
+	trans->conf.scd_set_active = true;
+	trans->conf.wide_cmd_header = true;
 
-	trans_cfg.rx_buf_size = iwl_amsdu_size_to_rxb_size();
+#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+	trans->conf.fseq_img = &fw->fseq;
+#endif
+
+	trans->conf.rx_buf_size = iwl_amsdu_size_to_rxb_size();
 
 	/* the hardware splits the A-MSDU */
 	if (xvt->trans->trans_cfg->mq_rx_supported)
-		trans_cfg.rx_buf_size = IWL_AMSDU_4K;
+		trans->conf.rx_buf_size = IWL_AMSDU_4K;
 
-	trans->rx_mpdu_cmd_hdr_size =
+	trans->conf.rx_mpdu_cmd_hdr_size =
 		(trans->trans_cfg->device_family >= IWL_DEVICE_FAMILY_AX210) ?
 		sizeof(struct iwl_rx_mpdu_desc) : IWL_RX_DESC_SIZE_V1;
 
-	trans_cfg.cb_data_offs = offsetof(struct iwl_xvt_skb_info, trans);
+	trans->conf.cb_data_offs = offsetof(struct iwl_xvt_skb_info, trans);
 
-	trans_cfg.fw_reset_handshake = fw_has_capa(&xvt->fw->ucode_capa,
-						   IWL_UCODE_TLV_CAPA_FW_RESET_HANDSHAKE);
+	trans->conf.fw_reset_handshake =
+		fw_has_capa(&xvt->fw->ucode_capa,
+			    IWL_UCODE_TLV_CAPA_FW_RESET_HANDSHAKE);
 
-	trans_cfg.queue_alloc_cmd_ver =
+	trans->conf.queue_alloc_cmd_ver =
 		iwl_fw_lookup_cmd_ver(xvt->fw,
 				      WIDE_ID(DATA_PATH_GROUP,
 					      SCD_QUEUE_CONFIG_CMD),
 				      0);
 
-	/* Configure transport layer */
-	iwl_trans_configure(xvt->trans, &trans_cfg);
-	trans->command_groups = trans_cfg.command_groups;
-	trans->command_groups_size = trans_cfg.command_groups_size;
+	trans->conf.command_groups = trans->conf.command_groups;
+	trans->conf.command_groups_size = trans->conf.command_groups_size;
+
+	iwl_trans_op_mode_enter(xvt->trans, op_mode);
 
 	/* set up notification wait support */
 	iwl_notification_wait_init(&xvt->notif_wait);
