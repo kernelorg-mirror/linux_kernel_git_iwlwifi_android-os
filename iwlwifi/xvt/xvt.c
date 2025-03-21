@@ -581,7 +581,7 @@ static void iwl_xvt_nic_config(struct iwl_op_mode *op_mode)
 	if (xvt->trans->trans_cfg->device_family >= IWL_DEVICE_FAMILY_AX210)
 		return;
 
-	reg_val = CSR_HW_REV_STEP_DASH(xvt->trans->hw_rev);
+	reg_val = CSR_HW_REV_STEP_DASH(xvt->trans->info.hw_rev);
 
 	/* radio configuration */
 	reg_val |= radio_cfg_type << CSR_HW_IF_CONFIG_REG_POS_PHY_TYPE;

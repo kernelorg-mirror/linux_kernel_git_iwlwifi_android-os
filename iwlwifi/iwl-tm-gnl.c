@@ -274,7 +274,7 @@ static int iwl_tm_gnl_get_sil_step(struct iwl_trans *trans,
 		return -ENOMEM;
 	data_out->len = sizeof(struct iwl_sil_step);
 	resp = (struct iwl_sil_step *)data_out->data;
-	resp->silicon_step = trans->hw_rev_step;
+	resp->silicon_step = trans->info.hw_rev_step;
 	return 0;
 }
 
@@ -304,7 +304,7 @@ static int iwl_tm_gnl_get_sil_type(struct iwl_trans * trans,struct iwl_tm_data *
 	if (!resp)
 		return -ENOMEM;
 
-	resp->silicon_type = CSR_HW_REV_TYPE(trans->hw_rev);
+	resp->silicon_type = CSR_HW_REV_TYPE(trans->info.hw_rev);
 
 	data_out->data = resp;
 	data_out->len = sizeof(*resp);
@@ -321,14 +321,14 @@ static int iwl_tm_gnl_get_rfid(struct iwl_trans *trans,
 	if (!resp)
 		return -ENOMEM;
 
-	IWL_DEBUG_INFO(trans, "HW RFID=0x08%X\n", trans->hw_rf_id);
+	IWL_DEBUG_INFO(trans, "HW RFID=0x08%X\n", trans->info.hw_rf_id);
 
-	resp->flavor = CSR_HW_RFID_FLAVOR(trans->hw_rf_id);
-	resp->dash   = CSR_HW_RFID_DASH(trans->hw_rf_id);
-	resp->step   = CSR_HW_RFID_STEP(trans->hw_rf_id);
-	resp->type   = CSR_HW_RFID_TYPE(trans->hw_rf_id);
-	resp->is_cdb = CSR_HW_RFID_IS_CDB(trans->hw_rf_id);
-	resp->is_jacket = CSR_HW_RFID_IS_JACKET(trans->hw_rf_id);
+	resp->flavor = CSR_HW_RFID_FLAVOR(trans->info.hw_rf_id);
+	resp->dash   = CSR_HW_RFID_DASH(trans->info.hw_rf_id);
+	resp->step   = CSR_HW_RFID_STEP(trans->info.hw_rf_id);
+	resp->type   = CSR_HW_RFID_TYPE(trans->info.hw_rf_id);
+	resp->is_cdb = CSR_HW_RFID_IS_CDB(trans->info.hw_rf_id);
+	resp->is_jacket = CSR_HW_RFID_IS_JACKET(trans->info.hw_rf_id);
 
 	data_out->data = resp;
 	data_out->len = sizeof(*resp);
@@ -345,12 +345,12 @@ static int iwl_tm_gnl_get_rfid_v2(struct iwl_trans *trans,
 	if (!resp)
 		return -ENOMEM;
 
-	resp->flavor = CSR_HW_RFID_FLAVOR(trans->hw_crf_id);
-	resp->dash   = CSR_HW_RFID_DASH(trans->hw_crf_id);
-	resp->step   = CSR_HW_RFID_STEP(trans->hw_crf_id);
-	resp->type   = CSR_HW_RFID_TYPE(trans->hw_rf_id);
-	resp->is_cdb = CSR_HW_RFID_IS_CDB(trans->hw_rf_id);
-	resp->is_jacket = CSR_HW_RFID_IS_JACKET(trans->hw_rf_id);
+	resp->flavor = CSR_HW_RFID_FLAVOR(trans->info.hw_crf_id);
+	resp->dash   = CSR_HW_RFID_DASH(trans->info.hw_crf_id);
+	resp->step   = CSR_HW_RFID_STEP(trans->info.hw_crf_id);
+	resp->type   = CSR_HW_RFID_TYPE(trans->info.hw_rf_id);
+	resp->is_cdb = CSR_HW_RFID_IS_CDB(trans->info.hw_rf_id);
+	resp->is_jacket = CSR_HW_RFID_IS_JACKET(trans->info.hw_rf_id);
 
 	data_out->data = resp;
 	data_out->len = sizeof(*resp);

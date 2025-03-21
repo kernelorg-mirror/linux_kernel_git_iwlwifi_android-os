@@ -2,7 +2,7 @@
 /*
  * Copyright (C) 2012-2014, 2018-2021 Intel Corporation
  * Copyright (C) 2013-2015 Intel Mobile Communications GmbH
- * Copyright (C) 2023 Intel Corporation
+ * Copyright (C) 2023, 2025 Intel Corporation
  */
 #include "iwl-trans.h"
 #include "iwl-tm-infc.h"
@@ -146,10 +146,10 @@ static int iwl_tm_get_dev_info(struct iwl_testmode *testmode,
 	if (!dev_info)
 		return -ENOMEM;
 
-	dev_info->dev_id = testmode->trans->hw_id;
+	dev_info->dev_id = testmode->trans->info.hw_id;
 	dev_info->fw_ver = testmode->fw->ucode_ver;
 	dev_info->vendor_id = PCI_VENDOR_ID_INTEL;
-	dev_info->silicon_step = testmode->trans->hw_rev_step;
+	dev_info->silicon_step = testmode->trans->info.hw_rev_step;
 
 	/* TODO: Assign real value when feature is implemented */
 	dev_info->build_ver = 0x00;

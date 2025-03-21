@@ -183,7 +183,7 @@ struct iwl_rfi_ddr_lut_entry iwl_mvm_rfi_ddr_table[IWL_RFI_DDR_LUT_SIZE] = {
 static inline bool iwl_mvm_rfi_enabled_by_mac_type(struct iwl_mvm *mvm,
 						   bool so_rfi_mode)
 {
-	u32 mac_type = CSR_HW_REV_TYPE(mvm->trans->hw_rev);
+	u32 mac_type = CSR_HW_REV_TYPE(mvm->trans->info.hw_rev);
 	bool enable_rfi = false;
 
 	if ((mac_type != IWL_CFG_ANY && mac_type >= IWL_CFG_MAC_TYPE_MA) ||

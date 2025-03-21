@@ -264,7 +264,7 @@ static int iwl_xvt_get_dev_info(struct iwl_xvt *xvt,
 	if (!dev_info)
 		return -ENOMEM;
 
-	dev_info->dev_id = xvt->trans->hw_id;
+	dev_info->dev_id = xvt->trans->info.hw_id;
 	dev_info->fw_ver = xvt->fw->ucode_ver;
 	dev_info->vendor_id = PCI_VENDOR_ID_INTEL;
 	dev_info->build_ver = sv_step;
