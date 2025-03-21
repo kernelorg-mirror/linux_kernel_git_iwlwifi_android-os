@@ -18,7 +18,6 @@
 
 struct iwl_xvt_alive_data {
 	bool valid;
-	u32 scd_base_addr;
 };
 
 static int iwl_xvt_send_dqa_cmd(struct iwl_xvt *xvt)
@@ -64,7 +63,6 @@ static bool iwl_alive_fn(struct iwl_notif_wait_data *notif_wait,
 
 		lmac_error_event_table =
 			le32_to_cpu(palive2->error_event_table_ptr);
-		alive_data->scd_base_addr = le32_to_cpu(palive2->scd_base_ptr);
 
 		alive_data->valid = le16_to_cpu(palive2->status) ==
 				    IWL_ALIVE_STATUS_OK;
@@ -164,8 +162,6 @@ static bool iwl_alive_fn(struct iwl_notif_wait_data *notif_wait,
 		alive_data->valid = status == IWL_ALIVE_STATUS_OK;
 		lmac_error_event_table =
 			le32_to_cpu(lmac1->dbg_ptrs.error_event_table_ptr);
-		alive_data->scd_base_addr =
-			le32_to_cpu(lmac1->dbg_ptrs.scd_base_ptr);
 		iwl_tm_set_fw_ver(xvt->trans, le32_to_cpu(lmac1->ucode_major),
 				  le32_to_cpu(lmac1->ucode_minor));
 		umac_error_event_table =
@@ -245,7 +241,7 @@ static int iwl_xvt_load_ucode_wait_alive(struct iwl_xvt *xvt,
 	/* fresh firmware was loaded */
 	xvt->fw_error = false;
 
-	iwl_trans_fw_alive(xvt->trans, alive_data.scd_base_addr);
+	iwl_trans_fw_alive(xvt->trans);
 
 	ret = iwl_xvt_pnvm_load(xvt->trans, &xvt->notif_wait,
 				&xvt->fw->ucode_capa);
