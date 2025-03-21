@@ -236,8 +236,6 @@ static struct iwl_op_mode *iwl_xvt_start(struct iwl_trans *trans,
 	trans_cfg.cmd_queue = IWL_MVM_DQA_CMD_QUEUE;
 	IWL_DEBUG_INFO(xvt, "dqa supported\n");
 	trans_cfg.cmd_fifo = IWL_MVM_TX_FIFO_CMD;
-	trans_cfg.bc_table_dword =
-		trans->trans_cfg->device_family < IWL_DEVICE_FAMILY_AX210;
 	trans_cfg.scd_set_active = true;
 	trans->wide_cmd_header = true;
 
