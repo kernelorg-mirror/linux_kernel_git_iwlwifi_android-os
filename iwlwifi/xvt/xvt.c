@@ -246,6 +246,7 @@ static struct iwl_op_mode *iwl_xvt_start(struct iwl_trans *trans,
 	if (xvt->trans->trans_cfg->mq_rx_supported)
 		trans->conf.rx_buf_size = IWL_AMSDU_4K;
 
+	trans->conf.rx_mpdu_cmd = REPLY_RX_MPDU_CMD;
 	trans->conf.rx_mpdu_cmd_hdr_size =
 		(trans->trans_cfg->device_family >= IWL_DEVICE_FAMILY_AX210) ?
 		sizeof(struct iwl_rx_mpdu_desc) : IWL_RX_DESC_SIZE_V1;
