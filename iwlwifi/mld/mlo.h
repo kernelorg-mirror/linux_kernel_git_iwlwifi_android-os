@@ -157,4 +157,7 @@ struct iwl_mld_link_sel_data {
 	u16 grade;
 };
 
+void iwl_mld_start_ignoring_tpt_updates(struct iwl_mld *mld);
+void iwl_mld_stop_ignoring_tpt_updates(struct iwl_mld *mld);
+
 #endif /* __iwl_mld_mlo_h__ */
