@@ -1758,6 +1758,7 @@ iwl_pcie_set_interrupt_capa(struct pci_dev *pdev,
 	return;
 
 enable_msi:
+	info->num_rxqs = 1;
 	ret = pci_enable_msi(pdev);
 	if (ret) {
 		dev_err(&pdev->dev, "pci_enable_msi failed - %d\n", ret);
