@@ -309,6 +309,7 @@ static struct iwl_op_mode *iwl_xvt_start(struct iwl_trans *trans,
 	return op_mode;
 
 out_free:
+	iwl_trans_op_mode_leave(xvt->trans);
 	iwl_fw_runtime_free(&xvt->fwrt);
 	kfree(op_mode);
 
