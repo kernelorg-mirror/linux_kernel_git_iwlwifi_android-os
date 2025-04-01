@@ -160,6 +160,7 @@
  *	device
  * @addresses: device MAC addresses.
  * @scan: instance of the scan object
+ * @channel_survey: channel survey information collected during scan
  * @wowlan: WoWLAN support data.
  * @led: the led device
  * @mcc_src: the source id of the MCC, comes from the firmware
@@ -254,6 +255,7 @@ struct iwl_mld {
 
 	struct mac_address addresses[IWL_MLD_MAX_ADDRESSES];
 	struct iwl_mld_scan scan;
+	struct iwl_mld_survey *channel_survey;
 #ifdef CONFIG_PM_SLEEP
 	struct wiphy_wowlan_support wowlan;
 #endif /* CONFIG_PM_SLEEP */
