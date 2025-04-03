@@ -157,8 +157,14 @@ static void _iwl_trans_pcie_gen2_stop_device(struct iwl_trans *trans)
 		return;
 
 	if (trans->state >= IWL_TRANS_FW_STARTED &&
-	    trans->conf.fw_reset_handshake)
+	    trans->conf.fw_reset_handshake) {
+		/*
+		 * Reset handshake can dump firmware on timeout, but that
+		 * should assume that the firmware is already dead.
+		 */
+		trans->state = IWL_TRANS_NO_FW;
 		iwl_trans_pcie_fw_reset_handshake(trans);
+	}
 
 	trans_pcie->is_down = true;
 	trans_pcie->alive_isr_received = false;
