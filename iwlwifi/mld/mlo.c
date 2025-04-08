@@ -830,6 +830,11 @@ iwl_mld_channel_load_allows_emlsr(struct iwl_mld *mld,
 	if (a->chandef->width <= b->chandef->width)
 		return true;
 
+#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+	if (mld->trans->dbg_cfg.MLD_ENTER_EMLSR_UNEQUAL_BW)
+		return true;
+#endif
+
 	bw_a = cfg80211_chandef_get_width(a->chandef);
 	bw_b = cfg80211_chandef_get_width(b->chandef);
 	ratio = bw_a / bw_b;
