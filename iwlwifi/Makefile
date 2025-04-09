@@ -38,6 +38,7 @@ iwlwifi-$(CPTCFG_IWLMVM) += cfg/ax210.o
 iwlwifi-$(CPTCFG_IWLMLD) += cfg/bz.o cfg/sc.o cfg/dr.o
 # RF configurations
 iwlwifi-$(CPTCFG_IWLMVM) += cfg/rf-jf.o cfg/rf-hr.o cfg/rf-gf.o
+iwlwifi-$(CPTCFG_IWLMLD) += cfg/rf-fm.o
 
 iwlwifi-$(CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES) += iwl-dbg-cfg.o
 
