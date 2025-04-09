@@ -1638,6 +1638,7 @@ static int iwl_set_hw_address(struct iwl_trans *trans,
 			      struct iwl_nvm_data *data, const __be16 *nvm_hw,
 			      const __le16 *mac_override)
 {
+	const struct iwl_mac_cfg *mac_cfg = trans->mac_cfg;
 #ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
 	struct iwl_dbg_cfg *dbg_cfg = &trans->dbg_cfg;
 
@@ -1651,7 +1652,7 @@ static int iwl_set_hw_address(struct iwl_trans *trans,
 		IWL_ERR(trans, "mac address from config file is invalid\n");
 	}
 #endif
-	if (cfg->mac_addr_from_csr) {
+	if (mac_cfg->base->mac_addr_from_csr) {
 		iwl_set_hw_address_from_csr(trans, data);
 	} else if (cfg->nvm_type != IWL_NVM_EXT) {
 		const u8 *hw_addr = (const u8 *)(nvm_hw + HW_ADDR);

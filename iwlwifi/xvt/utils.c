@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0 OR BSD-3-Clause
 /*
- * Copyright (C) 2005-2014, 2018-2021 Intel Corporation
+ * Copyright (C) 2005-2014, 2018-2021, 2025 Intel Corporation
  * Copyright (C) 2016-2017 Intel Deutschland GmbH
  */
 #include "iwl-debug.h"
@@ -100,7 +100,7 @@ void iwl_xvt_get_umac_error_log(struct iwl_xvt *xvt,
 	struct iwl_trans *trans = xvt->trans;
 	u32 base = xvt->trans->dbg.umac_error_event_table;
 
-	if (base < trans->cfg->min_umac_error_event_table) {
+	if (base < trans->mac_cfg->base->min_umac_error_event_table) {
 		IWL_ERR(xvt,
 			"Not valid error log pointer 0x%08X for %s uCode\n",
 			base,

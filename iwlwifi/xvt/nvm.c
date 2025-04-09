@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0 OR BSD-3-Clause
 /*
- * Copyright (C) 2012-2014, 2021, 2024 Intel Corporation
+ * Copyright (C) 2012-2014, 2021, 2024-2025 Intel Corporation
  * Copyright (C) 2015 Intel Deutschland GmbH
  */
 #include <linux/firmware.h>
@@ -210,7 +210,7 @@ static int iwl_xvt_load_external_nvm(struct iwl_xvt *xvt)
 			break;
 		}
 
-		if (section_id == xvt->cfg->nvm_hw_section_num) {
+		if (section_id == xvt->trans->mac_cfg->base->nvm_hw_section_num) {
 			hw_addr = (const u8 *)((const __le16 *)file_sec->data +
 						HW_ADDR);
 

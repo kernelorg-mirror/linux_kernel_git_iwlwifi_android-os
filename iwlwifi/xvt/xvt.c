@@ -617,7 +617,7 @@ static void iwl_xvt_nic_config(struct iwl_op_mode *op_mode)
 	 * (PCIe power is lost before PERST# is asserted), causing ME FW
 	 * to lose ownership and not being able to obtain it back.
 	 */
-	if (!xvt->trans->cfg->apmg_not_supported)
+	if (!xvt->trans->mac_cfg->base->apmg_not_supported)
 		iwl_set_bits_mask_prph(xvt->trans, APMG_PS_CTRL_REG,
 				       APMG_PS_CTRL_EARLY_PWR_OFF_RESET_DIS,
 				       ~APMG_PS_CTRL_EARLY_PWR_OFF_RESET_DIS);
@@ -810,7 +810,7 @@ int iwl_xvt_allocate_tx_queue(struct iwl_xvt *xvt, u8 sta_id,
 {
 	int ret = 0;
 	int size = max_t(u32, IWL_DEFAULT_QUEUE_SIZE,
-			 xvt->trans->cfg->min_ba_txq_size);
+			 xvt->trans->mac_cfg->base->min_ba_txq_size);
 
 	if (xvt->tx_meta_data[lmac_id].sta_msk & BIT(sta_id))
 		return ret;

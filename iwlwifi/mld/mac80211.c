@@ -406,7 +406,7 @@ static void iwl_mac_hw_set_misc(struct iwl_mld *mld)
 	hw->queues = IEEE80211_NUM_ACS;
 
 	hw->netdev_features = NETIF_F_HIGHDMA | NETIF_F_SG;
-	hw->netdev_features |= mld->cfg->features;
+	hw->netdev_features |= mld->trans->mac_cfg->base->features;
 #ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
 	if (mld->trans->dbg_cfg.HW_CSUM_DISABLE)
 		hw->netdev_features &= ~IWL_CSUM_NETIF_FLAGS_MASK;
