@@ -47,7 +47,7 @@
 #define IWL_CC_A_MODULE_FIRMWARE(api)			\
 	IWL_CC_A_FW_PRE "-" __stringify(api) ".ucode"
 
-static const struct iwl_base_params iwl_22000_base_params = {
+static const struct iwl_family_base_params iwl_22000_base = {
 	.eeprom_size = OTP_LOW_IMAGE_SIZE_32K,
 	.num_of_queues = 512,
 	.max_tfd_queue_size = 256,
@@ -114,7 +114,7 @@ const struct iwl_mac_cfg iwl_qu_mac_cfg = {
 	.mq_rx_supported = true,
 	.gen2 = true,
 	.device_family = IWL_DEVICE_FAMILY_22000,
-	.base_params = &iwl_22000_base_params,
+	.base = &iwl_22000_base,
 	.integrated = true,
 	.xtal_latency = 500,
 	.ltr_delay = IWL_CFG_TRANS_LTR_DELAY_200US,
@@ -124,7 +124,7 @@ const struct iwl_mac_cfg iwl_qu_medium_latency_mac_cfg = {
 	.mq_rx_supported = true,
 	.gen2 = true,
 	.device_family = IWL_DEVICE_FAMILY_22000,
-	.base_params = &iwl_22000_base_params,
+	.base = &iwl_22000_base,
 	.integrated = true,
 	.xtal_latency = 1820,
 	.ltr_delay = IWL_CFG_TRANS_LTR_DELAY_1820US,
@@ -134,7 +134,7 @@ const struct iwl_mac_cfg iwl_qu_long_latency_mac_cfg = {
 	.mq_rx_supported = true,
 	.gen2 = true,
 	.device_family = IWL_DEVICE_FAMILY_22000,
-	.base_params = &iwl_22000_base_params,
+	.base = &iwl_22000_base,
 	.integrated = true,
 	.xtal_latency = 12000,
 	.low_latency_xtal = true,
@@ -169,7 +169,7 @@ const struct iwl_cfg iwl9560_qu_jf_cfg_80mhz = {
 
 const struct iwl_mac_cfg iwl_ax200_mac_cfg = {
 	.device_family = IWL_DEVICE_FAMILY_22000,
-	.base_params = &iwl_22000_base_params,
+	.base = &iwl_22000_base,
 	.mq_rx_supported = true,
 	.gen2 = true,
 	.bisr_workaround = 1,
