@@ -651,7 +651,7 @@ extern const struct iwl_cfg iwl_rf_hr1;
 extern const struct iwl_cfg iwl_rf_hr;
 extern const struct iwl_cfg iwl_rf_hr_80mhz;
 
-extern const struct iwl_cfg iwl_cfg_ma;
+extern const struct iwl_cfg iwl_rf_gf;
 #endif /* CPTCFG_IWLMVM */
 
 #if IS_ENABLED(CPTCFG_IWLMLD)
