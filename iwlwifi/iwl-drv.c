@@ -424,6 +424,11 @@ const char *iwl_drv_get_fwname_pre(struct iwl_trans *trans, char *buf)
 	case IWL_CFG_MAC_TYPE_SO:
 	case IWL_CFG_MAC_TYPE_SOF:
 		mac = "so";
+		mac_step = 'a';
+		break;
+	case IWL_CFG_MAC_TYPE_TY:
+		mac = "ty";
+		mac_step = 'a';
 		break;
 	case IWL_CFG_MAC_TYPE_MA:
 		mac = "ma";
@@ -469,6 +474,7 @@ const char *iwl_drv_get_fwname_pre(struct iwl_trans *trans, char *buf)
 		break;
 	case IWL_CFG_RF_TYPE_GF:
 		rf = "gf";
+		rf_step = 'a';
 		break;
 	case IWL_CFG_RF_TYPE_FM:
 		rf = "fm";
