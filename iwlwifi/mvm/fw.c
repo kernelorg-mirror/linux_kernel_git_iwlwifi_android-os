@@ -300,7 +300,7 @@ static void iwl_mvm_print_pd_notification(struct iwl_mvm *mvm)
 	IWL_ERR(mvm, #reg_name ": 0x%x\n", iwl_read_umac_prph(trans, reg_name))
 
 	struct iwl_trans *trans = mvm->trans;
-	enum iwl_device_family device_family = trans->trans_cfg->device_family;
+	enum iwl_device_family device_family = trans->mac_cfg->device_family;
 
 	if (device_family < IWL_DEVICE_FAMILY_8000)
 		return;
@@ -362,7 +362,7 @@ static int iwl_mvm_load_ucode_wait_alive(struct iwl_mvm *mvm,
 	ret = iwl_wait_notification(&mvm->notif_wait, &alive_wait,
 				    MVM_UCODE_ALIVE_TIMEOUT);
 
-	if (mvm->trans->trans_cfg->device_family ==
+	if (mvm->trans->mac_cfg->device_family ==
 	    IWL_DEVICE_FAMILY_AX210) {
 		/* print these registers regardless of alive fail/success */
 		IWL_INFO(mvm, "WFPM_UMAC_PD_NOTIFICATION: 0x%x\n",
@@ -379,14 +379,14 @@ static int iwl_mvm_load_ucode_wait_alive(struct iwl_mvm *mvm,
 		struct iwl_trans *trans = mvm->trans;
 
 		/* SecBoot info */
-		if (trans->trans_cfg->device_family >=
+		if (trans->mac_cfg->device_family >=
 					IWL_DEVICE_FAMILY_22000) {
 			IWL_ERR(mvm,
 				"SecBoot CPU1 Status: 0x%x, CPU2 Status: 0x%x\n",
 				iwl_read_umac_prph(trans, UMAG_SB_CPU_1_STATUS),
 				iwl_read_umac_prph(trans,
 						   UMAG_SB_CPU_2_STATUS));
-		} else if (trans->trans_cfg->device_family >=
+		} else if (trans->mac_cfg->device_family >=
 			   IWL_DEVICE_FAMILY_8000) {
 			IWL_ERR(mvm,
 				"SecBoot CPU1 Status: 0x%x, CPU2 Status: 0x%x\n",
@@ -397,7 +397,7 @@ static int iwl_mvm_load_ucode_wait_alive(struct iwl_mvm *mvm,
 		iwl_mvm_print_pd_notification(mvm);
 
 		/* LMAC/UMAC PC info */
-		if (trans->trans_cfg->device_family >=
+		if (trans->mac_cfg->device_family >=
 					IWL_DEVICE_FAMILY_22000) {
 			pc_data = trans->dbg.pc_data;
 			for (count = 0; count < trans->dbg.num_pc;
@@ -405,7 +405,7 @@ static int iwl_mvm_load_ucode_wait_alive(struct iwl_mvm *mvm,
 				IWL_ERR(mvm, "%s: 0x%x\n",
 					pc_data->pc_name,
 					pc_data->pc_address);
-		} else if (trans->trans_cfg->device_family >=
+		} else if (trans->mac_cfg->device_family >=
 					IWL_DEVICE_FAMILY_9000) {
 			IWL_ERR(mvm, "UMAC PC: 0x%x\n",
 				iwl_read_umac_prph(trans,
@@ -518,7 +518,7 @@ static void iwl_mvm_uats_init(struct iwl_mvm *mvm)
 		.dataflags[0] = IWL_HCMD_DFL_NOCOPY,
 	};
 
-	if (mvm->trans->trans_cfg->device_family < IWL_DEVICE_FAMILY_AX210) {
+	if (mvm->trans->mac_cfg->device_family < IWL_DEVICE_FAMILY_AX210) {
 		IWL_DEBUG_RADIO(mvm, "UATS feature is not supported\n");
 		return;
 	}
@@ -615,7 +615,7 @@ static int iwl_send_phy_cfg_cmd(struct iwl_mvm *mvm)
 
 	/* set flags extra PHY configuration flags from the device's cfg */
 	phy_cfg_cmd.phy_cfg |=
-		cpu_to_le32(mvm->trans->trans_cfg->extra_phy_cfg_flags);
+		cpu_to_le32(mvm->trans->mac_cfg->extra_phy_cfg_flags);
 
 #ifdef CPTCFG_IWLWIFI_ATLAS_PLATFORM_WORKAROUND
 	if (dmi_match(DMI_BOARD_NAME, "Atlas")) {
@@ -739,7 +739,7 @@ static int iwl_run_unified_mvm_ucode(struct iwl_mvm *mvm)
 
 	mvm->rfkill_safe_init_done = false;
 
-	if (mvm->trans->trans_cfg->device_family == IWL_DEVICE_FAMILY_AX210) {
+	if (mvm->trans->mac_cfg->device_family == IWL_DEVICE_FAMILY_AX210) {
 		sb_cfg = iwl_read_umac_prph(mvm->trans, SB_MODIFY_CFG_FLAG);
 		/* if needed, we'll reset this on our way out later */
 		mvm->fw_product_reset = sb_cfg == SB_CFG_RESIDES_IN_ROM;
@@ -873,7 +873,7 @@ int iwl_run_init_mvm_ucode(struct iwl_mvm *mvm)
 		goto remove_notif;
 	}
 
-	if (mvm->trans->trans_cfg->device_family < IWL_DEVICE_FAMILY_8000) {
+	if (mvm->trans->mac_cfg->device_family < IWL_DEVICE_FAMILY_8000) {
 		ret = iwl_mvm_send_bt_init_conf(mvm);
 		if (ret)
 			goto remove_notif;

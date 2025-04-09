@@ -211,11 +211,11 @@ bool iwl_mvm_rfi_supported(struct iwl_mvm *mvm, bool so_rfi_mode, bool is_ddr)
 
 	IWL_DEBUG_FW(mvm,
 		     "HW is integrated:%s rfi_enabled:%s fw_rfi_state:%d\n",
-		     mvm->trans->trans_cfg->integrated ? "yes" : "no",
+		     mvm->trans->mac_cfg->integrated ? "yes" : "no",
 		     rfi_enable_mac_type ? "yes" : "no", mvm->fw_rfi_state);
 
 	return (is_ddr ? ddr_capa : dlvr_capa) && mvm->bios_enable_rfi &&
-		rfi_enable_mac_type && mvm->trans->trans_cfg->integrated &&
+		rfi_enable_mac_type && mvm->trans->mac_cfg->integrated &&
 		iwl_mvm_fw_rfi_state_supported(mvm);
 }
 

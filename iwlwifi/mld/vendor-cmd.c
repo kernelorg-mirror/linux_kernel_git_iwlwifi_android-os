@@ -287,7 +287,7 @@ static int iwl_mld_vendor_rfim_get_capa(struct wiphy *wiphy,
 
 	if (iwl_mld_rfi_supported(mld, IWL_MLD_RFI_DDR_FEATURE))
 		capa |= IWL_MLD_RFI_DDR_CAPA_ALL;
-	else if (mld->trans->trans_cfg->integrated)
+	else if (mld->trans->mac_cfg->integrated)
 		capa |= IWL_MLD_RFI_DDR_CAPA_CNVI;
 
 	if (iwl_mld_rfi_supported(mld, IWL_MLD_RFI_DLVR_FEATURE))

@@ -187,7 +187,7 @@ static int iwl_mvm_set_country(struct wiphy *wiphy,
 	struct ieee80211_hw *hw = wiphy_to_ieee80211_hw(wiphy);
 	struct iwl_mvm *mvm = IWL_MAC80211_GET_MVM(hw);
 	int retval;
-	int mcc_update_src = mvm->trans->trans_cfg->device_family >
+	int mcc_update_src = mvm->trans->mac_cfg->device_family >
 		IWL_DEVICE_FAMILY_9000 ? MCC_SOURCE_MCC_API :
 		MCC_SOURCE_3G_LTE_HOST;
 
@@ -255,7 +255,7 @@ static int iwl_mvm_vendor_rfim_get_capa(struct wiphy *wiphy,
 	if (!skb)
 		return -ENOMEM;
 
-	if (mvm->trans->trans_cfg->integrated) {
+	if (mvm->trans->mac_cfg->integrated) {
 		if (iwl_mvm_rfi_supported(mvm, mvm->force_enable_rfi, true)) {
 			capa |= IWL_MVM_RFI_DDR_CAPA_ALL;
 			if (iwl_mvm_rfi_desense_supported(mvm))

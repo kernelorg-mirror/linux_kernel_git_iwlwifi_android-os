@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0 OR BSD-3-Clause */
 /*
- * Copyright (C) 2005-2014, 2018-2024 Intel Corporation
+ * Copyright (C) 2005-2014, 2018-2025 Intel Corporation
  * Copyright (C) 2015-2017 Intel Deutschland GmbH
  */
 #ifndef __iwl_xvt_h__
@@ -341,7 +341,7 @@ void iwl_xvt_destroy_reorder_buffer(struct iwl_xvt *xvt,
 static inline bool iwl_xvt_is_unified_fw(struct iwl_xvt *xvt)
 {
 	/* TODO - replace with TLV once defined */
-	return xvt->trans->trans_cfg->device_family >= IWL_DEVICE_FAMILY_22000;
+	return xvt->trans->mac_cfg->device_family >= IWL_DEVICE_FAMILY_22000;
 }
 
 static inline bool iwl_xvt_is_cdb_supported(struct iwl_xvt *xvt)

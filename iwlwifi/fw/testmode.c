@@ -170,7 +170,7 @@ static bool iwl_tm_addr_range_prph(struct iwl_testmode *testmode, u32 addr)
 	    addr < IWL_ABS_LMAC1_PRPH_START + PRPH_END)
 		return true;
 
-	if (trans->trans_cfg->device_family < IWL_DEVICE_FAMILY_AX210)
+	if (trans->mac_cfg->device_family < IWL_DEVICE_FAMILY_AX210)
 		return false;
 
 	if (fw_has_capa(&testmode->fw->ucode_capa,
