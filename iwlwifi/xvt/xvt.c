@@ -186,7 +186,7 @@ static int iwl_xvt_tm_send_hcmd(void *op_mode, struct iwl_host_cmd *host_cmd)
 }
 
 static struct iwl_op_mode *iwl_xvt_start(struct iwl_trans *trans,
-					 const struct iwl_cfg *cfg,
+					 const struct iwl_rf_cfg *cfg,
 					 const struct iwl_fw *fw,
 					 struct dentry *dbgfs_dir)
 {

@@ -222,7 +222,7 @@ struct iwl_mld {
 	/* And here fields that survive a fw restart */
 	struct device *dev;
 	struct iwl_trans *trans;
-	const struct iwl_cfg *cfg;
+	const struct iwl_rf_cfg *cfg;
 	const struct iwl_fw *fw;
 	struct ieee80211_hw *hw;
 	struct wiphy *wiphy;
