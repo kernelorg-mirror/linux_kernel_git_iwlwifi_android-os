@@ -30,10 +30,14 @@ iwlwifi-$(CONFIG_PCI) += pcie/ctxt-info.o pcie/ctxt-info-gen3.o pcie/trans-gen2.
 
 CFLAGS_pcie/drv.o += -Wno-override-init
 
+# combined MAC/RF configurations
 iwlwifi-$(CPTCFG_IWLMVM) += cfg/7000.o cfg/8000.o
+# MAC configurations
 iwlwifi-$(CPTCFG_IWLMVM) += cfg/9000.o cfg/22000.o
 iwlwifi-$(CPTCFG_IWLMVM) += cfg/ax210.o
 iwlwifi-$(CPTCFG_IWLMLD) += cfg/bz.o cfg/sc.o cfg/dr.o
+# RF configurations
+iwlwifi-$(CPTCFG_IWLMVM) += cfg/rf-jf.o
 
 iwlwifi-$(CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES) += iwl-dbg-cfg.o
 
