@@ -657,10 +657,10 @@ extern const struct iwl_cfg iwl_rf_gf;
 #if IS_ENABLED(CPTCFG_IWLMLD)
 extern const struct iwl_cfg iwl_rf_fm;
 extern const struct iwl_cfg iwl_rf_fm_160mhz;
-
-extern const struct iwl_cfg iwl_cfg_sc;
-extern const struct iwl_cfg iwl_cfg_sc_160mhz;
-extern const struct iwl_cfg iwl_cfg_dr;
+#define iwl_rf_wh iwl_rf_fm
+#define iwl_rf_wh_160mhz iwl_rf_fm_160mhz
+#define iwl_rf_pe iwl_rf_fm
+#define iwl_rf_pe_160mhz iwl_rf_fm_160mhz
 #endif /* CPTCFG_IWLMLD */
 
 #endif /* __IWL_CONFIG_H__ */
