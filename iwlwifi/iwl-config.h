@@ -482,9 +482,7 @@ struct iwl_dev_info {
 	u16 subdevice;
 	u16 subdevice_mask;
 	u16 rf_type;
-	u8 mac_type;
 	u8 bw_limit;
-	u8 mac_step;
 	u8 rf_step;
 	u8 rf_id;
 	u8 cores;
