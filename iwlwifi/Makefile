@@ -18,6 +18,7 @@ iwlwifi-$(CPTCFG_IWLMLD) += fw/smem.o fw/init.o
 iwlwifi-$(CONFIG_ACPI) += fw/acpi.o
 iwlwifi-$(CONFIG_EFI)	+= fw/uefi.o
 
+iwlwifi-$(CPTCFG_IWLXVT)	+= fw/paging.o fw/smem.o
 iwlwifi-$(CPTCFG_IWLXVT)	+= fw/init.o
 iwlwifi-$(CPTCFG_IWLWIFI_DEBUGFS) += fw/debugfs.o
 
