@@ -478,18 +478,22 @@ struct iwl_rf_cfg {
 #define IWL_SUBDEVICE_CORES(subdevice)	((u16)((subdevice) & 0x1C00) >> 10)
 
 struct iwl_dev_info {
-	u16 device;
-	u16 subdevice;
-	u16 subdevice_mask;
-	u16 rf_type;
-	u8 bw_limit;
-	u8 rf_step;
-	u8 rf_id;
-	u8 cores;
-	u8 cdb;
-	u8 jacket;
 	const struct iwl_rf_cfg *cfg;
 	const char *name;
+	u16 device;
+	u16 subdevice;
+	u32 subdevice_m_l:4,
+	    subdevice_m_h:4,
+	    match_rf_type:1,
+	    rf_type:9,
+	    match_bw_limit:1,
+	    bw_limit:1,
+	    match_rf_step:1,
+	    rf_step:4,
+	    match_rf_id:1,
+	    rf_id:4,
+	    match_cdb:1,
+	    cdb:1;
 };
 
 /*
