@@ -527,7 +527,6 @@ extern const struct iwl_mac_cfg iwl_bz_mac_cfg;
 extern const struct iwl_mac_cfg iwl_gl_mac_cfg;
 extern const struct iwl_mac_cfg iwl_sc_mac_cfg;
 extern const struct iwl_mac_cfg iwl_dr_mac_cfg;
-extern const struct iwl_mac_cfg iwl_br_mac_cfg;
 
 extern const char iwl1000_bgn_name[];
 extern const char iwl1000_bg_name[];
@@ -644,8 +643,6 @@ extern const char iwl_killer_bn1850i_name[];
 extern const char iwl_bn201_name[];
 extern const char iwl_be221_name[];
 extern const char iwl_be223_name[];
-extern const char iwl_dr_name[];
-extern const char iwl_br_name[];
 #if IS_ENABLED(CPTCFG_IWLMVM)
 extern const struct iwl_rf_cfg iwl7260_cfg;
 extern const struct iwl_rf_cfg iwl7260_high_temp_cfg;
