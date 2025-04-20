@@ -263,9 +263,6 @@ static struct iwl_op_mode *iwl_xvt_start(struct iwl_trans *trans,
 					      SCD_QUEUE_CONFIG_CMD),
 				      0);
 
-	trans->conf.command_groups = trans->conf.command_groups;
-	trans->conf.command_groups_size = trans->conf.command_groups_size;
-
 	iwl_trans_op_mode_enter(xvt->trans, op_mode);
 
 	/* set up notification wait support */
