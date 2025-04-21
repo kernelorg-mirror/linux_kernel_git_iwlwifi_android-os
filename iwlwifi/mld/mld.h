@@ -288,13 +288,16 @@ struct iwl_mld {
 #endif
 #ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
 	/**
-	 * @nmi_thresh: the hcmd number on which nmi will be triggered
+	 * @random_nmi: random NMI parameters
+	 *
+	 * @random_nmi.nmi_thresh: the hcmd number on which NMI will be
+	 *	triggered. 0 means that random NMI is disabled.
+	 * @random_nmi.hcmd_counter: counts the number of hcmds sent
 	 */
-	u8 nmi_thresh;
-	/**
-	 * @hcmd_counter: counts the number of hcmd sent
-	 */
-	u32 hcmd_counter;
+	struct iwl_mld_random_nmi {
+		u8 nmi_thresh;
+		u32 hcmd_counter;
+	} random_nmi;
 #endif
 
 	struct iwl_mld_rfi rfi;

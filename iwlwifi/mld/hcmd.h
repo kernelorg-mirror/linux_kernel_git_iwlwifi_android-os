@@ -9,12 +9,14 @@
 #include "iwl-io.h"
 static void iwl_mld_check_random_nmi(struct iwl_mld *mld)
 {
+	struct iwl_mld_random_nmi *random_nmi = &mld->random_nmi;
+
 	/* this is paused in restart */
 	if (mld->fw_status.in_hw_restart ||
-	    ++mld->hcmd_counter != mld->nmi_thresh)
-            return;
+	    ++random_nmi->hcmd_counter != random_nmi->nmi_thresh)
+		return;
 
-	mld->hcmd_counter = 0;
+	random_nmi->hcmd_counter = 0;
 	iwl_force_nmi(mld->trans);
 }
 #endif

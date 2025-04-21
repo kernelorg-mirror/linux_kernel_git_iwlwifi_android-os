@@ -60,6 +60,8 @@ module_exit(iwl_mld_exit);
 #ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
 static void iwl_mld_debug_setup_random_nmi(struct iwl_mld *mld)
 {
+	struct iwl_mld_random_nmi *random_nmi = &mld->random_nmi;
+
 	if (mld->trans->dbg_cfg.MLD_RANDOM_NMI_ENABLE) {
 		u8 ceil = mld->trans->dbg_cfg.MLD_RANDOM_NMI_CEIL;
 		u8 floor = mld->trans->dbg_cfg.MLD_RANDOM_NMI_FLOOR;
@@ -68,9 +70,9 @@ static void iwl_mld_debug_setup_random_nmi(struct iwl_mld *mld)
 			return;
 
 		/* Avoid 0, since this means that random nmi is disabled */
-		mld->nmi_thresh = get_random_u8() % (ceil - floor) + floor + 1;
+		random_nmi->nmi_thresh = get_random_u8() % (ceil - floor) + floor + 1;
 		IWL_WARN(mld, "NMI will be forced on hcmd number: %d\n",
-			 mld->nmi_thresh);
+			 random_nmi->nmi_thresh);
 	}
 }
 #endif
