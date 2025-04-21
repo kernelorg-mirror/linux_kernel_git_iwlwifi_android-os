@@ -13,10 +13,12 @@ static void iwl_mld_check_random_nmi(struct iwl_mld *mld)
 
 	/* this is paused in restart */
 	if (mld->fw_status.in_hw_restart ||
+	    random_nmi->nmi_counter >= random_nmi->nmi_limit ||
 	    ++random_nmi->hcmd_counter != random_nmi->nmi_thresh)
 		return;
 
 	random_nmi->hcmd_counter = 0;
+	random_nmi->nmi_counter++;
 	iwl_force_nmi(mld->trans);
 }
 #endif

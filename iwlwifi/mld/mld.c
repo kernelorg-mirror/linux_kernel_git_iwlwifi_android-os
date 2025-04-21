@@ -73,6 +73,8 @@ static void iwl_mld_debug_setup_random_nmi(struct iwl_mld *mld)
 		random_nmi->nmi_thresh = get_random_u8() % (ceil - floor) + floor + 1;
 		IWL_WARN(mld, "NMI will be forced on hcmd number: %d\n",
 			 random_nmi->nmi_thresh);
+
+		random_nmi->nmi_limit = mld->trans->dbg_cfg.MLD_RANDOM_NMI_LIMIT;
 	}
 }
 #endif

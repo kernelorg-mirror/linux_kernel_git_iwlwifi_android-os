@@ -293,10 +293,15 @@ struct iwl_mld {
 	 * @random_nmi.nmi_thresh: the hcmd number on which NMI will be
 	 *	triggered. 0 means that random NMI is disabled.
 	 * @random_nmi.hcmd_counter: counts the number of hcmds sent
+	 * @random_nmi.nmi_counter: counts the number of NMIs triggered
+	 * @random_nmi.nmi_limit: the number of NMIs to trigger before disabling
+	 *	random NMI
 	 */
 	struct iwl_mld_random_nmi {
 		u8 nmi_thresh;
 		u32 hcmd_counter;
+		u32 nmi_counter;
+		u32 nmi_limit;
 	} random_nmi;
 #endif
 
