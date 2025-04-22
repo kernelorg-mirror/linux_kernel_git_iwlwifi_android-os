@@ -301,7 +301,7 @@ iwl_mld_scan_ooc_priority(enum iwl_mld_scan_status scan_status)
 	return IWL_SCAN_PRIORITY_EXT_2;
 }
 
-static inline bool
+static bool
 iwl_mld_scan_is_regular(struct iwl_mld_scan_params *params)
 {
 	return params->n_scan_plans == 1 &&
@@ -354,7 +354,7 @@ iwl_mld_scan_ssid_exist(u8 *ssid, u8 ssid_len, struct iwl_ssid_ie *ssid_list)
 	return -1;
 }
 
-static inline bool
+static bool
 iwl_mld_scan_fits(struct iwl_mld *mld, int n_ssids,
 		  struct ieee80211_scan_ies *ies, int n_channels)
 {
@@ -725,7 +725,7 @@ iwl_mld_scan_cmd_set_probe_params(struct iwl_mld_scan_params *params,
 	iwl_mld_scan_cmd_build_ssids(params, pp->direct_scan, bitmap_ssid);
 }
 
-static inline bool
+static bool
 iwl_mld_scan_use_ebs(struct iwl_mld *mld, struct ieee80211_vif *vif,
 		     bool low_latency)
 {

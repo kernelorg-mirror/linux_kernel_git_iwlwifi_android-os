@@ -103,16 +103,16 @@ iwl_mld_update_mcc(struct iwl_mld *mld, const char *alpha2,
 	 * For Wifi-6 radios, we get version 5, but 5, 6, and 4 are compatible.
 	 */
 	switch (resp_ver) {
-		case 5:
-		case 6:
-			resp_cp = iwl_mld_parse_mcc_update_resp_v5_v6(pkt);
-			break;
-		case 8:
-			resp_cp = iwl_mld_parse_mcc_update_resp_v8(pkt);
-			break;
-		default:
-			IWL_FW_CHECK_FAILED(mld, "Unknown MCC_UPDATE_CMD version %d\n", resp_ver);
-			resp_cp = ERR_PTR(-EINVAL);
+	case 5:
+	case 6:
+		resp_cp = iwl_mld_parse_mcc_update_resp_v5_v6(pkt);
+		break;
+	case 8:
+		resp_cp = iwl_mld_parse_mcc_update_resp_v8(pkt);
+		break;
+	default:
+		IWL_FW_CHECK_FAILED(mld, "Unknown MCC_UPDATE_CMD version %d\n", resp_ver);
+		resp_cp = ERR_PTR(-EINVAL);
 	}
 
 	if (IS_ERR(resp_cp))
@@ -130,7 +130,6 @@ exit:
 	iwl_free_resp(&cmd);
 	return resp_cp;
 }
-
 
 /* It is the caller's responsibility to free the pointer returned here */
 struct ieee80211_regdomain *

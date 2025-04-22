@@ -943,7 +943,7 @@ void iwl_mld_handle_missed_beacon_notif(struct iwl_mld *mld,
 	if (hweight16(vif->active_links) <= 1)
 		return;
 
-	/* We are processing a notification before before link activation */
+	/* We are processing a notification before link activation */
 	if (le32_to_cpu(notif->other_link_id) == FW_CTXT_ID_INVALID)
 		return;
 

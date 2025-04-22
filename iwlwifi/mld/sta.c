@@ -917,7 +917,6 @@ static void iwl_mld_count_mpdu(struct ieee80211_link_sta *link_sta, int queue,
 		total_mpdus += tx ? queue_counter->per_link[i].tx :
 				    queue_counter->per_link[i].rx;
 
-
 	/* Unblock is already queued if the threshold was reached before */
 	if (total_mpdus - count >= IWL_MLD_ENTER_EMLSR_TPT_THRESH)
 		goto unlock;

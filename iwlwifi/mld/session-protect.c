@@ -205,7 +205,7 @@ int iwl_mld_cancel_session_protection(struct iwl_mld *mld,
 	if (WARN_ON(!link))
 		return -EINVAL;
 
-	cmd.id_and_color = cpu_to_le32(link->fw_id),
+	cmd.id_and_color = cpu_to_le32(link->fw_id);
 
 	ret = iwl_mld_send_cmd_pdu(mld,
 				   WIDE_ID(MAC_CONF_GROUP,

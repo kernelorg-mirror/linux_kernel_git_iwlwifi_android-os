@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-2.0 OR BSD-3-Clause
+/* SPDX-License-Identifier: GPL-2.0 OR BSD-3-Clause */
 /*
  * Copyright (C) 2024 Intel Corporation
  */
@@ -55,7 +55,7 @@ void
 iwl_mld_free_txq(struct iwl_mld *mld, u32 fw_sta_mask, u32 tid, u32 queue_id);
 void iwl_mld_tx_from_txq(struct iwl_mld *mld, struct ieee80211_txq *txq);
 void iwl_mld_handle_tx_resp_notif(struct iwl_mld *mld,
-				 struct iwl_rx_packet *pkt);
+				  struct iwl_rx_packet *pkt);
 int iwl_mld_flush_link_sta_txqs(struct iwl_mld *mld, u32 fw_sta_id);
 int iwl_mld_ensure_queue(struct iwl_mld *mld, struct ieee80211_txq *txq);
 

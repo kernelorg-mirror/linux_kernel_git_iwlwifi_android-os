@@ -276,13 +276,13 @@ static int _iwl_mld_emlsr_block(struct iwl_mld *mld, struct ieee80211_vif *vif,
 }
 
 void iwl_mld_block_emlsr(struct iwl_mld *mld, struct ieee80211_vif *vif,
-		       enum iwl_mld_emlsr_blocked reason, u8 link_to_keep)
+			 enum iwl_mld_emlsr_blocked reason, u8 link_to_keep)
 {
 	_iwl_mld_emlsr_block(mld, vif, reason, link_to_keep, false);
 }
 
 int iwl_mld_block_emlsr_sync(struct iwl_mld *mld, struct ieee80211_vif *vif,
-			   enum iwl_mld_emlsr_blocked reason, u8 link_to_keep)
+			     enum iwl_mld_emlsr_blocked reason, u8 link_to_keep)
 {
 	return _iwl_mld_emlsr_block(mld, vif, reason, link_to_keep, true);
 }
@@ -291,7 +291,7 @@ static void _iwl_mld_select_links(struct iwl_mld *mld,
 				  struct ieee80211_vif *vif);
 
 void iwl_mld_unblock_emlsr(struct iwl_mld *mld, struct ieee80211_vif *vif,
-			 enum iwl_mld_emlsr_blocked reason)
+			   enum iwl_mld_emlsr_blocked reason)
 {
 	struct iwl_mld_vif *mld_vif = iwl_mld_vif_from_mac80211(vif);
 
@@ -442,8 +442,9 @@ struct iwl_mld_update_emlsr_block_data {
 	int result;
 };
 
-static void iwl_mld_vif_iter_update_emlsr_non_bss_block(void *_data, u8 *mac,
-						       struct ieee80211_vif *vif)
+static void
+iwl_mld_vif_iter_update_emlsr_non_bss_block(void *_data, u8 *mac,
+					    struct ieee80211_vif *vif)
 {
 	struct iwl_mld_update_emlsr_block_data *data = _data;
 	struct iwl_mld_vif *mld_vif = iwl_mld_vif_from_mac80211(vif);
@@ -970,7 +971,7 @@ static void _iwl_mld_select_links(struct iwl_mld *mld,
 
 	if (WARN(ktime_before(mld->scan.last_mlo_scan_time,
 			      ktime_sub_ns(ktime_get_boottime_ns(),
-					   5 * NSEC_PER_SEC)),
+					   5ULL * NSEC_PER_SEC)),
 		"Last MLO scan was too long ago, can't select links\n"))
 		return;
 
@@ -1029,7 +1030,7 @@ set_active:
 }
 
 static void iwl_mld_vif_iter_select_links(void *_data, u8 *mac,
-					   struct ieee80211_vif *vif)
+					  struct ieee80211_vif *vif)
 {
 	struct iwl_mld_vif *mld_vif = iwl_mld_vif_from_mac80211(vif);
 	struct iwl_mld *mld = mld_vif->mld;

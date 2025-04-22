@@ -38,8 +38,11 @@
 #include "ftm-initiator.h"
 
 /* Please use this in an increasing order of the versions */
-#define CMD_VER_ENTRY(_ver, _struct) { .size = sizeof(struct _struct), .ver = _ver },
-#define CMD_VERSIONS(name, ...) static const struct iwl_notif_struct_size iwl_notif_struct_sizes_##name[] = { __VA_ARGS__ };
+#define CMD_VER_ENTRY(_ver, _struct)			\
+	{ .size = sizeof(struct _struct), .ver = _ver },
+#define CMD_VERSIONS(name, ...)				\
+	static const struct iwl_notif_struct_size	\
+	iwl_notif_struct_sizes_##name[] = { __VA_ARGS__ };
 
 #define RX_HANDLER_NO_OBJECT(_grp, _cmd, _name, _context)		\
 	{.cmd_id = WIDE_ID(_grp, _cmd),					\
@@ -502,7 +505,7 @@ iwl_mld_notif_is_valid(struct iwl_mld *mld, struct iwl_rx_packet *pkt,
 	}
 
 	IWL_FW_CHECK_FAILED(mld,
-			    "notif 0x%04x ver %ld missing expected size, use version %d size\n",
+			    "notif 0x%04x ver %zu missing expected size, use version %u size\n",
 			    handler->cmd_id, notif_ver,
 			    handler->sizes[handler->n_sizes - 1].ver);
 

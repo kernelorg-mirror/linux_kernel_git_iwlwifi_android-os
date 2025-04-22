@@ -91,6 +91,9 @@ int iwl_mld_start_session_protection(struct iwl_mld *mld,
  * This functions cancels the session protection which is an act of good
  * citizenship. If it is not needed any more it should be canceled because
  * the other mac contexts wait for the medium during that time.
+ *
+ * Returns: 0 if successful, error code otherwise
+ *
  */
 int iwl_mld_cancel_session_protection(struct iwl_mld *mld,
 				      struct ieee80211_vif *vif,

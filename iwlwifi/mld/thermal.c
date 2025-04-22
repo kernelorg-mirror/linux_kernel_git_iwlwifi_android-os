@@ -233,7 +233,6 @@ static int iwl_mld_tzone_set_trip_temp(struct thermal_zone_device *device,
 unlock:
 	wiphy_unlock(mld->wiphy);
 	return ret;
-
 }
 
 static  struct thermal_zone_device_ops tzone_ops = {

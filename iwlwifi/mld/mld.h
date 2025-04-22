@@ -8,8 +8,6 @@
 #include <linux/leds.h>
 #include <net/mac80211.h>
 
-#include <net/mac80211.h>
-
 #include "iwl-trans.h"
 #include "iwl-op-mode.h"
 #include "fw/runtime.h"

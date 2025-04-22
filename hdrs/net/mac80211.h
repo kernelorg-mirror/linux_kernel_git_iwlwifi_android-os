@@ -6690,7 +6690,7 @@ void ieee80211_iter_chan_contexts_atomic(
 	void *iter_data);
 
 /**
- * ieee80211_iter_chan_contexts_atomic - iterate channel contexts
+ * ieee80211_iter_chan_contexts_mtx - iterate channel contexts
  * @hw: pointer obtained from ieee80211_alloc_hw().
  * @iter: iterator function
  * @iter_data: data passed to iterator function

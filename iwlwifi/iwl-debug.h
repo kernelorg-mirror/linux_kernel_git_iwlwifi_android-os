@@ -2,7 +2,7 @@
 /******************************************************************************
  *
  * Copyright(c) 2003 - 2014 Intel Corporation. All rights reserved.
- * Copyright(c) 2018 - 2021, 2024 - 2025 Intel Corporation
+ * Copyright(c) 2018 - 2021, 2024-2025 Intel Corporation
  *
  * Portions of this file are derived from the ipw3945 project.
  *****************************************************************************/

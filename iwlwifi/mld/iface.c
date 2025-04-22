@@ -292,8 +292,8 @@ static bool iwl_mld_p2p_dev_has_extended_disc(struct iwl_mld *mld)
 	 * Rx filters on all MAC and increases the number of interrupts.
 	 */
 	ieee80211_iterate_active_interfaces(mld->hw,
-					IEEE80211_IFACE_ITER_RESUME_ALL,
-					iwl_mld_go_iterator, &go_active);
+					    IEEE80211_IFACE_ITER_RESUME_ALL,
+					    iwl_mld_go_iterator, &go_active);
 
 	return go_active;
 }

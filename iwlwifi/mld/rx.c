@@ -1921,7 +1921,7 @@ void iwl_mld_handle_rx_queues_sync_notif(struct iwl_mld *mld,
 	internal_notif = (void *)notif->payload;
 
 	if (IWL_FW_CHECK(mld, len < combined_notif_len,
-			 "invalid notification size %d (%ld)\n",
+			 "invalid notification size %u (%zu)\n",
 			 len, combined_notif_len))
 		return;
 
@@ -1939,7 +1939,7 @@ void iwl_mld_handle_rx_queues_sync_notif(struct iwl_mld *mld,
 		break;
 	case IWL_MLD_RXQ_NOTIF_DEL_BA:
 		if (IWL_FW_CHECK(mld, len != sizeof(struct iwl_mld_delba_data),
-				 "invalid delba notification size %d (%ld)\n",
+				 "invalid delba notification size %u (%zu)\n",
 				 len, sizeof(struct iwl_mld_delba_data)))
 			break;
 		iwl_mld_del_ba(mld, queue, (void *)internal_notif->payload);

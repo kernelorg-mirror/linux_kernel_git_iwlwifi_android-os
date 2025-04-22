@@ -1060,7 +1060,7 @@ void iwl_mld_handle_tx_resp_notif(struct iwl_mld *mld,
 
 	/* validate the size of the variable part of the notif */
 	if (IWL_FW_CHECK(mld, notif_size != pkt_len,
-			 "Invalid tx_resp notif size (expected=%ld got=%d)\n",
+			 "Invalid tx_resp notif size (expected=%zu got=%u)\n",
 			 notif_size, pkt_len))
 		return;
 

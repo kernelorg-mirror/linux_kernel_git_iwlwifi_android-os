@@ -487,7 +487,6 @@ iwl_mld_handle_wowlan_info_notif(struct iwl_mld *mld,
 			 wowlan_status->tid_offloaded_tx))
 		return true;
 
-
 	iwl_mld_convert_gtk_resume_data(mld, wowlan_status, notif->gtk,
 					&notif->gtk[0].sc);
 	iwl_mld_convert_ptk_resume_seq(mld, wowlan_status, &notif->gtk[0].sc);
@@ -517,7 +516,7 @@ iwl_mld_handle_wake_pkt_notif(struct iwl_mld *mld,
 	u32 expected_size = le32_to_cpu(notif->wake_packet_length);
 
 	if (IWL_FW_CHECK(mld, len < sizeof(*notif),
-			 "Invalid WoWLAN wake packet notification (expected size=%ld got=%d)\n",
+			 "Invalid WoWLAN wake packet notification (expected size=%zu got=%u)\n",
 			 sizeof(*notif), len))
 		return true;
 

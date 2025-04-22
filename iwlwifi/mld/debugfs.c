@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: GPL-2.0 OR BSD-3-Clause */
+// SPDX-License-Identifier: GPL-2.0 OR BSD-3-Clause
 /*
  * Copyright (C) 2024-2025 Intel Corporation
  */
@@ -29,10 +29,9 @@
 #define MLD_DEBUGFS_READ_FILE_OPS(name, bufsz)				\
 	_MLD_DEBUGFS_READ_FILE_OPS(name, bufsz, struct iwl_mld)
 
-#define MLD_DEBUGFS_ADD_FILE_ALIAS(alias, name, parent, mode) do {	\
+#define MLD_DEBUGFS_ADD_FILE_ALIAS(alias, name, parent, mode)		\
 	debugfs_create_file(alias, mode, parent, mld,			\
-			    &iwl_dbgfs_##name##_ops);			\
-	} while (0)
+			    &iwl_dbgfs_##name##_ops)
 #define MLD_DEBUGFS_ADD_FILE(name, parent, mode)			\
 	MLD_DEBUGFS_ADD_FILE_ALIAS(#name, name, parent, mode)
 
@@ -653,11 +652,10 @@ iwl_mld_add_debugfs_files(struct iwl_mld *mld, struct dentry *debugfs_dir)
 #define VIF_DEBUGFS_READ_WRITE_FILE_OPS(name, bufsz)			    \
 	IEEE80211_WIPHY_DEBUGFS_READ_WRITE_FILE_OPS(vif_##name, bufsz, vif) \
 
-#define VIF_DEBUGFS_ADD_FILE_ALIAS(alias, name, parent, mode) do {	\
-	debugfs_create_file(alias, mode, parent, vif,			\
-			    &iwl_dbgfs_vif_##name##_ops);		\
-	} while (0)
-#define VIF_DEBUGFS_ADD_FILE(name, parent, mode)			\
+#define VIF_DEBUGFS_ADD_FILE_ALIAS(alias, name, parent, mode)	\
+	debugfs_create_file(alias, mode, parent, vif,		\
+			    &iwl_dbgfs_vif_##name##_ops)
+#define VIF_DEBUGFS_ADD_FILE(name, parent, mode)		\
 	VIF_DEBUGFS_ADD_FILE_ALIAS(#name, name, parent, mode)
 
 static ssize_t iwl_dbgfs_vif_bf_params_write(struct iwl_mld *mld, char *buf,
@@ -696,8 +694,8 @@ static ssize_t iwl_dbgfs_vif_bf_params_write(struct iwl_mld *mld, char *buf,
 }
 
 static ssize_t iwl_dbgfs_vif_pm_params_write(struct iwl_mld *mld,
-					  char *buf,
-					  size_t count, void *data)
+					     char *buf,
+					     size_t count, void *data)
 {
 	struct ieee80211_vif *vif = data;
 	struct iwl_mld_vif *mld_vif = iwl_mld_vif_from_mac80211(vif);
@@ -965,7 +963,8 @@ iwl_dbgfs_vif_twt_operation_write(struct iwl_mld *mld, char *buf, size_t count,
 	if (hweight16(vif->active_links) > 1)
 		return -EOPNOTSUPP;
 
-	ret = sscanf(buf, "%u %llu %u %u %u %hhu %hhu %hhu %hhu %hhu %hhu %hhu %hhu %hhu %hhu %hhu %hhu %hhu %hhu %hhu %hhu",
+	ret = sscanf(buf,
+		     "%u %llu %u %u %u %hhu %hhu %hhu %hhu %hhu %hhu %hhu %hhu %hhu %hhu %hhu %hhu %hhu %hhu %hhu %hhu",
 		     &twt_cmd.twt_operation, &twt_cmd.target_wake_time,
 		     &twt_cmd.interval_exponent, &twt_cmd.interval_mantissa,
 		     &twt_cmd.minimum_wake_duration, &twt_cmd.trigger,
@@ -1070,10 +1069,9 @@ void iwl_mld_add_vif_debugfs(struct ieee80211_hw *hw,
 #define LINK_DEBUGFS_WRITE_FILE_OPS(name, bufsz)			\
 	WIPHY_DEBUGFS_WRITE_FILE_OPS(link_##name, bufsz, bss_conf)
 
-#define LINK_DEBUGFS_ADD_FILE_ALIAS(alias, name, parent, mode) do {	\
+#define LINK_DEBUGFS_ADD_FILE_ALIAS(alias, name, parent, mode)		\
 	debugfs_create_file(alias, mode, parent, link_conf,		\
-			    &iwl_dbgfs_link_##name##_ops);		\
-	} while (0)
+			    &iwl_dbgfs_link_##name##_ops)
 #define LINK_DEBUGFS_ADD_FILE(name, parent, mode)			\
 	LINK_DEBUGFS_ADD_FILE_ALIAS(#name, name, parent, mode)
 
@@ -1185,10 +1183,9 @@ static ssize_t iwl_dbgfs_tlc_dhc_write(struct iwl_mld *mld, char *buf,
 	return ret ? : count;
 }
 
-#define LINK_STA_DEBUGFS_ADD_FILE_ALIAS(alias, name, parent, mode) do {	\
+#define LINK_STA_DEBUGFS_ADD_FILE_ALIAS(alias, name, parent, mode)	\
 	debugfs_create_file(alias, mode, parent, link_sta,		\
-			    &iwl_dbgfs_##name##_ops);			\
-	} while (0)
+			    &iwl_dbgfs_##name##_ops)
 #define LINK_STA_DEBUGFS_ADD_FILE(name, parent, mode)			\
 	LINK_STA_DEBUGFS_ADD_FILE_ALIAS(#name, name, parent, mode)
 

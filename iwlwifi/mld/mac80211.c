@@ -437,7 +437,6 @@ static void iwl_mac_hw_set_misc(struct iwl_mld *mld)
 		hw->max_rx_aggregation_subframes =
 			mld->trans->dbg_cfg.rx_agg_subframes;
 #endif
-
 }
 
 static int iwl_mld_hw_verify_preconditions(struct iwl_mld *mld)
@@ -1336,6 +1335,7 @@ iwl_mld_mac80211_link_info_changed_sta(struct iwl_mld *mld,
 		iwl_mld_omi_ap_changed_bw(mld, link_conf, bw);
 
 	}
+
 	if (changes & BSS_CHANGED_BANDWIDTH)
 		iwl_mld_retry_emlsr(mld, vif);
 }
@@ -1646,7 +1646,7 @@ void iwl_mld_mac_mgd_complete_tx(struct ieee80211_hw *hw,
 {
 	struct iwl_mld *mld = IWL_MAC80211_GET_MLD(hw);
 
-	/* Successful authentication is the only case that requires to let the
+	/* Successful authentication is the only case that requires to let
 	 * the session protection go. We'll need it for the upcoming
 	 * association. For all the other cases, we need to cancel the session
 	 * protection.
@@ -1923,7 +1923,6 @@ static int iwl_mld_move_sta_state_up(struct iwl_mld *mld,
 
 		return ret;
 	} else {
-		IWL_ERR(mld, "NOT IMPLEMENTED YET\n");
 		return -EINVAL;
 	}
 }
@@ -1983,7 +1982,6 @@ static int iwl_mld_move_sta_state_down(struct iwl_mld *mld,
 			iwl_mld_update_mac_power(mld, vif, false);
 		}
 	} else {
-		IWL_ERR(mld, "NOT IMPLEMENTED YET\n");
 		return -EINVAL;
 	}
 	return 0;
@@ -2436,7 +2434,6 @@ iwl_mld_channel_switch(struct ieee80211_hw *hw,
 	 */
 	IWL_DEBUG_MAC80211(mld,
 			   "dummy channel switch op\n");
-
 }
 
 static int

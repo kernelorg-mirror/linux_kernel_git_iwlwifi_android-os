@@ -89,15 +89,14 @@ static int ieee80211_set_mon_options(struct ieee80211_sub_if_data *sdata,
 
 	/* check flags first */
 	if (params->flags && ieee80211_sdata_running(sdata)) {
-		u32 mask = MONITOR_FLAG_COOK_FRAMES | MONITOR_FLAG_ACTIVE;
+		u32 mask = MONITOR_FLAG_ACTIVE;
 
 		/*
-		 * Prohibit MONITOR_FLAG_COOK_FRAMES and
-		 * MONITOR_FLAG_ACTIVE to be changed while the
-		 * interface is up.
+		 * Prohibit MONITOR_FLAG_ACTIVE to be changed
+		 * while the interface is up.
 		 * Else we would need to add a lot of cruft
 		 * to update everything:
-		 *	cooked_mntrs, monitor and all fif_* counters
+		 *	monitor and all fif_* counters
 		 *	reconfigure hardware
 		 */
 		if ((params->flags & mask) != (sdata->u.mntr.flags & mask))
@@ -917,7 +916,7 @@ static int ieee80211_set_monitor_channel(struct wiphy *wiphy,
 	lockdep_assert_wiphy(local->hw.wiphy);
 
 	if (cfg80211_chandef_identical(&local->monitor_chanreq.oper,
-					   &chanreq.oper))
+				       &chanreq.oper))
 		return 0;
 
 	sdata = wiphy_dereference(wiphy, local->monitor_sdata);
@@ -925,7 +924,7 @@ static int ieee80211_set_monitor_channel(struct wiphy *wiphy,
 		goto done;
 
 	if (rcu_access_pointer(sdata->deflink.conf->chanctx_conf) &&
-		cfg80211_chandef_identical(&sdata->vif.bss_conf.chanreq.oper,
+	    cfg80211_chandef_identical(&sdata->vif.bss_conf.chanreq.oper,
 				       &chanreq.oper))
 		return 0;
 
@@ -1904,12 +1903,12 @@ static int sta_link_apply_parameters(struct ieee80211_local *local,
 	}
 
 	if (params->supported_rates &&
-	    params->supported_rates_len) {
-		ieee80211_parse_bitrates(link->conf->chanreq.oper.width,
-					 sband, params->supported_rates,
-					 params->supported_rates_len,
-					 &link_sta->pub->supp_rates[sband->band]);
-	}
+	    params->supported_rates_len &&
+	    !ieee80211_parse_bitrates(link->conf->chanreq.oper.width,
+				      sband, params->supported_rates,
+				      params->supported_rates_len,
+				      &link_sta->pub->supp_rates[sband->band]))
+		return -EINVAL;
 
 	if (params->ht_capa)
 		ieee80211_ht_cap_ie_to_sta_ht_cap(sdata, sband,
@@ -4367,9 +4366,8 @@ static int ieee80211_cfg_get_channel(struct wiphy *wiphy,
 	if (chanctx_conf) {
 		*chandef = link->conf->chanreq.oper;
 		ret = 0;
-	} else if (!ieee80211_hw_check(&local->hw, NO_VIRTUAL_MONITOR) &&
-		   local->open_count > 0 &&
-		   local->open_count == local->monitors &&
+	} else if (local->open_count > 0 &&
+		   local->open_count == local->virt_monitors &&
 		   sdata->vif.type == NL80211_IFTYPE_MONITOR) {
 		*chandef = local->monitor_chanreq.oper;
 		ret = 0;

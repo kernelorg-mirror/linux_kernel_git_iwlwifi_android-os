@@ -436,7 +436,7 @@ void iwl_mld_send_recovery_cmd(struct iwl_mld *mld, u32 flags)
 		u32 resp;
 
 		if (IWL_FW_CHECK(mld, pkt_len != sizeof(resp),
-				 "Unexpected recovery cmd response size %d (expected %ld)\n",
+				 "Unexpected recovery cmd response size %u (expected %zu)\n",
 				 pkt_len, sizeof(resp)))
 			goto out;
 

@@ -1749,18 +1749,7 @@ void ieee80211_free_hw(struct ieee80211_hw *hw)
 	wiphy_free(local->hw.wiphy);
 }
 EXPORT_SYMBOL(ieee80211_free_hw);
-
-static const char * const drop_reasons_monitor[] = {
-#define V(x)	#x,
-	[0] = "RX_DROP_MONITOR",
-	MAC80211_DROP_REASONS_MONITOR(V)
-};
-
-static struct drop_reason_list drop_reason_list_monitor = {
-	.reasons = drop_reasons_monitor,
-	.n_reasons = ARRAY_SIZE(drop_reasons_monitor),
-};
-
+#define V(x)   #x,
 static const char * const drop_reasons_unusable[] = {
 	[0] = "RX_DROP_UNUSABLE",
 	MAC80211_DROP_REASONS_UNUSABLE(V)
@@ -1781,27 +1770,18 @@ void kfree_skb_reason_mac80211(struct sk_buff *skb, ieee80211_rx_result res)
 
 const char * drop_reason_string(ieee80211_rx_result res)
 {
-	struct drop_reason_list *list = NULL;
 	u32 r = (__force u32)res;
 
-	switch (u32_get_bits(r, SKB_DROP_REASON_SUBSYS_MASK)) {
-	case SKB_DROP_REASON_SUBSYS_MAC80211_UNUSABLE:
-		list = &drop_reason_list_unusable;
-		break;
-	case SKB_DROP_REASON_SUBSYS_MAC80211_MONITOR:
-		list = &drop_reason_list_monitor;
-		break;
-	}
-
-	if (!list)
+	if (u32_get_bits(r, SKB_DROP_REASON_SUBSYS_MASK) !=
+	    SKB_DROP_REASON_SUBSYS_MAC80211_UNUSABLE)
 		return NULL;
 
 	r &= ~SKB_DROP_REASON_SUBSYS_MASK;
 
-	if (r >= list->n_reasons)
+	if (r >= drop_reason_list_unusable.n_reasons)
 		return NULL;
 
-	return list->reasons[r];
+	return drop_reason_list_unusable.reasons[r];
 }
 #endif
 
@@ -1822,8 +1802,6 @@ static int __init ieee80211_init(void)
 	if (ret)
 		goto err_netdev;
 
-	drop_reasons_register_subsys(SKB_DROP_REASON_SUBSYS_MAC80211_MONITOR,
-				     &drop_reason_list_monitor);
 	drop_reasons_register_subsys(SKB_DROP_REASON_SUBSYS_MAC80211_UNUSABLE,
 				     &drop_reason_list_unusable);
 
@@ -1842,7 +1820,6 @@ static void __exit ieee80211_exit(void)
 
 	ieee80211_iface_exit();
 
-	drop_reasons_unregister_subsys(SKB_DROP_REASON_SUBSYS_MAC80211_MONITOR);
 	drop_reasons_unregister_subsys(SKB_DROP_REASON_SUBSYS_MAC80211_UNUSABLE);
 
 	rcu_barrier();

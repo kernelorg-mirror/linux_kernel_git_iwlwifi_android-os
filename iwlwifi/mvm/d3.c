@@ -3530,8 +3530,7 @@ static int __iwl_mvm_resume(struct iwl_mvm *mvm, bool test)
 	if (rt_status != FW_ALIVE) {
 		set_bit(STATUS_FW_ERROR, &mvm->trans->status);
 		if (rt_status == FW_ERROR) {
-			IWL_ERR(mvm,
-				"FW Error occurred during suspend. Restarting.\n");
+			IWL_ERR(mvm, "FW Error occurred during suspend. Restarting.\n");
 			iwl_mvm_dump_nic_error_log(mvm);
 			iwl_dbg_tlv_time_point(&mvm->fwrt,
 					       IWL_FW_INI_TIME_POINT_FW_ASSERT,
@@ -3704,7 +3703,7 @@ int iwl_mvm_fast_resume(struct iwl_mvm *mvm)
 		set_bit(STATUS_FW_ERROR, &mvm->trans->status);
 		if (rt_status == FW_ERROR) {
 			IWL_ERR(mvm,
-				"FW Error occurred during suspend. Restarting.\n");
+				"iwl_mvm_check_rt_status failed, device is gone during suspend\n");
 			iwl_mvm_dump_nic_error_log(mvm);
 			iwl_dbg_tlv_time_point(&mvm->fwrt,
 					       IWL_FW_INI_TIME_POINT_FW_ASSERT,

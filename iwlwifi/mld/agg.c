@@ -1,4 +1,3 @@
-
 // SPDX-License-Identifier: GPL-2.0 OR BSD-3-Clause
 /*
  * Copyright (C) 2024-2025 Intel Corporation
@@ -86,7 +85,7 @@ void iwl_mld_handle_frame_release_notif(struct iwl_mld *mld,
 	u32 pkt_len = iwl_rx_packet_payload_len(pkt);
 
 	if (IWL_FW_CHECK(mld, pkt_len < sizeof(*release),
-			 "Unexpected frame release notif size %d (expected %ld)\n",
+			 "Unexpected frame release notif size %u (expected %zu)\n",
 			 pkt_len, sizeof(*release)))
 		return;
 
@@ -106,7 +105,7 @@ void iwl_mld_handle_bar_frame_release_notif(struct iwl_mld *mld,
 	u32 pkt_len = iwl_rx_packet_payload_len(pkt);
 
 	if (IWL_FW_CHECK(mld, pkt_len < sizeof(*release),
-			 "Unexpected frame release notif size %d (expected %ld)\n",
+			 "Unexpected frame release notif size %u (expected %zu)\n",
 			 pkt_len, sizeof(*release)))
 		return;
 
@@ -616,7 +615,11 @@ int iwl_mld_ampdu_rx_stop(struct iwl_mld *mld, struct ieee80211_sta *sta,
 		return -EINVAL;
 
 	if (timer_pending(&baid_data->session_timer))
+#if LINUX_VERSION_IS_GEQ(6,2,1)
 		timer_shutdown_sync(&baid_data->session_timer);
+#else
+		del_timer_sync(&baid_data->session_timer);
+#endif
 
 	iwl_mld_free_reorder_buffer(mld, baid_data);
 
