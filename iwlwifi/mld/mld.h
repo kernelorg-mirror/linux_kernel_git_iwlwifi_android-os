@@ -329,7 +329,7 @@ iwl_mld_cleanup_rfi(struct iwl_mld *mld)
 	mld->rfi.fw_table = NULL;
 }
 
-/* Cleanup function for struct iwl_mld_vif, will be called in restart */
+/* Cleanup function for struct iwl_mld, will be called in restart */
 static inline void
 iwl_cleanup_mld(struct iwl_mld *mld)
 {
