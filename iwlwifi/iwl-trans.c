@@ -303,8 +303,11 @@ int iwl_trans_init(struct iwl_trans *trans, unsigned int txcmd_size,
 	txcmd_size += sizeof(struct iwl_cmd_header);
 	txcmd_size += 36; /* biggest possible 802.11 header */
 
-	/* Ensure device TX cmd cannot reach/cross a page boundary in gen2 */
-	if (WARN_ON(trans->mac_cfg->gen2 && txcmd_size >= txcmd_align))
+	/* Ensure device TX cmd cannot reach/cross a page boundary
+	 * in gen2 or 3
+	 */
+	if (WARN_ON((trans->mac_cfg->gen2 || trans->mac_cfg->gen3) &&
+		    txcmd_size >= txcmd_align))
 		return -EINVAL;
 
 	snprintf(trans->dev_cmd_pool_name, sizeof(trans->dev_cmd_pool_name),
