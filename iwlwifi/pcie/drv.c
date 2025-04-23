@@ -17,6 +17,7 @@
 #include "iwl-drv.h"
 #include "iwl-prph.h"
 #include "gen1_2/internal.h"
+#include "gen3/trans.h"
 
 #define _IS_A(cfg, _struct) __builtin_types_compatible_p(typeof(cfg),	\
 							 struct _struct)
@@ -907,9 +908,10 @@ static void iwl_pcie_check_me_status(struct iwl_trans *trans)
 	schedule_delayed_work(&trans_pcie->me_recheck_wk, HZ);
 }
 
-static int iwl_pci_probe(struct pci_dev *pdev, const struct pci_device_id *ent)
+static int iwl_pci_gen1_2_probe(struct pci_dev *pdev,
+				const struct pci_device_id *ent,
+				const struct iwl_mac_cfg *trans)
 {
-	const struct iwl_mac_cfg *trans;
 	const struct iwl_dev_info *dev_info;
 	struct iwl_trans_info info = {
 		.hw_id = (pdev->device << 16) + pdev->subsystem_device,
@@ -917,8 +919,6 @@ static int iwl_pci_probe(struct pci_dev *pdev, const struct pci_device_id *ent)
 	struct iwl_trans *iwl_trans;
 	struct iwl_trans_pcie *trans_pcie;
 	int ret;
-
-	trans = (void *)ent->driver_data;
 
 	iwl_trans = iwl_trans_pcie_alloc(pdev, trans, &info);
 	if (IS_ERR(iwl_trans))
@@ -1052,6 +1052,16 @@ static int iwl_pci_probe(struct pci_dev *pdev, const struct pci_device_id *ent)
 out_free_trans:
 	iwl_trans_pcie_free(iwl_trans);
 	return ret;
+}
+
+static int iwl_pci_probe(struct pci_dev *pdev, const struct pci_device_id *ent)
+{
+	const struct iwl_mac_cfg *mac_cfg = (void *)ent->driver_data;
+
+	if (mac_cfg->gen3)
+		return iwl_pci_gen3_probe(pdev, ent, mac_cfg);
+
+	return iwl_pci_gen1_2_probe(pdev, ent, mac_cfg);
 }
 
 static void iwl_pci_remove(struct pci_dev *pdev)
