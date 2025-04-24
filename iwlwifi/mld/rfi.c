@@ -190,6 +190,7 @@ bool iwl_mld_rfi_supported(struct iwl_mld *mld,
 			   enum iwl_mld_rfi_feature rfi_feature)
 {
 	u32 mac_type;
+	u32 rf_type;
 
 	KUNIT_STATIC_STUB_REDIRECT(iwl_mld_rfi_supported, mld, rfi_feature);
 
@@ -198,6 +199,8 @@ bool iwl_mld_rfi_supported(struct iwl_mld *mld,
 		return false;
 
 	mac_type = CSR_HW_REV_TYPE(mld->trans->info.hw_rev);
+	rf_type = CSR_HW_RFID_TYPE(mld->trans->info.hw_rf_id);
+
 	if (!(mld->trans->mac_cfg->integrated && mld->rfi.bios_enabled &&
 	      iwl_mld_rfi_fw_state_supported(mld)))
 		return false;
@@ -210,9 +213,13 @@ bool iwl_mld_rfi_supported(struct iwl_mld *mld,
 		return fw_has_capa(&mld->fw->ucode_capa,
 				   IWL_UCODE_TLV_CAPA_RFI_DLVR_SUPPORT);
 
+#define IWL_4D40_DEVICE_ID	0x4D40
+
 	return (mac_type == IWL_CFG_MAC_TYPE_SC ||
 		mac_type == IWL_CFG_MAC_TYPE_SC2 ||
-		mac_type == IWL_CFG_MAC_TYPE_SC2F) &&
+		mac_type == IWL_CFG_MAC_TYPE_SC2F ||
+		(iwl_trans_get_device_id(mld->trans) == IWL_4D40_DEVICE_ID &&
+		 rf_type != IWL_CFG_RF_TYPE_GF)) &&
 	       fw_has_capa(&mld->fw->ucode_capa,
 			   IWL_UCODE_TLV_CAPA_RFI_DDR_SUPPORT);
 }
