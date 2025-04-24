@@ -288,7 +288,6 @@ static void iwl_mac_hw_set_flags(struct iwl_mld *mld)
 	ieee80211_hw_set(hw, TX_AMPDU_SETUP_IN_HW);
 	ieee80211_hw_set(hw, HAS_RATE_CONTROL);
 	ieee80211_hw_set(hw, SUPPORTS_REORDERING_BUFFER);
-	ieee80211_hw_set(hw, DISALLOW_PUNCTURING_5GHZ);
 	ieee80211_hw_set(hw, SINGLE_SCAN_ON_ALL_BANDS);
 #ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
 	if (!mld->trans->dbg_cfg.amsdu_in_ampdu_disabled)
