@@ -4,6 +4,7 @@
  */
 #ifndef __iwl_mld_constants_h__
 #define __iwl_mld_constants_h__
+#include <fw/api/location.h>
 
 #define IWL_MLD_MISSED_BEACONS_SINCE_RX_THOLD			4
 #define IWL_MLD_MISSED_BEACONS_THRESHOLD			8
