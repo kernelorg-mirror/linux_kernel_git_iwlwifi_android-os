@@ -203,12 +203,10 @@ void iwl_mld_handle_roc_notif(struct iwl_mld *mld,
 	struct iwl_mld_vif *mld_vif;
 	struct ieee80211_vif *vif;
 
-	if (activity == ROC_ACTIVITY_HOTSPOT) {
+	if (activity == ROC_ACTIVITY_HOTSPOT)
 		vif = mld->bss_roc_vif;
-		mld->bss_roc_vif = NULL;
-	} else {
+	else
 		vif = mld->p2p_device_vif;
-	}
 
 	if (WARN_ON(!vif))
 		return;
