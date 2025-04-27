@@ -44,6 +44,7 @@ static const struct iwl_family_base_params iwl9000_base = {
 	.min_umac_error_event_table = 0x800000,
 	.d3_debug_data_base_addr = 0x401000,
 	.d3_debug_data_length = 92 * 1024,
+	.nvm_hw_section_num = 10,
 	.mon_smem_regs = {
 		.write_ptr = {
 			.addr = LDBG_M2S_BUF_WPTR,
