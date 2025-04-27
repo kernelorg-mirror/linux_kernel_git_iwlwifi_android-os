@@ -830,12 +830,12 @@ static u16 iwl_xvt_get_offload_assist(struct ieee80211_hdr *hdr)
 }
 
 static struct iwl_device_tx_cmd *
-iwl_xvt_set_tx_params_gen3(struct iwl_xvt *xvt, struct sk_buff *skb,
-			   u32 rate_flags, u32 tx_flags)
+iwl_xvt_set_tx_params(struct iwl_xvt *xvt, struct sk_buff *skb,
+		      u32 rate_flags, u32 tx_flags)
 
 {
 	struct iwl_device_tx_cmd *dev_cmd;
-	struct iwl_tx_cmd_gen3 *cmd;
+	struct iwl_tx_cmd *cmd;
 	struct ieee80211_hdr *hdr = (struct ieee80211_hdr *)skb->data;
 	struct iwl_xvt_skb_info *skb_info = (void *)skb->cb;
 	u32 header_length = ieee80211_hdrlen(hdr->frame_control);
@@ -844,7 +844,7 @@ iwl_xvt_set_tx_params_gen3(struct iwl_xvt *xvt, struct sk_buff *skb,
 	if (unlikely(!dev_cmd))
 		return NULL;
 
-	cmd = (struct iwl_tx_cmd_gen3 *)dev_cmd->payload;
+	cmd = (struct iwl_tx_cmd *)dev_cmd->payload;
 
 	cmd->offload_assist |= cpu_to_le32(iwl_xvt_get_offload_assist(hdr));
 
@@ -852,8 +852,9 @@ iwl_xvt_set_tx_params_gen3(struct iwl_xvt *xvt, struct sk_buff *skb,
 
 	cmd->flags = cpu_to_le16(tx_flags);
 	if (ieee80211_has_morefrags(hdr->frame_control))
-		/* though this flag is not supported for gen3, it is used
-		 * here for silicon feedback tests. */
+		/* though this flag is not supported for this version of tx_cmd,
+		 * it is used here for silicon feedback tests.
+		 */
 		cmd->flags |= cpu_to_le16(TX_CMD_FLG_MORE_FRAG);
 
 	cmd->rate_n_flags =  cpu_to_le32(rate_flags);
@@ -870,12 +871,12 @@ iwl_xvt_set_tx_params_gen3(struct iwl_xvt *xvt, struct sk_buff *skb,
 }
 
 static struct iwl_device_tx_cmd *
-iwl_xvt_set_tx_params_gen2(struct iwl_xvt *xvt, struct sk_buff *skb,
-			   u32 rate_flags, u32 flags)
+iwl_xvt_set_tx_params_v9(struct iwl_xvt *xvt, struct sk_buff *skb,
+			 u32 rate_flags, u32 flags)
 {
 	struct iwl_device_tx_cmd *dev_cmd;
 	struct iwl_xvt_skb_info *skb_info = (void *)skb->cb;
-	struct iwl_tx_cmd_gen2 *tx_cmd;
+	struct iwl_tx_cmd_v9 *tx_cmd;
 	struct ieee80211_hdr *hdr = (struct ieee80211_hdr *)skb->data;
 	u32 header_length = ieee80211_hdrlen(hdr->frame_control);
 
@@ -883,7 +884,7 @@ iwl_xvt_set_tx_params_gen2(struct iwl_xvt *xvt, struct sk_buff *skb,
 	if (unlikely(!dev_cmd))
 		return NULL;
 
-	tx_cmd = (struct iwl_tx_cmd_gen2 *)dev_cmd->payload;
+	tx_cmd = (struct iwl_tx_cmd_v9 *)dev_cmd->payload;
 	tx_cmd->len = cpu_to_le16((u16)skb->len);
 	tx_cmd->offload_assist |= cpu_to_le16(iwl_xvt_get_offload_assist(hdr));
 	tx_cmd->flags = cpu_to_le32(flags);
@@ -913,13 +914,13 @@ iwl_xvt_set_mod_tx_params(struct iwl_xvt *xvt, struct sk_buff *skb,
 {
 	struct iwl_device_tx_cmd *dev_cmd;
 	struct iwl_xvt_skb_info *skb_info = (void *)skb->cb;
-	struct iwl_tx_cmd *tx_cmd;
+	struct iwl_tx_cmd_v6 *tx_cmd;
 
 	dev_cmd = iwl_xvt_init_tx_dev_cmd(xvt);
 	if (unlikely(!dev_cmd))
 		return NULL;
 
-	tx_cmd = (struct iwl_tx_cmd *)dev_cmd->payload;
+	tx_cmd = (struct iwl_tx_cmd_v6 *)dev_cmd->payload;
 
 	tx_cmd->len = cpu_to_le16((u16)skb->len);
 	tx_cmd->life_time = cpu_to_le32(TX_CMD_LIFE_TIME_INFINITE);
@@ -998,13 +999,13 @@ static int iwl_xvt_send_packet(struct iwl_xvt *xvt,
 
 		if (xvt->trans->mac_cfg->device_family >=
 		    IWL_DEVICE_FAMILY_AX210)
-			dev_cmd = iwl_xvt_set_tx_params_gen3(xvt, skb,
-							     rate_flags,
-							     flags);
+			dev_cmd = iwl_xvt_set_tx_params(xvt, skb,
+							rate_flags,
+							flags);
 		else
-			dev_cmd = iwl_xvt_set_tx_params_gen2(xvt, skb,
-							     rate_flags,
-							     flags);
+			dev_cmd = iwl_xvt_set_tx_params_v9(xvt, skb,
+							   rate_flags,
+							   flags);
 	} else {
 		dev_cmd = iwl_xvt_set_mod_tx_params(xvt,
 						    skb,
@@ -1067,12 +1068,12 @@ err:
 }
 
 static struct iwl_device_tx_cmd *
-iwl_xvt_set_tx_params(struct iwl_xvt *xvt, struct sk_buff *skb,
-		      struct iwl_xvt_tx_start *tx_start, u8 packet_index)
+iwl_xvt_set_tx_params_v6(struct iwl_xvt *xvt, struct sk_buff *skb,
+			 struct iwl_xvt_tx_start *tx_start, u8 packet_index)
 {
 	struct iwl_device_tx_cmd *dev_cmd;
 	struct iwl_xvt_skb_info *skb_info = (void *)skb->cb;
-	struct iwl_tx_cmd *tx_cmd;
+	struct iwl_tx_cmd_v6 *tx_cmd;
 	/* the skb should already hold the data */
 	struct ieee80211_hdr *hdr = (struct ieee80211_hdr *)skb->data;
 	u32 header_length = ieee80211_hdrlen(hdr->frame_control);
@@ -1081,7 +1082,7 @@ iwl_xvt_set_tx_params(struct iwl_xvt *xvt, struct sk_buff *skb,
 	if (unlikely(!dev_cmd))
 		return NULL;
 
-	tx_cmd = (struct iwl_tx_cmd *)dev_cmd->payload;
+	tx_cmd = (struct iwl_tx_cmd_v6 *)dev_cmd->payload;
 
 	/* let the fw manage the seq number for non-qos/multicast */
 	if (!ieee80211_is_data_qos(hdr->frame_control) ||
@@ -1218,16 +1219,16 @@ static int iwl_xvt_transmit_packet(struct iwl_xvt *xvt,
 	if (iwl_xvt_is_unified_fw(xvt)) {
 		if (xvt->trans->mac_cfg->device_family >=
 		    IWL_DEVICE_FAMILY_AX210)
-			dev_cmd = iwl_xvt_set_tx_params_gen3(xvt, skb,
-							     rate_flags,
-							     tx_flags);
+			dev_cmd = iwl_xvt_set_tx_params(xvt, skb,
+							rate_flags,
+							tx_flags);
 		else
-			dev_cmd = iwl_xvt_set_tx_params_gen2(xvt, skb,
-							     rate_flags,
-							     tx_flags);
+			dev_cmd = iwl_xvt_set_tx_params_v9(xvt, skb,
+							   rate_flags,
+							   tx_flags);
 	} else {
-		dev_cmd = iwl_xvt_set_tx_params(xvt, skb, tx_start,
-						packet_index);
+		dev_cmd = iwl_xvt_set_tx_params_v6(xvt, skb, tx_start,
+						   packet_index);
 	}
 	if (!dev_cmd) {
 		kfree_skb(skb);
