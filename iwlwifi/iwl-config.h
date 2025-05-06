@@ -498,6 +498,10 @@ struct iwl_dev_info {
 	    cdb:1;
 };
 
+const struct iwl_dev_info *
+iwl_pci_find_dev_info(u16 device, u16 subsystem_device, u16 rf_type, u8 cdb,
+		      u8 rf_id, u8 bw_limit, u8 rf_step);
+
 /*
  * This list declares the config structures for all devices.
  */
