@@ -38,6 +38,9 @@ void iwl_mld_cleanup_vif(void *data, u8 *mac, struct ieee80211_vif *vif)
 	for_each_mld_vif_valid_link(mld_vif, link) {
 		iwl_mld_cleanup_link(mld_vif->mld, link);
 
+		/* The link is not in the FW, release the fw_id */
+		RCU_INIT_POINTER(mld->fw_id_to_bss_conf[link->fw_id], NULL);
+
 		/* Correctly allocated primary link in non-MLO mode */
 		if (!ieee80211_vif_is_mld(vif) &&
 		    link_id == 0 && link == &mld_vif->deflink)
