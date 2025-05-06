@@ -98,4 +98,6 @@ iwl_trans_pcie_gen3_read_config32(struct iwl_trans *trans, u32 ofs, u32 *val)
 				     ofs, val);
 }
 
+bool iwl_trans_pcie_gen3_grab_nic_access(struct iwl_trans *trans);
+
 #endif /* __iwl_trans_pcie_gen3_h__ */

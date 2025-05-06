@@ -604,7 +604,10 @@ IWL_EXPORT_SYMBOL(iwl_trans_read_config32);
 
 bool _iwl_trans_grab_nic_access(struct iwl_trans *trans)
 {
-	return iwl_trans_pcie_grab_nic_access(trans);
+	if (trans->mac_cfg->gen3)
+		return iwl_trans_pcie_gen3_grab_nic_access(trans);
+	else
+		return iwl_trans_pcie_grab_nic_access(trans);
 }
 IWL_EXPORT_SYMBOL(_iwl_trans_grab_nic_access);
 

@@ -135,3 +135,48 @@ int iwl_pcie_gen3_start_hw(struct iwl_trans *trans)
 
 	return 0;
 }
+
+bool iwl_trans_pcie_gen3_grab_nic_access(struct iwl_trans *trans)
+{
+	int ret;
+	struct iwl_pcie_gen3 *trans_pcie = IWL_GET_PCIE_GEN3(trans);
+
+	if (test_bit(STATUS_TRANS_DEAD, &trans->status))
+		return false;
+
+	spin_lock(&trans_pcie->reg_lock);
+
+	/* this bit wakes up the NIC */
+	iwl_trans_set_bit(trans, CSR_GP_CNTRL,
+			  CSR_GP_CNTRL_REG_FLAG_BZ_MAC_ACCESS_REQ);
+	udelay(2);
+
+	ret = iwl_poll_bits(trans, CSR_GP_CNTRL,
+			    CSR_GP_CNTRL_REG_FLAG_MAC_STATUS,
+			    15000);
+	if (unlikely(ret < 0)) {
+		u32 cntrl = iwl_read32(trans, CSR_GP_CNTRL);
+
+		WARN_ONCE(1,
+			  "Timeout waiting for hardware access (CSR_GP_CNTRL 0x%08x)\n",
+			  cntrl);
+
+		iwl_trans_pcie_dump_regs(trans, trans_pcie->pci_dev);
+
+		if (iwlwifi_mod_params.remove_when_gone && cntrl == ~0U) {
+			/* TODO: task=reset */
+		} else {
+			iwl_write32(trans, CSR_RESET,
+				    CSR_RESET_REG_FLAG_FORCE_NMI);
+		}
+
+		spin_unlock(&trans_pcie->reg_lock);
+		return false;
+	}
+	/*
+	 * Fool sparse by faking we release the lock - sparse will
+	 * track nic_access anyway.
+	 */
+	__release(&trans_pcie->reg_lock);
+	return true;
+}
