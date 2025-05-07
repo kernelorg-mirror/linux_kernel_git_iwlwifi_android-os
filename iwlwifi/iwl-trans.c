@@ -15,6 +15,7 @@
 #include <linux/dmapool.h>
 #include "fw/api/commands.h"
 #include "pcie/gen1_2/internal.h"
+#include "pcie/gen3/trans.h"
 #include "pcie/iwl-context-info-v2.h"
 
 struct iwl_trans_dev_restart_data {
@@ -410,6 +411,9 @@ int iwl_trans_start_hw(struct iwl_trans *trans)
 	clear_bit(STATUS_TRANS_RESET_IN_PROGRESS, &trans->status);
 	/* opmode may not resume if it detects errors */
 	clear_bit(STATUS_SUSPENDED, &trans->status);
+
+	if (trans->mac_cfg->gen3)
+		return iwl_pcie_gen3_start_hw(trans);
 
 	return iwl_trans_pcie_start_hw(trans);
 }

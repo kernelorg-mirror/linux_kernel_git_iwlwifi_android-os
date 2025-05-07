@@ -30,6 +30,8 @@ int iwl_pci_gen3_probe(struct pci_dev *pdev,
 		       const struct iwl_mac_cfg *mac_cfg, u8 __iomem *hw_base,
 		       u32 hw_rev);
 
+int iwl_pcie_gen3_start_hw(struct iwl_trans *trans);
+
 static inline struct iwl_pcie_gen3 *
 IWL_GET_PCIE_GEN3(struct iwl_trans *trans)
 {

@@ -120,3 +120,16 @@ out_free_trans:
 	iwl_pcie_gen3_free(iwl_trans);
 	return ret;
 }
+
+int iwl_pcie_gen3_start_hw(struct iwl_trans *trans)
+{
+	/* TODO: sw_reset. */
+
+	/* TODO: apm init. */
+
+	/* TODO: init msix. */
+
+	/* TODO: Check if rfkill is needed here (task=rf_kill). */
+
+	return 0;
+}
