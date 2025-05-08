@@ -1705,6 +1705,8 @@ iwl_op_mode_mvm_start(struct iwl_trans *trans, const struct iwl_rf_cfg *cfg,
 
 	mvm->mei_registered = !iwl_mei_register(mvm, &mei_ops);
 
+	iwl_mvm_mei_scan_filter_init(&mvm->mei_scan_filter);
+
 	err = iwl_mvm_start_get_nvm(mvm);
 	if (err) {
 		/*

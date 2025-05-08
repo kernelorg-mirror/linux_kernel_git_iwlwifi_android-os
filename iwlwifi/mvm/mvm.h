@@ -991,6 +991,12 @@ struct iwl_time_sync_data {
 	bool active;
 };
 
+struct iwl_mei_scan_filter {
+	bool is_mei_limited_scan;
+	struct sk_buff_head scan_res;
+	struct work_struct scan_work;
+};
+
 /**
  * struct iwl_mvm_acs_survey_channel - per-channel survey information
  *
@@ -1420,6 +1426,8 @@ struct iwl_mvm {
 	bool fw_product_reset;
 
 	struct iwl_time_sync_data time_sync;
+
+	struct iwl_mei_scan_filter mei_scan_filter;
 
 	struct iwl_mvm_acs_survey *acs_survey;
 
@@ -2643,6 +2651,7 @@ void iwl_mvm_event_frame_timeout_callback(struct iwl_mvm *mvm,
 					  struct ieee80211_vif *vif,
 					  const struct ieee80211_sta *sta,
 					  u16 tid);
+void iwl_mvm_mei_scan_filter_init(struct iwl_mei_scan_filter *mei_scan_filter);
 
 #ifdef CPTCFG_IWL_VENDOR_CMDS
 void iwl_mvm_recalc_multicast(struct iwl_mvm *mvm);
@@ -2947,6 +2956,22 @@ static inline bool iwl_mvm_has_p2p_over_aux(struct iwl_mvm *mvm)
 	u32 cmd_id = WIDE_ID(MAC_CONF_GROUP, ROC_CMD);
 
 	return iwl_fw_lookup_cmd_ver(mvm->fw, cmd_id, 0) >= 4;
+}
+
+static inline bool iwl_mvm_mei_filter_scan(struct iwl_mvm *mvm,
+					   struct sk_buff *skb)
+{
+	struct ieee80211_mgmt *mgmt = (void *)skb->data;
+
+	if (mvm->mei_scan_filter.is_mei_limited_scan &&
+	    (ieee80211_is_probe_resp(mgmt->frame_control) ||
+	     ieee80211_is_beacon(mgmt->frame_control))) {
+		skb_queue_tail(&mvm->mei_scan_filter.scan_res, skb);
+		schedule_work(&mvm->mei_scan_filter.scan_work);
+		return true;
+	}
+
+	return false;
 }
 
 void iwl_mvm_send_roaming_forbidden_event(struct iwl_mvm *mvm,
