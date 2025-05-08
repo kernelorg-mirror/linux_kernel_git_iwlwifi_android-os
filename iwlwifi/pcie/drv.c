@@ -278,9 +278,7 @@ VISIBLE_IF_IWLWIFI_KUNIT const struct pci_device_id iwl_hw_card_ids[] = {
 	{IWL_PCI_DEVICE(0x24FD, 0x9074, iwl8000_mac_cfg)},
 	{IWL_PCI_DEVICE(0x24FD, 0x1431, iwl8000_mac_cfg)},
 	{IWL_PCI_DEVICE(0x24FD, 0x1432, iwl8000_mac_cfg)},
-#endif /* IS_ENABLED(CPTCFG_IWLMVM) */
 
-#if IS_ENABLED(CPTCFG_IWLMVM)
 /* 9000 Series */
 	{IWL_PCI_DEVICE(0x2526, PCI_ANY_ID, iwl9000_mac_cfg)},
 	{IWL_PCI_DEVICE(0x271B, PCI_ANY_ID, iwl9000_mac_cfg)},
