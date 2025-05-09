@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0 OR BSD-3-Clause */
 /*
- * Copyright (C) 2012-2014, 2018-2024 Intel Corporation
+ * Copyright (C) 2012-2014, 2018-2025 Intel Corporation
  * Copyright (C) 2013-2015 Intel Mobile Communications GmbH
  * Copyright (C) 2016-2017 Intel Deutschland GmbH
  */
@@ -113,6 +113,7 @@
  *	This is needed for RFIm user app
  * @IWL_MVM_VENDOR_CMD_LINK_INFO_CHANGED_EVENT: Link information is changed
  * @IWL_MVM_VENDOR_CMD_EXIT_EMLSR: exit EMLSR
+ * @IWL_MVM_VENDOR_CMD_DBG_CLEAR_MONITOR_BUFFER: clear debug monitor buffer
  */
 
 enum iwl_mvm_vendor_cmd {
@@ -172,6 +173,7 @@ enum iwl_mvm_vendor_cmd {
 	IWL_MVM_VENDOR_CMD_GET_LINK_INFO			= 0x38,
 	IWL_MVM_VENDOR_CMD_LINK_INFO_CHANGED_EVENT		= 0x39,
 	IWL_MVM_VENDOR_CMD_EXIT_EMLSR				= 0x3a,
+	IWL_MVM_VENDOR_CMD_DBG_CLEAR_MONITOR_BUFFER		= 0x3b,
 };
 
 /**
