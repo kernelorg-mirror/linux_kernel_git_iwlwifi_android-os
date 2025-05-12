@@ -82,6 +82,7 @@ int iwl_tx_tso_segment(struct sk_buff *skb, unsigned int num_subframes,
 	return 0;
 }
 IWL_EXPORT_SYMBOL(iwl_tx_tso_segment);
+#endif /* CONFIG_INET */
 
 static u32 iwl_div_by_db(u32 value, u8 db)
 {
@@ -193,5 +194,3 @@ s8 iwl_average_neg_dbm(const u8 *neg_dbm_values, u8 len)
 	return clamp(average_magnitude - i, -128, 0);
 }
 IWL_EXPORT_SYMBOL(iwl_average_neg_dbm);
-
-#endif /* CONFIG_INET */
