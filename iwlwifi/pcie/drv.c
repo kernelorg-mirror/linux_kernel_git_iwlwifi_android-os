@@ -376,24 +376,27 @@ EXPORT_SYMBOL_IF_IWLWIFI_KUNIT(iwl_hw_card_ids);
 #define IWL_DEV_INFO(_cfg, _name, ...)		\
 	_IWL_DEV_INFO(_cfg, _name, __VA_ARGS__)
 
-#define DEVICE(n)	.device = (n)
-#define SUBDEV(n)	.subdevice = (n)
-#define _LOWEST_BIT(n)	(__builtin_ffs(n) - 1)
-#define _HIGHEST_BIT(n)	(__builtin_ffs((n) + 1) - 2)
-#define _IS_POW2(n)	(((n) & ((n) - 1)) == 0)
-#define _IS_CONTIG(n)	_IS_POW2((n) + (1 << _LOWEST_BIT(n)))
-#define _CHECK_MASK(m)	BUILD_BUG_ON_ZERO(!_IS_CONTIG(m))
-#define SUBDEV_MASKED(v, m) \
-			.subdevice = (v) + _CHECK_MASK(m),	\
-			.subdevice_m_l = _LOWEST_BIT(m),	\
-			.subdevice_m_h = _HIGHEST_BIT(m)
-#define RF_TYPE(n)	.match_rf_type = 1, .rf_type = IWL_CFG_RF_TYPE_##n
-#define RF_STEP(n)	.match_rf_step = 1, .rf_step = SILICON_##n##_STEP
-#define RF_ID(n)	.match_rf_id = 1, .rf_id = IWL_CFG_RF_ID_##n
-#define NO_CDB		.match_cdb = 1, .cdb = 0
-#define CDB		.match_cdb = 1, .cdb = 1
-#define BW_NOT_LIMITED	.match_bw_limit = 1, .bw_limit = 0
-#define BW_LIMITED	.match_bw_limit = 1, .bw_limit = 1
+#define DEVICE(n)		.device = (n)
+#define SUBDEV(n)		.subdevice = (n)
+#define _LOWEST_BIT(n)		(__builtin_ffs(n) - 1)
+#define _BIT_ABOVE_MASK(n)	((n) + (1 << _LOWEST_BIT(n)))
+#define _HIGHEST_BIT(n)		(__builtin_ffs(_BIT_ABOVE_MASK(n)) - 2)
+#define _IS_POW2(n)		(((n) & ((n) - 1)) == 0)
+#define _IS_CONTIG(n)		_IS_POW2(_BIT_ABOVE_MASK(n))
+#define _CHECK_MASK(m)		BUILD_BUG_ON_ZERO(!_IS_CONTIG(m))
+#define SUBDEV_MASKED(v, m)	.subdevice = (v) + _CHECK_MASK(m),	\
+				.subdevice_m_l = _LOWEST_BIT(m),	\
+				.subdevice_m_h = _HIGHEST_BIT(m)
+#define RF_TYPE(n)		.match_rf_type = 1,			\
+				.rf_type = IWL_CFG_RF_TYPE_##n
+#define RF_STEP(n)		.match_rf_step = 1,			\
+				.rf_step = SILICON_##n##_STEP
+#define RF_ID(n)		.match_rf_id = 1,			\
+				.rf_id = IWL_CFG_RF_ID_##n
+#define NO_CDB			.match_cdb = 1, .cdb = 0
+#define CDB			.match_cdb = 1, .cdb = 1
+#define BW_NOT_LIMITED		.match_bw_limit = 1, .bw_limit = 0
+#define BW_LIMITED		.match_bw_limit = 1, .bw_limit = 1
 
 VISIBLE_IF_IWLWIFI_KUNIT const struct iwl_dev_info iwl_dev_info_table[] = {
 
