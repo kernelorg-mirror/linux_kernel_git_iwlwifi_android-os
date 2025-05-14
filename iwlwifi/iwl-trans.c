@@ -520,6 +520,9 @@ IWL_EXPORT_SYMBOL(iwl_trans_set_pmi);
 
 int iwl_trans_sw_reset(struct iwl_trans *trans)
 {
+	if (trans->mac_cfg->gen3)
+		return iwl_pcie_gen3_sw_reset(trans, true);
+
 	return iwl_trans_pcie_sw_reset(trans, true);
 }
 

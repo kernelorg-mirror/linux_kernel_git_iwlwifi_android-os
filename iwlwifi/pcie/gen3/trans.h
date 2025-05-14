@@ -40,6 +40,8 @@ int iwl_pci_gen3_probe(struct pci_dev *pdev,
 
 int iwl_pcie_gen3_start_hw(struct iwl_trans *trans);
 
+int iwl_pcie_gen3_sw_reset(struct iwl_trans *trans, bool retake_ownership);
+
 static inline struct iwl_pcie_gen3 *
 IWL_GET_PCIE_GEN3(struct iwl_trans *trans)
 {

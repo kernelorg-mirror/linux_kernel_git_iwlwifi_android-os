@@ -8,6 +8,75 @@
 #include "trans.h"
 #include "interrupts.h"
 #include "iwl-debug.h"
+#include "iwl-io.h"
+
+static int iwl_pcie_gen3_take_hw_ownership_semaphore(struct iwl_trans *trans)
+{
+	int err;
+
+	IWL_DEBUG_INFO(trans,
+		       "Trying to take NIC ownership semaphore from ME\n");
+
+	iwl_set_bit(trans, CSR_HW_IF_CONFIG_REG,
+		    CSR_HW_IF_CONFIG_REG_PCI_OWN_SET);
+
+	/* Check if we succeed to take the ownership */
+	err = iwl_poll_bits(trans, CSR_HW_IF_CONFIG_REG,
+			    CSR_HW_IF_CONFIG_REG_PCI_OWN_SET,
+			    50);
+
+	IWL_DEBUG_INFO(trans, "Current NIC owner: %s\n", err ? "ME" : "Host");
+	return err;
+}
+
+static int iwl_pcie_gen3_acquire_hw_ownership(struct iwl_trans *trans)
+{
+	int err;
+	int overall_time = 0;
+	/* Time values are specified in microseconds (us) */
+	const int max_loop_time = 750000;
+	const int max_overall_time = 66000000 + max_loop_time;
+
+	/*
+	 * According to the requirements, ME may own the NIC
+	 * and block the driver from taking ownership.
+	 * Setting WAKE_ME bit will trigger a request from ME to release the NIC
+	 * There are 4 cases:
+	 *
+	 * 1. ME is not the owner: we get ownership immediately.
+	 * 2. ME releases ownership willingly when it can.
+	 * 3. ME is not responding: we wait for timeout to get the ownership.
+	 * 4. ME is the owner and refuses to release ownership.
+	 *
+	 * It can take up to 65.5 seconds (timeout) to get a response from ME.
+	 */
+
+	while (overall_time < max_overall_time) {
+		int loop_time = 0;
+
+		IWL_DEBUG_INFO(trans, "Requesting ME to release ownership\n");
+
+		iwl_set_bit(trans, CSR_HW_IF_CONFIG_REG,
+			    CSR_HW_IF_CONFIG_REG_WAKE_ME);
+
+		while (loop_time < max_loop_time) {
+			usleep_range(200, 1000);
+			loop_time += 200;
+
+			err = iwl_pcie_gen3_take_hw_ownership_semaphore(trans);
+			if (!err)
+				return 0;
+		}
+
+		msleep(25);
+		overall_time += 25 * 1000 + loop_time;
+	}
+
+	IWL_ERR(trans,
+		"Failed to take ownership from ME, ME is the owner and refuses to release ownership.\n");
+
+	return err;
+}
 
 static int
 iwl_construct_pcie_gen3(struct pci_dev *pdev,
@@ -144,13 +213,30 @@ out_free_trans:
 
 int iwl_pcie_gen3_start_hw(struct iwl_trans *trans)
 {
-	/* TODO: sw_reset. */
+	int err = 0;
+
+	err = iwl_pcie_gen3_sw_reset(trans, true);
+	if (err)
+		return err;
 
 	/* TODO: apm init. */
 
 	/* TODO: init msix. */
 
 	/* TODO: Check if rfkill is needed here (task=rf_kill). */
+
+	return err;
+}
+
+int iwl_pcie_gen3_sw_reset(struct iwl_trans *trans, bool retake_ownership)
+{
+	/* Reset entire device - do controller reset (results in SHRD_HW_RST) */
+	iwl_set_bit(trans, CSR_GP_CNTRL, CSR_GP_CNTRL_REG_FLAG_SW_RESET);
+	usleep_range(10000 * CPTCFG_IWL_DELAY_FACTOR,
+		     20000 * CPTCFG_IWL_DELAY_FACTOR);
+
+	if (retake_ownership)
+		return iwl_pcie_gen3_acquire_hw_ownership(trans);
 
 	return 0;
 }
