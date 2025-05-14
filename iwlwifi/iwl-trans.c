@@ -439,30 +439,45 @@ IWL_EXPORT_SYMBOL(iwl_trans_op_mode_leave);
 
 void iwl_trans_write8(struct iwl_trans *trans, u32 ofs, u8 val)
 {
-	iwl_trans_pcie_write8(trans, ofs, val);
+	if (trans->mac_cfg->gen3)
+		iwl_trans_pcie_gen3_write8(trans, ofs, val);
+	else
+		iwl_trans_pcie_write8(trans, ofs, val);
 }
 IWL_EXPORT_SYMBOL(iwl_trans_write8);
 
 void iwl_trans_write32(struct iwl_trans *trans, u32 ofs, u32 val)
 {
-	iwl_trans_pcie_write32(trans, ofs, val);
+	if (trans->mac_cfg->gen3)
+		iwl_trans_pcie_gen3_write32(trans, ofs, val);
+	else
+		iwl_trans_pcie_write32(trans, ofs, val);
 }
 IWL_EXPORT_SYMBOL(iwl_trans_write32);
 
 u32 iwl_trans_read32(struct iwl_trans *trans, u32 ofs)
 {
+	if (trans->mac_cfg->gen3)
+		return iwl_trans_pcie_gen3_read32(trans, ofs);
+
 	return iwl_trans_pcie_read32(trans, ofs);
 }
 IWL_EXPORT_SYMBOL(iwl_trans_read32);
 
 u32 iwl_trans_read_prph(struct iwl_trans *trans, u32 ofs)
 {
+	if (trans->mac_cfg->gen3)
+		return iwl_trans_pcie_gen3_read_prph(trans, ofs);
+
 	return iwl_trans_pcie_read_prph(trans, ofs);
 }
 IWL_EXPORT_SYMBOL(iwl_trans_read_prph);
 
 void iwl_trans_write_prph(struct iwl_trans *trans, u32 ofs, u32 val)
 {
+	if (trans->mac_cfg->gen3)
+		return iwl_trans_pcie_gen3_write_prph(trans, ofs, val);
+
 	return iwl_trans_pcie_write_prph(trans, ofs, val);
 }
 IWL_EXPORT_SYMBOL(iwl_trans_write_prph);
@@ -580,6 +595,9 @@ IWL_EXPORT_SYMBOL(iwl_trans_set_bits_mask);
 int iwl_trans_read_config32(struct iwl_trans *trans, u32 ofs,
 			    u32 *val)
 {
+	if (trans->mac_cfg->gen3)
+		return iwl_trans_pcie_gen3_read_config32(trans, ofs, val);
+
 	return iwl_trans_pcie_read_config32(trans, ofs, val);
 }
 IWL_EXPORT_SYMBOL(iwl_trans_read_config32);

@@ -55,4 +55,47 @@ iwl_trans_pcie_gen3_set_bits_mask(struct iwl_trans *trans, u32 reg,
 	spin_unlock(&trans_pcie->reg_lock);
 }
 
+static inline void
+iwl_trans_pcie_gen3_write8(struct iwl_trans *trans, u32 ofs, u8 val)
+{
+	writeb(val, IWL_GET_PCIE_GEN3(trans)->hw_base + ofs);
+}
+
+static inline void
+iwl_trans_pcie_gen3_write32(struct iwl_trans *trans, u32 ofs, u32 val)
+{
+	writel(val, IWL_GET_PCIE_GEN3(trans)->hw_base + ofs);
+}
+
+static inline u32
+iwl_trans_pcie_gen3_read32(struct iwl_trans *trans, u32 ofs)
+{
+	return readl(IWL_GET_PCIE_GEN3(trans)->hw_base + ofs);
+}
+
+#define IWL_PRPH_MASK 0x00FFFFFF
+
+static inline u32
+iwl_trans_pcie_gen3_read_prph(struct iwl_trans *trans, u32 reg)
+{
+	iwl_trans_pcie_gen3_write32(trans, HBUS_TARG_PRPH_RADDR,
+				    ((reg & IWL_PRPH_MASK) | (3 << 24)));
+	return iwl_trans_pcie_gen3_read32(trans, HBUS_TARG_PRPH_RDAT);
+}
+
+static inline void
+iwl_trans_pcie_gen3_write_prph(struct iwl_trans *trans, u32 addr, u32 val)
+{
+	iwl_trans_pcie_gen3_write32(trans, HBUS_TARG_PRPH_WADDR,
+				    ((addr & IWL_PRPH_MASK) | (3 << 24)));
+	iwl_trans_pcie_gen3_write32(trans, HBUS_TARG_PRPH_WDAT, val);
+}
+
+static inline int
+iwl_trans_pcie_gen3_read_config32(struct iwl_trans *trans, u32 ofs, u32 *val)
+{
+	return pci_read_config_dword(IWL_GET_PCIE_GEN3(trans)->pci_dev,
+				     ofs, val);
+}
+
 #endif /* __iwl_trans_pcie_gen3_h__ */
