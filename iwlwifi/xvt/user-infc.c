@@ -922,12 +922,12 @@ iwl_xvt_set_mod_tx_params(struct iwl_xvt *xvt, struct sk_buff *skb,
 
 	tx_cmd = (struct iwl_tx_cmd_v6 *)dev_cmd->payload;
 
-	tx_cmd->len = cpu_to_le16((u16)skb->len);
-	tx_cmd->life_time = cpu_to_le32(TX_CMD_LIFE_TIME_INFINITE);
+	tx_cmd->params.len = cpu_to_le16((u16)skb->len);
+	tx_cmd->params.life_time = cpu_to_le32(TX_CMD_LIFE_TIME_INFINITE);
 
-	tx_cmd->sta_id = sta_id;
-	tx_cmd->rate_n_flags = cpu_to_le32(rate_flags);
-	tx_cmd->tx_flags = cpu_to_le32(flags);
+	tx_cmd->params.sta_id = sta_id;
+	tx_cmd->params.rate_n_flags = cpu_to_le32(rate_flags);
+	tx_cmd->params.tx_flags = cpu_to_le32(flags);
 
 	/* the skb should already hold the data */
 	memcpy(tx_cmd->hdr, skb->data, sizeof(struct ieee80211_hdr));
@@ -1087,24 +1087,24 @@ iwl_xvt_set_tx_params_v6(struct iwl_xvt *xvt, struct sk_buff *skb,
 	/* let the fw manage the seq number for non-qos/multicast */
 	if (!ieee80211_is_data_qos(hdr->frame_control) ||
 	    is_multicast_ether_addr(hdr->addr1))
-		tx_cmd->tx_flags |= cpu_to_le32(TX_CMD_FLG_SEQ_CTL);
+		tx_cmd->params.tx_flags |= cpu_to_le32(TX_CMD_FLG_SEQ_CTL);
 
-	tx_cmd->len = cpu_to_le16((u16)skb->len);
-	tx_cmd->offload_assist |= cpu_to_le16(iwl_xvt_get_offload_assist(hdr));
-	tx_cmd->tx_flags |= cpu_to_le32(tx_start->tx_data.tx_flags);
+	tx_cmd->params.len = cpu_to_le16((u16)skb->len);
+	tx_cmd->params.offload_assist |= cpu_to_le16(iwl_xvt_get_offload_assist(hdr));
+	tx_cmd->params.tx_flags |= cpu_to_le32(tx_start->tx_data.tx_flags);
 	if (ieee80211_has_morefrags(hdr->frame_control))
-		tx_cmd->tx_flags |= cpu_to_le32(TX_CMD_FLG_MORE_FRAG);
-	tx_cmd->rate_n_flags = cpu_to_le32(tx_start->tx_data.rate_flags);
-	tx_cmd->sta_id = tx_start->frames_data[packet_index].sta_id;
-	tx_cmd->sec_ctl = tx_start->frames_data[packet_index].sec_ctl;
-	tx_cmd->initial_rate_index = tx_start->tx_data.initial_rate_index;
-	tx_cmd->life_time = cpu_to_le32(TX_CMD_LIFE_TIME_INFINITE);
-	tx_cmd->rts_retry_limit = tx_start->tx_data.rts_retry_limit;
-	tx_cmd->data_retry_limit = tx_start->tx_data.data_retry_limit;
-	tx_cmd->tid_tspec = tx_start->frames_data[packet_index].tid_tspec;
-	memcpy(tx_cmd->key,
+		tx_cmd->params.tx_flags |= cpu_to_le32(TX_CMD_FLG_MORE_FRAG);
+	tx_cmd->params.rate_n_flags = cpu_to_le32(tx_start->tx_data.rate_flags);
+	tx_cmd->params.sta_id = tx_start->frames_data[packet_index].sta_id;
+	tx_cmd->params.sec_ctl = tx_start->frames_data[packet_index].sec_ctl;
+	tx_cmd->params.initial_rate_index = tx_start->tx_data.initial_rate_index;
+	tx_cmd->params.life_time = cpu_to_le32(TX_CMD_LIFE_TIME_INFINITE);
+	tx_cmd->params.rts_retry_limit = tx_start->tx_data.rts_retry_limit;
+	tx_cmd->params.data_retry_limit = tx_start->tx_data.data_retry_limit;
+	tx_cmd->params.tid_tspec = tx_start->frames_data[packet_index].tid_tspec;
+	memcpy(tx_cmd->params.key,
 	       tx_start->frames_data[packet_index].key,
-	       sizeof(tx_cmd->key));
+	       sizeof(tx_cmd->params.key));
 
 	memcpy(tx_cmd->hdr, hdr, header_length);
 
