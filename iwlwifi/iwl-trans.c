@@ -485,7 +485,10 @@ IWL_EXPORT_SYMBOL(iwl_trans_write_prph);
 int iwl_trans_read_mem(struct iwl_trans *trans, u32 addr,
 		       void *buf, int dwords)
 {
-	return iwl_trans_pcie_read_mem(trans, addr, buf, dwords);
+	if (trans->mac_cfg->gen3)
+		return iwl_trans_pcie_gen3_read_mem(trans, addr, buf, dwords);
+	else
+		return iwl_trans_pcie_read_mem(trans, addr, buf, dwords);
 }
 IWL_EXPORT_SYMBOL(iwl_trans_read_mem);
 

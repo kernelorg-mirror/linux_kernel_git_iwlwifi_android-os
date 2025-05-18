@@ -101,5 +101,7 @@ iwl_trans_pcie_gen3_read_config32(struct iwl_trans *trans, u32 ofs, u32 *val)
 bool iwl_trans_pcie_gen3_grab_nic_access(struct iwl_trans *trans);
 void __releases(nic_access)
 iwl_trans_pcie_gen3_release_nic_access(struct iwl_trans *trans);
+int iwl_trans_pcie_gen3_read_mem(struct iwl_trans *trans, u32 addr,
+				 void *buf, int dwords);
 
 #endif /* __iwl_trans_pcie_gen3_h__ */

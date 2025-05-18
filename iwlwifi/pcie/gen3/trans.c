@@ -200,3 +200,55 @@ iwl_trans_pcie_gen3_release_nic_access(struct iwl_trans *trans)
 	__release(nic_access);
 	spin_unlock(&trans_pcie->reg_lock);
 }
+
+int iwl_trans_pcie_gen3_read_mem(struct iwl_trans *trans, u32 addr,
+				 void *buf, int dwords)
+{
+#define IWL_MAX_HW_ERRS 5
+	unsigned int num_consec_hw_errors = 0;
+	int offs = 0;
+	u32 *vals = buf;
+
+	/* TODO: add support for Vlab (task=vlab) */
+
+	while (offs < dwords) {
+		/* limit the time we spin here under lock to 1/2s */
+		unsigned long end = jiffies + HZ / 2;
+		bool resched = false;
+
+		if (iwl_trans_grab_nic_access(trans)) {
+			iwl_write32(trans, HBUS_TARG_MEM_RADDR,
+				    addr + 4 * offs);
+
+			while (offs < dwords) {
+				vals[offs] = iwl_read32(trans,
+							HBUS_TARG_MEM_RDAT);
+
+				if (iwl_trans_is_hw_error_value(vals[offs]))
+					num_consec_hw_errors++;
+				else
+					num_consec_hw_errors = 0;
+
+				if (num_consec_hw_errors >= IWL_MAX_HW_ERRS) {
+					iwl_trans_release_nic_access(trans);
+					return -EIO;
+				}
+
+				offs++;
+
+				if (time_after(jiffies, end)) {
+					resched = true;
+					break;
+				}
+			}
+			iwl_trans_release_nic_access(trans);
+
+			if (resched)
+				cond_resched();
+		} else {
+			return -EBUSY;
+		}
+	}
+
+	return 0;
+}
