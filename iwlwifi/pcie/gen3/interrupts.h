@@ -20,9 +20,10 @@ enum iwl_def_rxq_shared_irq_flags {
 	IWL_GEN3_SHARED_IRQ_FIRST_RXQ		= BIT(2),
 };
 
-int iwl_pcie_alloc_msix_irqs(struct pci_dev *pdev,
-			     struct iwl_trans *iwl_trans,
-			     struct iwl_trans_info *info);
+int iwl_pcie_setup_msix(struct pci_dev *pdev,
+			struct iwl_trans *iwl_trans,
+			struct iwl_trans_info *info);
+void iwl_pcie_gen3_sync_irqs(struct iwl_trans *iwl_trans);
 
 /**
  * struct iwl_msix - MSIX related data
@@ -31,6 +32,7 @@ int iwl_pcie_alloc_msix_irqs(struct pci_dev *pdev,
  * @shared_irq_mask: the type of causes shared with the default rxq's irq
  * @alloc_irqs: the number of irqs allocated by msix
  * @non_rx_irq: irq for non rx causes
+ * @affinity_mask: IRQ affinity mask for each RX queue
  */
 struct iwl_msix {
 	bool is_enabled;
@@ -38,8 +40,10 @@ struct iwl_msix {
 	u8 shared_irq_mask;
 	u32 alloc_irqs;
 	u32 non_rx_irq;
+	cpumask_t affinity_mask[IWL_MAX_RX_HW_QUEUES];
 };
 
 #define DEFAULT_RXQ 0
+#define FIRST_RXQ 1
 
 #endif /* __iwl_trans_pcie_gen3_intrpts__ */

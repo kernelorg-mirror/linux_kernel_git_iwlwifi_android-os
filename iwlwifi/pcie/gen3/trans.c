@@ -22,6 +22,7 @@ iwl_construct_pcie_gen3(struct pci_dev *pdev,
 	trans_pcie->trans = iwl_trans;
 	trans_pcie->hw_base = hw_base;
 
+	/* TODO: init msi interrupts (task=msi) */
 	/* TODO: disable interrupts */
 	/* TODO: assign num_rx_bufs */
 
@@ -45,6 +46,15 @@ static void
 iwl_pcie_gen3_free(struct iwl_trans *iwl_trans)
 {
 	struct iwl_pcie_gen3 *trans_pcie = IWL_GET_PCIE_GEN3(iwl_trans);
+
+	if (trans_pcie->msix.is_enabled) {
+		for (int i = 0; i < trans_pcie->msix.alloc_irqs; i++) {
+			irq_set_affinity_hint(trans_pcie->msix.entries[i].vector,
+					      NULL);
+		}
+	}
+
+	/* TODO: free msi interrupts (task=msi) */
 
 	free_netdev(trans_pcie->napi_dev);
 	iwl_trans_free(iwl_trans);
@@ -77,9 +87,11 @@ int iwl_pci_gen3_probe(struct pci_dev *pdev,
 	if (ret)
 		goto out_free_trans;
 
-	ret = iwl_pcie_alloc_msix_irqs(pdev, iwl_trans, &info);
+	ret = iwl_pcie_setup_msix(pdev, iwl_trans, &info);
 	if (ret)
 		goto out_free_trans;
+
+	/* TODO: setup msi if msix fails task=msi */
 
 	ret = dma_set_mask_and_coherent(&pdev->dev, DMA_BIT_MASK(64));
 	if (ret) {
@@ -102,7 +114,6 @@ int iwl_pci_gen3_probe(struct pci_dev *pdev,
 	/* TODO: unset debug_rfkill */
 	/* TODO: read hw_rev and step */
 	/* TODO: alloc invalid tx cmd */
-	/* TODO: init msix handler */
 	/* TODO: debugfs state and fw continuous recording data */
 	/* TODO: check_product_reset status and mode */
 	/* TODO: handle pcie info struct */
