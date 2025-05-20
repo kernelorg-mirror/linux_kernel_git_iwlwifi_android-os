@@ -485,8 +485,9 @@ static void iwl_mac_hw_set_ftm(struct iwl_mld *mld)
 			IWL_UCODE_TLV_CAPA_FTM_CALIBRATED)) {
 		wiphy_ext_feature_set(hw->wiphy,
 				      NL80211_EXT_FEATURE_PROT_RANGE_NEGO_AND_MEASURE);
-		wiphy_ext_feature_set(hw->wiphy,
-				      NL80211_EXT_FEATURE_SECURE_LTF);
+		if (IWL_MLD_FTM_INITIATOR_SECURE_LTF)
+			wiphy_ext_feature_set(hw->wiphy,
+					      NL80211_EXT_FEATURE_SECURE_LTF);
 		wiphy_ext_feature_set(hw->wiphy,
 				      NL80211_EXT_FEATURE_ENABLE_FTM_RESPONDER);
 		hw->wiphy->pmsr_capa = &iwl_mld_pmsr_capa;

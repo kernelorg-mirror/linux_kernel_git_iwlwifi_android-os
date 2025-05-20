@@ -775,7 +775,8 @@ int iwl_mvm_mac_setup_register(struct iwl_mvm *mvm)
 				      NL80211_EXT_FEATURE_PROT_RANGE_NEGO_AND_MEASURE);
 
 		if (fw_has_capa(&mvm->fw->ucode_capa,
-				IWL_UCODE_TLV_CAPA_SECURE_LTF_SUPPORT))
+				IWL_UCODE_TLV_CAPA_SECURE_LTF_SUPPORT) &&
+		    IWL_MVM_FTM_INITIATOR_SECURE_LTF)
 			wiphy_ext_feature_set(hw->wiphy,
 					      NL80211_EXT_FEATURE_SECURE_LTF);
 	}
