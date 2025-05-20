@@ -2557,8 +2557,6 @@ static int __init iwl_drv_init(void)
 	}
 #endif
 
-	pr_info(DRV_DESCRIPTION "\n");
-
 #ifdef CPTCFG_IWLWIFI_DEBUGFS
 	/* Create the root of iwlwifi debugfs subsystem. */
 	iwl_dbgfs_root = debugfs_create_dir(DRV_NAME, NULL);
