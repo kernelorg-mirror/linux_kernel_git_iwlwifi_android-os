@@ -143,7 +143,6 @@ struct iwl_mld_emlsr {
  * @use_ps_poll: use ps_poll frames
  * @disable_bf: disable beacon filter
  * @dbgfs_slink: debugfs symlink for this interface
- * @dbgfs_slink_mvm: debugfs symlink for legacy tests support
  * @ftm_unprotected: if set, use unprotected FTM negotiation even if the peer
  *	has an active security context.
  * @roc_activity: the id of the roc_activity running. Relevant for STA and
