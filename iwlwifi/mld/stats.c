@@ -9,7 +9,6 @@
 #include "mlo.h"
 #include "hcmd.h"
 #include "iface.h"
-#include "mlo.h"
 #include "scan.h"
 #include "phy.h"
 #include "fw/api/stats.h"

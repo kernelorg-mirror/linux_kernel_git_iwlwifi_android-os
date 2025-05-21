@@ -20,7 +20,6 @@
 #include "ap.h"
 #include "tx.h"
 #include "roc.h"
-#include "iface.h"
 #include "mlo.h"
 #include "stats.h"
 #include "ftm-initiator.h"
