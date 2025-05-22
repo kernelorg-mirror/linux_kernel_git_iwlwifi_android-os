@@ -33,6 +33,8 @@ iwl_construct_pcie_gen3(struct pci_dev *pdev,
 
 	trans_pcie->pci_dev = pdev;
 
+	spin_lock_init(&trans_pcie->reg_lock);
+
 	return 0;
 }
 

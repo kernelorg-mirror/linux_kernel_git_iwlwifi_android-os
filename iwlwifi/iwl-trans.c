@@ -570,7 +570,10 @@ IWL_EXPORT_SYMBOL(iwl_trans_write_imr_mem);
 void iwl_trans_set_bits_mask(struct iwl_trans *trans, u32 reg,
 			     u32 mask, u32 value)
 {
-	iwl_trans_pcie_set_bits_mask(trans, reg, mask, value);
+	if (trans->mac_cfg->gen3)
+		iwl_trans_pcie_gen3_set_bits_mask(trans, reg, mask, value);
+	else
+		iwl_trans_pcie_set_bits_mask(trans, reg, mask, value);
 }
 IWL_EXPORT_SYMBOL(iwl_trans_set_bits_mask);
 
