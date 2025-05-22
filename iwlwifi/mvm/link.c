@@ -15,8 +15,7 @@
 	HOW(EXIT_LOW_RSSI)		\
 	HOW(EXIT_COEX)			\
 	HOW(EXIT_BANDWIDTH)		\
-	HOW(EXIT_CSA)			\
-	HOW(EXIT_RFI)
+	HOW(EXIT_CSA)
 
 static const char *const iwl_mvm_esr_states_names[] = {
 #define NAME_ENTRY(x) [ilog2(IWL_MVM_ESR_##x)] = #x,
@@ -712,9 +711,6 @@ bool iwl_mvm_mld_valid_link_pair(struct ieee80211_vif *vif,
 	if (a->chandef->chan->band == b->chandef->chan->band ||
 	    a->chandef->width != b->chandef->width)
 		ret |= IWL_MVM_ESR_EXIT_BANDWIDTH;
-
-	/* RFI considerations */
-	ret |= iwl_mvm_rfi_esr_state_link_pair(vif, a, b);
 
 	if (ret) {
 		IWL_DEBUG_INFO(mvm,
