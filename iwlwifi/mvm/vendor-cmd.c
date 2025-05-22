@@ -675,30 +675,6 @@ err:
 	return ret;
 }
 
-static int
-iwl_mvm_vendor_exit_emlsr(struct wiphy *wiphy, struct wireless_dev *wdev,
-			  const void *data, int data_len)
-{
-	struct ieee80211_vif *vif = wdev_to_ieee80211_vif(wdev);
-	struct iwl_mvm_vif *mvmvif;
-	struct iwl_mvm *mvm;
-
-	if (!vif)
-		return -ENODEV;
-
-	mvmvif = iwl_mvm_vif_from_mac80211(vif);
-	mvm = mvmvif->mvm;
-
-	guard(mvm)(mvm);
-
-	if (mvm->rfi_wlan_master)
-		return -EINVAL;
-
-	iwl_mvm_exit_esr(mvm, vif, IWL_MVM_ESR_EXIT_RFI,
-			 iwl_mvm_get_primary_link(vif));
-	return 0;
-}
-
 static int iwl_mvm_vendor_set_nic_txpower_limit(struct wiphy *wiphy,
 						struct wireless_dev *wdev,
 						const void *data, int data_len)
@@ -2048,17 +2024,6 @@ static const struct wiphy_vendor_command iwl_mvm_vendor_commands[] = {
 		.flags = WIPHY_VENDOR_CMD_NEED_WDEV |
 			 WIPHY_VENDOR_CMD_NEED_RUNNING,
 		.doit = iwl_mvm_vendor_get_links_info,
-		.policy = iwl_mvm_vendor_attr_policy,
-		.maxattr = MAX_IWL_MVM_VENDOR_ATTR,
-	},
-	{
-		.info = {
-			.vendor_id = INTEL_OUI,
-			.subcmd = IWL_MVM_VENDOR_CMD_EXIT_EMLSR,
-		},
-		.flags = WIPHY_VENDOR_CMD_NEED_WDEV |
-			 WIPHY_VENDOR_CMD_NEED_RUNNING,
-		.doit = iwl_mvm_vendor_exit_emlsr,
 		.policy = iwl_mvm_vendor_attr_policy,
 		.maxattr = MAX_IWL_MVM_VENDOR_ATTR,
 	},
