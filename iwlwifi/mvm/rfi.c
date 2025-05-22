@@ -441,9 +441,9 @@ void *iwl_mvm_rfi_get_freq_table(struct iwl_mvm *mvm)
 	return resp;
 }
 
-VISIBLE_IF_IWLWIFI_KUNIT
-bool iwl_mvm_rfi_ddr_esr_accept_link_pair(struct iwl_mvm *mvm, u8 channel_a,
-					  u8 band_a, u8 channel_b, u8 band_b)
+static bool
+iwl_mvm_rfi_ddr_esr_accept_link_pair(struct iwl_mvm *mvm, u8 channel_a,
+				     u8 band_a, u8 channel_b, u8 band_b)
 {
 	bool rfi_ddr_support = iwl_mvm_rfi_supported(mvm, mvm->force_enable_rfi,
 						     true);
@@ -503,11 +503,10 @@ bool iwl_mvm_rfi_ddr_esr_accept_link_pair(struct iwl_mvm *mvm, u8 channel_a,
 
 	return !(channel_a_has_interference && channel_b_has_interference);
 }
-EXPORT_SYMBOL_IF_IWLWIFI_KUNIT(iwl_mvm_rfi_ddr_esr_accept_link_pair);
 
-VISIBLE_IF_IWLWIFI_KUNIT
-bool iwl_mvm_rfi_dlvr_esr_accept_link_pair(struct iwl_mvm *mvm, u8 channel_a,
-					   u8 band_a, u8 channel_b, u8 band_b)
+static bool
+iwl_mvm_rfi_dlvr_esr_accept_link_pair(struct iwl_mvm *mvm, u8 channel_a,
+				      u8 band_a, u8 channel_b, u8 band_b)
 {
 	bool rfi_dlvr_support = iwl_mvm_rfi_supported(mvm,
 						      mvm->force_enable_rfi,
@@ -564,7 +563,6 @@ bool iwl_mvm_rfi_dlvr_esr_accept_link_pair(struct iwl_mvm *mvm, u8 channel_a,
 
 	return !(channel_a_has_interference && channel_b_has_interference);
 }
-EXPORT_SYMBOL_IF_IWLWIFI_KUNIT(iwl_mvm_rfi_dlvr_esr_accept_link_pair);
 
 u32
 iwl_mvm_rfi_esr_state_link_pair(struct ieee80211_vif *vif,
