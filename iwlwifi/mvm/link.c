@@ -19,8 +19,7 @@
 	HOW(EXIT_BANDWIDTH)		\
 	HOW(EXIT_CSA)			\
 	HOW(EXIT_RFI)			\
-	HOW(EXIT_LINK_USAGE)		\
-	HOW(EXIT_FAIL_ENTRY)
+	HOW(EXIT_LINK_USAGE)
 
 static const char *const iwl_mvm_esr_states_names[] = {
 #define NAME_ENTRY(x) [ilog2(IWL_MVM_ESR_##x)] = #x,
@@ -997,8 +996,7 @@ void iwl_mvm_exit_esr(struct iwl_mvm *mvm, struct ieee80211_vif *vif,
 
 	lockdep_assert_held(&mvm->mutex);
 
-	/* On entry failure need to exit anyway, even if entered from debugfs */
-	if (!IWL_MVM_AUTO_EML_ENABLE && reason != IWL_MVM_ESR_EXIT_FAIL_ENTRY)
+	if (!IWL_MVM_AUTO_EML_ENABLE)
 		return;
 
 	/* Nothing to do */
