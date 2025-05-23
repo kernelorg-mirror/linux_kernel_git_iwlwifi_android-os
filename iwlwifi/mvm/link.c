@@ -13,8 +13,7 @@
 	HOW(EXIT_MISSED_BEACON)		\
 	HOW(EXIT_LOW_RSSI)		\
 	HOW(EXIT_COEX)			\
-	HOW(EXIT_BANDWIDTH)		\
-	HOW(EXIT_CSA)
+	HOW(EXIT_BANDWIDTH)
 
 static const char *const iwl_mvm_esr_states_names[] = {
 #define NAME_ENTRY(x) [ilog2(IWL_MVM_ESR_##x)] = #x,
@@ -599,14 +598,8 @@ iwl_mvm_esr_disallowed_with_link(struct iwl_mvm *mvm,
 				 const struct iwl_mvm_link_sel_data *link,
 				 bool primary)
 {
-	struct wiphy *wiphy = mvm->hw->wiphy;
-	struct ieee80211_bss_conf *conf;
 	enum iwl_mvm_esr_state ret = 0;
 	s8 thresh;
-
-	conf = wiphy_dereference(wiphy, vif->link_conf[link->link_id]);
-	if (WARN_ON_ONCE(!conf))
-		return false;
 
 	/* BT Coex effects eSR mode only if one of the links is on LB */
 	if (link->chandef->chan->band == NL80211_BAND_2GHZ &&
@@ -619,9 +612,6 @@ iwl_mvm_esr_disallowed_with_link(struct iwl_mvm *mvm,
 
 	if (link->signal < thresh)
 		ret |= IWL_MVM_ESR_EXIT_LOW_RSSI;
-
-	if (conf->csa_active)
-		ret |= IWL_MVM_ESR_EXIT_CSA;
 
 	if (ret) {
 		IWL_DEBUG_INFO(mvm,

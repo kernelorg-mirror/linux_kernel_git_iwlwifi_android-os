@@ -5651,9 +5651,9 @@ static void iwl_mvm_csa_block_txqs(void *data, struct ieee80211_sta *sta)
 }
 
 #define IWL_MAX_CSA_BLOCK_TX 1500
-int iwl_mvm_pre_channel_switch(struct iwl_mvm *mvm,
-			       struct ieee80211_vif *vif,
-			       struct ieee80211_channel_switch *chsw)
+static int iwl_mvm_pre_channel_switch(struct iwl_mvm *mvm,
+				      struct ieee80211_vif *vif,
+				      struct ieee80211_channel_switch *chsw)
 {
 	struct ieee80211_vif *csa_vif;
 	struct iwl_mvm_vif *mvmvif = iwl_mvm_vif_from_mac80211(vif);
@@ -5771,9 +5771,9 @@ int iwl_mvm_pre_channel_switch(struct iwl_mvm *mvm,
 	return ret;
 }
 
-static int iwl_mvm_mac_pre_channel_switch(struct ieee80211_hw *hw,
-					  struct ieee80211_vif *vif,
-					  struct ieee80211_channel_switch *chsw)
+int iwl_mvm_mac_pre_channel_switch(struct ieee80211_hw *hw,
+				   struct ieee80211_vif *vif,
+				   struct ieee80211_channel_switch *chsw)
 {
 	struct iwl_mvm *mvm = IWL_MAC80211_GET_MVM(hw);
 
