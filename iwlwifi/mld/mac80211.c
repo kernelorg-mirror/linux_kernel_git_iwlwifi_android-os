@@ -2790,6 +2790,23 @@ static void iwl_mld_abort_pmsr(struct ieee80211_hw *hw,
 	iwl_mld_ftm_abort(mld, request);
 }
 
+static enum ieee80211_neg_ttlm_res
+iwl_mld_can_neg_ttlm(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
+		     struct ieee80211_neg_ttlm *neg_ttlm)
+{
+	u16 map;
+
+	/* Verify all TIDs are mapped to the same links set */
+	map = neg_ttlm->downlink[0];
+	for (int i = 0; i < IEEE80211_TTLM_NUM_TIDS; i++) {
+		if (neg_ttlm->downlink[i] != neg_ttlm->uplink[i] ||
+		    neg_ttlm->uplink[i] != map)
+			return NEG_TTLM_RES_REJECT;
+	}
+
+	return NEG_TTLM_RES_ACCEPT;
+}
+
 const struct ieee80211_ops iwl_mld_hw_ops = {
 	.tx = iwl_mld_mac80211_tx,
 	.start = iwl_mld_mac80211_start,
@@ -2861,4 +2878,5 @@ const struct ieee80211_ops iwl_mld_hw_ops = {
 	.set_hw_timestamp = iwl_mld_set_hw_timestamp,
 	.start_pmsr = iwl_mld_start_pmsr,
 	.abort_pmsr = iwl_mld_abort_pmsr,
+	.can_neg_ttlm = iwl_mld_can_neg_ttlm,
 };
