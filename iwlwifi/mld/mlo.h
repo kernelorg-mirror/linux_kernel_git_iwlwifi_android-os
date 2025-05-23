@@ -157,6 +157,8 @@ struct iwl_mld_link_sel_data {
 	u16 grade;
 };
 
+void iwl_mld_emlsr_block_tmp_non_bss(struct iwl_mld *mld);
+
 void iwl_mld_start_ignoring_tpt_updates(struct iwl_mld *mld);
 void iwl_mld_stop_ignoring_tpt_updates(struct iwl_mld *mld);
 
