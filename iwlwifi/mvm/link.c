@@ -473,8 +473,7 @@ iwl_mvm_get_chan_load_factor(struct ieee80211_bss_conf *link_conf)
 }
 
 /* This function calculates the grade of a link. Returns 0 in error case */
-VISIBLE_IF_IWLWIFI_KUNIT
-unsigned int iwl_mvm_get_link_grade(struct ieee80211_bss_conf *link_conf)
+static unsigned int iwl_mvm_get_link_grade(struct ieee80211_bss_conf *link_conf)
 {
 	enum nl80211_band band;
 	int i, rssi_idx;
@@ -521,7 +520,6 @@ unsigned int iwl_mvm_get_link_grade(struct ieee80211_bss_conf *link_conf)
 	grade = grade * iwl_mvm_get_puncturing_factor(link_conf) / SCALE_FACTOR;
 	return grade;
 }
-EXPORT_SYMBOL_IF_IWLWIFI_KUNIT(iwl_mvm_get_link_grade);
 
 static
 u8 iwl_mvm_set_link_selection_data(struct ieee80211_vif *vif,
@@ -634,10 +632,10 @@ iwl_mvm_esr_disallowed_with_link(struct iwl_mvm *mvm,
 	return ret;
 }
 
-VISIBLE_IF_IWLWIFI_KUNIT
-bool iwl_mvm_mld_valid_link_pair(struct ieee80211_vif *vif,
-				 const struct iwl_mvm_link_sel_data *a,
-				 const struct iwl_mvm_link_sel_data *b)
+static bool
+iwl_mvm_mld_valid_link_pair(struct ieee80211_vif *vif,
+			    const struct iwl_mvm_link_sel_data *a,
+			    const struct iwl_mvm_link_sel_data *b)
 {
 	struct iwl_mvm_vif *mvmvif = iwl_mvm_vif_from_mac80211(vif);
 	struct iwl_mvm *mvm = mvmvif->mvm;
@@ -662,7 +660,6 @@ bool iwl_mvm_mld_valid_link_pair(struct ieee80211_vif *vif,
 
 	return true;
 }
-EXPORT_SYMBOL_IF_IWLWIFI_KUNIT(iwl_mvm_mld_valid_link_pair);
 
 /*
  * Returns the combined eSR grade of two given links.
