@@ -10,7 +10,6 @@
 	HOW(BLOCKED_WOWLAN)		\
 	HOW(BLOCKED_TPT)		\
 	HOW(BLOCKED_FW)			\
-	HOW(BLOCKED_NON_BSS)		\
 	HOW(EXIT_MISSED_BEACON)		\
 	HOW(EXIT_LOW_RSSI)		\
 	HOW(EXIT_COEX)			\
@@ -109,65 +108,6 @@ int iwl_mvm_add_link(struct iwl_mvm *mvm, struct ieee80211_vif *vif,
 		cmd.listen_lmac = cpu_to_le32(link_info->listen_lmac);
 
 	return iwl_mvm_link_cmd_send(mvm, &cmd, FW_CTXT_ACTION_ADD);
-}
-
-struct iwl_mvm_esr_iter_data {
-	struct ieee80211_vif *vif;
-	unsigned int link_id;
-	bool lift_block;
-};
-
-static void iwl_mvm_esr_vif_iterator(void *_data, u8 *mac,
-				     struct ieee80211_vif *vif)
-{
-	struct iwl_mvm_esr_iter_data *data = _data;
-	struct iwl_mvm_vif *mvmvif = iwl_mvm_vif_from_mac80211(vif);
-	int link_id;
-
-	if (ieee80211_vif_type_p2p(vif) == NL80211_IFTYPE_STATION)
-		return;
-
-	for_each_mvm_vif_valid_link(mvmvif, link_id) {
-		struct iwl_mvm_vif_link_info *link_info =
-			mvmvif->link[link_id];
-		if (vif == data->vif && link_id == data->link_id)
-			continue;
-		if (link_info->active)
-			data->lift_block = false;
-	}
-}
-
-int iwl_mvm_esr_non_bss_link(struct iwl_mvm *mvm, struct ieee80211_vif *vif,
-			     unsigned int link_id, bool active)
-{
-	/* An active link of a non-station vif blocks EMLSR. Upon activation
-	 * block EMLSR on the bss vif. Upon deactivation, check if this link
-	 * was the last non-station link active, and if so unblock the bss vif
-	 */
-	struct ieee80211_vif *bss_vif = iwl_mvm_get_bss_vif(mvm);
-	struct iwl_mvm_esr_iter_data data = {
-		.vif = vif,
-		.link_id = link_id,
-		.lift_block = true,
-	};
-
-	if (IS_ERR_OR_NULL(bss_vif))
-		return 0;
-
-	if (active)
-		return iwl_mvm_block_esr_sync(mvm, bss_vif,
-					      IWL_MVM_ESR_BLOCKED_NON_BSS);
-
-	ieee80211_iterate_active_interfaces(mvm->hw,
-					    IEEE80211_IFACE_ITER_NORMAL,
-					    iwl_mvm_esr_vif_iterator, &data);
-	if (data.lift_block) {
-		mutex_lock(&mvm->mutex);
-		iwl_mvm_unblock_esr(mvm, bss_vif, IWL_MVM_ESR_BLOCKED_NON_BSS);
-		mutex_unlock(&mvm->mutex);
-	}
-
-	return 0;
 }
 
 int iwl_mvm_link_changed(struct iwl_mvm *mvm, struct ieee80211_vif *vif,
