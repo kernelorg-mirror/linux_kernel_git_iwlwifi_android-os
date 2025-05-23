@@ -12,8 +12,7 @@
 	HOW(BLOCKED_FW)			\
 	HOW(EXIT_MISSED_BEACON)		\
 	HOW(EXIT_LOW_RSSI)		\
-	HOW(EXIT_COEX)			\
-	HOW(EXIT_BANDWIDTH)
+	HOW(EXIT_COEX)
 
 static const char *const iwl_mvm_esr_states_names[] = {
 #define NAME_ENTRY(x) [ilog2(IWL_MVM_ESR_##x)] = #x,
@@ -629,24 +628,11 @@ iwl_mvm_mld_valid_link_pair(struct ieee80211_vif *vif,
 {
 	struct iwl_mvm_vif *mvmvif = iwl_mvm_vif_from_mac80211(vif);
 	struct iwl_mvm *mvm = mvmvif->mvm;
-	enum iwl_mvm_esr_state ret = 0;
 
 	/* Per-link considerations */
 	if (iwl_mvm_esr_disallowed_with_link(mvm, vif, a, true) ||
 	    iwl_mvm_esr_disallowed_with_link(mvm, vif, b, false))
 		return false;
-
-	if (a->chandef->chan->band == b->chandef->chan->band ||
-	    a->chandef->width != b->chandef->width)
-		ret |= IWL_MVM_ESR_EXIT_BANDWIDTH;
-
-	if (ret) {
-		IWL_DEBUG_INFO(mvm,
-			       "Links %d and %d are not a valid pair for EMLSR\n",
-			       a->link_id, b->link_id);
-		iwl_mvm_print_esr_state(mvm, ret);
-		return false;
-	}
 
 	return true;
 }
