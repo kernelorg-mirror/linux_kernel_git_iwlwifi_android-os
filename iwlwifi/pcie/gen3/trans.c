@@ -180,3 +180,23 @@ bool iwl_trans_pcie_gen3_grab_nic_access(struct iwl_trans *trans)
 	__release(&trans_pcie->reg_lock);
 	return true;
 }
+
+void __releases(nic_access)
+iwl_trans_pcie_gen3_release_nic_access(struct iwl_trans *trans)
+{
+	struct iwl_pcie_gen3 *trans_pcie = IWL_GET_PCIE_GEN3(trans);
+
+	lockdep_assert_held(&trans_pcie->reg_lock);
+
+	/*
+	 * Fool sparse by faking we acquiring the lock - sparse will
+	 * track nic_access anyway.
+	 */
+	__acquire(&trans_pcie->reg_lock);
+
+	iwl_trans_clear_bit(trans, CSR_GP_CNTRL,
+			    CSR_GP_CNTRL_REG_FLAG_BZ_MAC_ACCESS_REQ);
+
+	__release(nic_access);
+	spin_unlock(&trans_pcie->reg_lock);
+}
