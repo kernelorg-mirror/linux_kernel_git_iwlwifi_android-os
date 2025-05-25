@@ -47,8 +47,8 @@ IWL_EXPORT_SYMBOL(iwl_read32);
 
 #define IWL_POLL_INTERVAL 10	/* microseconds */
 
-int iwl_poll_bit(struct iwl_trans *trans, u32 addr,
-		 u32 bits, u32 mask, int timeout)
+int iwl_poll_bits_mask(struct iwl_trans *trans, u32 addr,
+		       u32 bits, u32 mask, int timeout)
 {
 	int t = 0;
 
@@ -61,7 +61,13 @@ int iwl_poll_bit(struct iwl_trans *trans, u32 addr,
 
 	return -ETIMEDOUT;
 }
-IWL_EXPORT_SYMBOL(iwl_poll_bit);
+IWL_EXPORT_SYMBOL(iwl_poll_bits_mask);
+
+int iwl_poll_bits(struct iwl_trans *trans, u32 addr, u32 mask, int timeout)
+{
+	return iwl_poll_bits_mask(trans, addr, mask, mask, timeout);
+}
+IWL_EXPORT_SYMBOL(iwl_poll_bits);
 
 u32 iwl_read_direct32(struct iwl_trans *trans, u32 reg)
 {
@@ -477,8 +483,8 @@ int iwl_finish_nic_init(struct iwl_trans *trans)
 	 * device-internal resources is supported, e.g. iwl_write_prph()
 	 * and accesses to uCode SRAM.
 	 */
-	err = iwl_poll_bit(trans, CSR_GP_CNTRL, poll_ready, poll_ready,
-			   25000 * CPTCFG_IWL_TIMEOUT_FACTOR);
+	err = iwl_poll_bits(trans, CSR_GP_CNTRL, poll_ready,
+			    25000 * CPTCFG_IWL_TIMEOUT_FACTOR);
 	if (err < 0) {
 		IWL_DEBUG_INFO(trans, "Failed to wake NIC\n");
 
