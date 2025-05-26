@@ -8,8 +8,7 @@
 #define HANDLE_ESR_REASONS(HOW)		\
 	HOW(BLOCKED_PREVENTION)		\
 	HOW(BLOCKED_WOWLAN)		\
-	HOW(EXIT_MISSED_BEACON)		\
-	HOW(EXIT_LOW_RSSI)
+	HOW(EXIT_MISSED_BEACON)
 
 static const char *const iwl_mvm_esr_states_names[] = {
 #define NAME_ENTRY(x) [ilog2(IWL_MVM_ESR_##x)] = #x,
@@ -549,84 +548,6 @@ u8 iwl_mvm_set_link_selection_data(struct ieee80211_vif *vif,
 	return n_data;
 }
 
-struct iwl_mvm_bw_to_rssi_threshs {
-	s8 low;
-	s8 high;
-};
-
-#define BW_TO_RSSI_THRESHOLDS(_bw)				\
-	[IWL_PHY_CHANNEL_MODE ## _bw] = {			\
-		.low = IWL_MVM_LOW_RSSI_THRESH_##_bw##MHZ,	\
-		.high = IWL_MVM_HIGH_RSSI_THRESH_##_bw##MHZ	\
-	}
-
-s8 iwl_mvm_get_esr_rssi_thresh(struct iwl_mvm *mvm,
-			       const struct cfg80211_chan_def *chandef,
-			       bool low)
-{
-	const struct iwl_mvm_bw_to_rssi_threshs bw_to_rssi_threshs_map[] = {
-		BW_TO_RSSI_THRESHOLDS(20),
-		BW_TO_RSSI_THRESHOLDS(40),
-		BW_TO_RSSI_THRESHOLDS(80),
-		BW_TO_RSSI_THRESHOLDS(160)
-		/* 320 MHz has the same thresholds as 20 MHz */
-	};
-	const struct iwl_mvm_bw_to_rssi_threshs *threshs;
-	u8 chan_width = iwl_mvm_get_channel_width(chandef);
-
-	if (WARN_ON(chandef->chan->band != NL80211_BAND_2GHZ &&
-		    chandef->chan->band != NL80211_BAND_5GHZ &&
-		    chandef->chan->band != NL80211_BAND_6GHZ))
-		return S8_MAX;
-
-	/* 6 GHz will always use 20 MHz thresholds, regardless of the BW */
-	if (chan_width == IWL_PHY_CHANNEL_MODE320)
-		chan_width = IWL_PHY_CHANNEL_MODE20;
-
-	threshs = &bw_to_rssi_threshs_map[chan_width];
-
-	return low ? threshs->low : threshs->high;
-}
-
-static u32
-iwl_mvm_esr_disallowed_with_link(struct iwl_mvm *mvm,
-				 struct ieee80211_vif *vif,
-				 const struct iwl_mvm_link_sel_data *link)
-{
-	enum iwl_mvm_esr_state ret = 0;
-	s8 thresh;
-
-	thresh = iwl_mvm_get_esr_rssi_thresh(mvm, link->chandef,
-					     false);
-
-	if (link->signal < thresh)
-		ret |= IWL_MVM_ESR_EXIT_LOW_RSSI;
-
-	if (ret) {
-		IWL_DEBUG_INFO(mvm,
-			       "Link %d is not allowed for esr\n",
-			       link->link_id);
-		iwl_mvm_print_esr_state(mvm, ret);
-	}
-	return ret;
-}
-
-static bool
-iwl_mvm_mld_valid_link_pair(struct ieee80211_vif *vif,
-			    const struct iwl_mvm_link_sel_data *a,
-			    const struct iwl_mvm_link_sel_data *b)
-{
-	struct iwl_mvm_vif *mvmvif = iwl_mvm_vif_from_mac80211(vif);
-	struct iwl_mvm *mvm = mvmvif->mvm;
-
-	/* Per-link considerations */
-	if (iwl_mvm_esr_disallowed_with_link(mvm, vif, a) ||
-	    iwl_mvm_esr_disallowed_with_link(mvm, vif, b))
-		return false;
-
-	return true;
-}
-
 /*
  * Returns the combined eSR grade of two given links.
  * Returns 0 if eSR is not allowed with these 2 links.
@@ -648,9 +569,6 @@ unsigned int iwl_mvm_get_esr_grade(struct ieee80211_vif *vif,
 		swap(a, b);
 
 	*primary_id = a->link_id;
-
-	if (!iwl_mvm_mld_valid_link_pair(vif, a, b))
-		return 0;
 
 	primary_conf = wiphy_dereference(wiphy, vif->link_conf[*primary_id]);
 

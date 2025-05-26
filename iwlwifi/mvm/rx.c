@@ -563,7 +563,6 @@ static void iwl_mvm_update_link_sig(struct ieee80211_vif *vif, int sig,
 	int thold = bss_conf->cqm_rssi_thold;
 	int hyst = bss_conf->cqm_rssi_hyst;
 	int last_event;
-	s8 exit_esr_thresh;
 
 	if (sig == 0) {
 		IWL_DEBUG_RX(mvm, "RSSI is 0 - skip signal based decision\n");
@@ -641,17 +640,6 @@ static void iwl_mvm_update_link_sig(struct ieee80211_vif *vif, int sig,
 		iwl_mvm_int_mlo_scan(mvm, vif);
 		return;
 	}
-
-	/* We are in EMLSR, check if we need to exit */
-	exit_esr_thresh =
-		iwl_mvm_get_esr_rssi_thresh(mvm,
-					    &bss_conf->chanreq.oper,
-					    true);
-
-	if (sig < exit_esr_thresh)
-		iwl_mvm_exit_esr(mvm, vif, IWL_MVM_ESR_EXIT_LOW_RSSI,
-				 iwl_mvm_get_other_link(vif,
-							bss_conf->link_id));
 }
 
 static void iwl_mvm_stat_iterator(void *_data, u8 *mac,
