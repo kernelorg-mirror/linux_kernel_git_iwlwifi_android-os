@@ -9,8 +9,7 @@
 	HOW(BLOCKED_PREVENTION)		\
 	HOW(BLOCKED_WOWLAN)		\
 	HOW(EXIT_MISSED_BEACON)		\
-	HOW(EXIT_LOW_RSSI)		\
-	HOW(EXIT_COEX)
+	HOW(EXIT_LOW_RSSI)
 
 static const char *const iwl_mvm_esr_states_names[] = {
 #define NAME_ENTRY(x) [ilog2(IWL_MVM_ESR_##x)] = #x,
@@ -592,17 +591,10 @@ s8 iwl_mvm_get_esr_rssi_thresh(struct iwl_mvm *mvm,
 static u32
 iwl_mvm_esr_disallowed_with_link(struct iwl_mvm *mvm,
 				 struct ieee80211_vif *vif,
-				 const struct iwl_mvm_link_sel_data *link,
-				 bool primary)
+				 const struct iwl_mvm_link_sel_data *link)
 {
 	enum iwl_mvm_esr_state ret = 0;
 	s8 thresh;
-
-	/* BT Coex effects eSR mode only if one of the links is on LB */
-	if (link->chandef->chan->band == NL80211_BAND_2GHZ &&
-	    (!iwl_mvm_bt_coex_calculate_esr_mode(mvm, vif, link->signal,
-						 primary)))
-		ret |= IWL_MVM_ESR_EXIT_COEX;
 
 	thresh = iwl_mvm_get_esr_rssi_thresh(mvm, link->chandef,
 					     false);
@@ -628,8 +620,8 @@ iwl_mvm_mld_valid_link_pair(struct ieee80211_vif *vif,
 	struct iwl_mvm *mvm = mvmvif->mvm;
 
 	/* Per-link considerations */
-	if (iwl_mvm_esr_disallowed_with_link(mvm, vif, a, true) ||
-	    iwl_mvm_esr_disallowed_with_link(mvm, vif, b, false))
+	if (iwl_mvm_esr_disallowed_with_link(mvm, vif, a) ||
+	    iwl_mvm_esr_disallowed_with_link(mvm, vif, b))
 		return false;
 
 	return true;

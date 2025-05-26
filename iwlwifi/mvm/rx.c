@@ -926,10 +926,6 @@ iwl_mvm_stat_iterator_all_links(struct iwl_mvm *mvm,
 		link_info->beacon_stats.avg_signal =
 			-le32_to_cpu(link_stats->beacon_average_energy);
 
-		if (link_info->phy_ctxt &&
-		    link_info->phy_ctxt->channel->band == NL80211_BAND_2GHZ)
-			iwl_mvm_bt_coex_update_link_esr(mvm, vif, link_id);
-
 		/* make sure that beacon statistics don't go backwards with TCM
 		 * request to clear statistics
 		 */

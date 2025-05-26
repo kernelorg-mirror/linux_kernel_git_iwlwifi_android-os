@@ -369,15 +369,12 @@ struct iwl_mvm_vif_link_info {
  * @IWL_MVM_ESR_EXIT_MISSED_BEACON: exited EMLSR due to missed beacons
  * @IWL_MVM_ESR_EXIT_LOW_RSSI: link is deactivated/not allowed for EMLSR
  *	due to low RSSI.
- * @IWL_MVM_ESR_EXIT_COEX: link is deactivated/not allowed for EMLSR
- *	due to BT Coex.
  */
 enum iwl_mvm_esr_state {
 	IWL_MVM_ESR_BLOCKED_PREVENTION	= 0x1,
 	IWL_MVM_ESR_BLOCKED_WOWLAN	= 0x2,
 	IWL_MVM_ESR_EXIT_MISSED_BEACON	= 0x10000,
 	IWL_MVM_ESR_EXIT_LOW_RSSI	= 0x20000,
-	IWL_MVM_ESR_EXIT_COEX		= 0x40000,
 };
 
 #define IWL_MVM_BLOCK_ESR_REASONS 0xffff
@@ -1213,11 +1210,7 @@ struct iwl_mvm {
 
 	wait_queue_head_t rx_sync_waitq;
 
-	/* BT-Coex - only one of those will be used */
-	union {
-		struct iwl_bt_coex_prof_old_notif last_bt_notif;
-		struct iwl_bt_coex_profile_notif last_bt_wifi_loss;
-	};
+	struct iwl_bt_coex_prof_old_notif last_bt_notif;
 	struct iwl_bt_coex_ci_cmd last_bt_ci_cmd;
 
 	u8 bt_tx_prio;
@@ -2359,8 +2352,6 @@ int iwl_mvm_send_proto_offload(struct iwl_mvm *mvm,
 int iwl_mvm_send_bt_init_conf(struct iwl_mvm *mvm);
 void iwl_mvm_rx_bt_coex_old_notif(struct iwl_mvm *mvm,
 				  struct iwl_rx_cmd_buffer *rxb);
-void iwl_mvm_rx_bt_coex_notif(struct iwl_mvm *mvm,
-			      struct iwl_rx_cmd_buffer *rxb);
 void iwl_mvm_bt_rssi_event(struct iwl_mvm *mvm, struct ieee80211_vif *vif,
 			   enum ieee80211_rssi_event_data);
 void iwl_mvm_bt_coex_vif_change(struct iwl_mvm *mvm);
@@ -3069,14 +3060,6 @@ void iwl_mvm_exit_esr(struct iwl_mvm *mvm, struct ieee80211_vif *vif,
 s8 iwl_mvm_get_esr_rssi_thresh(struct iwl_mvm *mvm,
 			       const struct cfg80211_chan_def *chandef,
 			       bool low);
-void iwl_mvm_bt_coex_update_link_esr(struct iwl_mvm *mvm,
-				     struct ieee80211_vif *vif,
-				     int link_id);
-bool
-iwl_mvm_bt_coex_calculate_esr_mode(struct iwl_mvm *mvm,
-				   struct ieee80211_vif *vif,
-				   s32 link_rssi,
-				   bool primary);
 void
 iwl_mvm_send_ap_tx_power_constraint_cmd(struct iwl_mvm *mvm,
 					struct ieee80211_vif *vif,
