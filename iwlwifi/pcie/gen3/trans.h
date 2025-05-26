@@ -25,7 +25,8 @@ struct iwl_pcie_gen3 {
 
 int iwl_pci_gen3_probe(struct pci_dev *pdev,
 		       const struct pci_device_id *ent,
-		       const struct iwl_mac_cfg *mac_cfg);
+		       const struct iwl_mac_cfg *mac_cfg, u8 __iomem *hw_base,
+		       u32 hw_rev);
 
 static inline struct iwl_pcie_gen3 *
 IWL_GET_PCIE_GEN3(struct iwl_trans *trans)

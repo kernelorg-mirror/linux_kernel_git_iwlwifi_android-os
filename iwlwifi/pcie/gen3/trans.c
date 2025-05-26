@@ -10,18 +10,14 @@
 
 static int
 iwl_construct_pcie_gen3(struct pci_dev *pdev,
-			struct iwl_trans *iwl_trans)
+			struct iwl_trans *iwl_trans,
+			u8 __iomem *hw_base)
 {
 	struct iwl_pcie_gen3 *trans_pcie, **priv;
 
-	/* TODO: pci_assign_resource PM bug */
 	trans_pcie = IWL_GET_PCIE_GEN3(iwl_trans);
 
-	trans_pcie->hw_base = pcim_iomap(pdev, 0, 0);
-	if (!trans_pcie->hw_base) {
-		dev_err(&pdev->dev, "Could not ioremap PCI BAR 0.\n");
-		return -ENODEV;
-	}
+	trans_pcie->hw_base = hw_base;
 
 	/* TODO: disable interrupts */
 	/* TODO: assign num_rx_bufs */
@@ -51,16 +47,11 @@ iwl_pcie_gen3_free(struct iwl_trans *iwl_trans)
 
 int iwl_pci_gen3_probe(struct pci_dev *pdev,
 		       const struct pci_device_id *ent,
-		       const struct iwl_mac_cfg *mac_cfg)
+		       const struct iwl_mac_cfg *mac_cfg, u8 __iomem *hw_base,
+		       u32 hw_rev)
 {
 	struct iwl_trans *iwl_trans;
 	int ret;
-
-	ret = pcim_enable_device(pdev);
-	if (ret)
-		return ret;
-
-	pci_set_master(pdev);
 
 	ret = dma_set_mask_and_coherent(&pdev->dev, DMA_BIT_MASK(64));
 	if (ret) {
@@ -72,12 +63,6 @@ int iwl_pci_gen3_probe(struct pci_dev *pdev,
 		}
 	}
 
-	ret = pcim_request_all_regions(pdev, DRV_NAME);
-	if (ret) {
-		dev_err(&pdev->dev, "Requesting all PCI BARs failed.\n");
-		return ret;
-	}
-
 	/* TODO: make sure this is still needed. task=cfg */
 	pci_write_config_byte(pdev, PCI_CFG_RETRY_TIMEOUT, 0x00);
 
@@ -86,7 +71,7 @@ int iwl_pci_gen3_probe(struct pci_dev *pdev,
 	if (!iwl_trans)
 		return -EINVAL;
 
-	ret = iwl_construct_pcie_gen3(pdev, iwl_trans);
+	ret = iwl_construct_pcie_gen3(pdev, iwl_trans, hw_base);
 	if (ret)
 		goto out_free_trans;
 
