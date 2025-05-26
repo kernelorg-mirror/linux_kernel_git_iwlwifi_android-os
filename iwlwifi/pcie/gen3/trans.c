@@ -51,10 +51,19 @@ int iwl_pci_gen3_probe(struct pci_dev *pdev,
 		       u32 hw_rev)
 {
 	struct iwl_trans *iwl_trans;
+	unsigned int txcmd_size = sizeof(struct iwl_tx_cmd);
+	unsigned int txcmd_align = 128;
 	int ret;
 
+	txcmd_size += sizeof(struct iwl_cmd_header);
+	txcmd_size += 36; /* biggest possible 802.11 header */
+
+	/* Ensure device TX cmd cannot reach/cross a page boundary */
+	if (WARN_ON(txcmd_size >= txcmd_align))
+		return -EINVAL;
+
 	iwl_trans = iwl_trans_alloc(sizeof(struct iwl_pcie_gen3),
-				    &pdev->dev, mac_cfg);
+				    &pdev->dev, mac_cfg, txcmd_size, txcmd_align);
 	if (!iwl_trans)
 		return -EINVAL;
 
@@ -95,10 +104,6 @@ int iwl_pci_gen3_probe(struct pci_dev *pdev,
 	/* TODO: iwl_pcie_prepare_card_hw */
 
 	iwl_dbg_tlv_init(iwl_trans);
-
-	ret = iwl_trans_init(iwl_trans, sizeof(struct iwl_tx_cmd), 128);
-	if (ret)
-		goto out_free_trans;
 
 	pci_set_drvdata(pdev, iwl_trans);
 
