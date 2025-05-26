@@ -7,7 +7,6 @@
 
 #define HANDLE_ESR_REASONS(HOW)		\
 	HOW(BLOCKED_PREVENTION)		\
-	HOW(BLOCKED_WOWLAN)		\
 	HOW(EXIT_MISSED_BEACON)
 
 static const char *const iwl_mvm_esr_states_names[] = {
@@ -830,32 +829,6 @@ void iwl_mvm_block_esr(struct iwl_mvm *mvm, struct ieee80211_vif *vif,
 	iwl_mvm_print_esr_state(mvm, mvmvif->esr_disable_reason);
 
 	iwl_mvm_exit_esr(mvm, vif, reason, link_to_keep);
-}
-
-int iwl_mvm_block_esr_sync(struct iwl_mvm *mvm, struct ieee80211_vif *vif,
-			   enum iwl_mvm_esr_state reason)
-{
-	int primary_link = iwl_mvm_get_primary_link(vif);
-	int ret;
-
-	if (!IWL_MVM_AUTO_EML_ENABLE || !ieee80211_vif_is_mld(vif))
-		return 0;
-
-	/* This should be called only with blocking reasons */
-	if (WARN_ON(!(reason & IWL_MVM_BLOCK_ESR_REASONS)))
-		return 0;
-
-	/* leave ESR immediately, not only async with iwl_mvm_block_esr() */
-	ret = ieee80211_set_active_links(vif, BIT(primary_link));
-	if (ret)
-		return ret;
-
-	mutex_lock(&mvm->mutex);
-	/* only additionally block for consistency and to avoid concurrency */
-	iwl_mvm_block_esr(mvm, vif, reason, primary_link);
-	mutex_unlock(&mvm->mutex);
-
-	return 0;
 }
 
 static void iwl_mvm_esr_unblocked(struct iwl_mvm *mvm,
