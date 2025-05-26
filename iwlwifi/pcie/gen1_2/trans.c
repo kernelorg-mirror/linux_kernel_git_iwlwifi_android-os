@@ -4162,6 +4162,9 @@ int iwl_pci_gen1_2_probe(struct pci_dev *pdev,
 	unsigned int txcmd_size, txcmd_align;
 	int ret;
 
+#if IS_ENABLED(CPTCFG_IWLMVM)
+#endif
+
 	iwl_trans = iwl_trans_pcie_alloc(pdev, trans, &info, hw_base);
 	if (IS_ERR(iwl_trans))
 		return PTR_ERR(iwl_trans);
@@ -4225,7 +4228,6 @@ int iwl_pci_gen1_2_probe(struct pci_dev *pdev,
 	}
 
 #if IS_ENABLED(CPTCFG_IWLMVM)
-
 	/*
 	 * special-case 7265D, it has the same PCI IDs.
 	 *
