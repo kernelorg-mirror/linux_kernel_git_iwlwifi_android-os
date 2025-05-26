@@ -53,19 +53,6 @@ int iwl_pci_gen3_probe(struct pci_dev *pdev,
 	struct iwl_trans *iwl_trans;
 	int ret;
 
-	ret = dma_set_mask_and_coherent(&pdev->dev, DMA_BIT_MASK(64));
-	if (ret) {
-		ret = dma_set_mask_and_coherent(&pdev->dev, DMA_BIT_MASK(32));
-		/* both attempts failed: */
-		if (ret) {
-			dev_err(&pdev->dev, "No suitable DMA available\n");
-			return ret;
-		}
-	}
-
-	/* TODO: make sure this is still needed. task=cfg */
-	pci_write_config_byte(pdev, PCI_CFG_RETRY_TIMEOUT, 0x00);
-
 	iwl_trans = iwl_trans_alloc(sizeof(struct iwl_pcie_gen3),
 				    &pdev->dev, mac_cfg);
 	if (!iwl_trans)
@@ -74,6 +61,19 @@ int iwl_pci_gen3_probe(struct pci_dev *pdev,
 	ret = iwl_construct_pcie_gen3(pdev, iwl_trans, hw_base);
 	if (ret)
 		goto out_free_trans;
+
+	ret = dma_set_mask_and_coherent(&pdev->dev, DMA_BIT_MASK(64));
+	if (ret) {
+		ret = dma_set_mask_and_coherent(&pdev->dev, DMA_BIT_MASK(32));
+		/* both attempts failed: */
+		if (ret) {
+			dev_err(&pdev->dev, "No suitable DMA available\n");
+			goto out_free_trans;
+		}
+	}
+
+	/* TODO: make sure this is still needed. task=cfg */
+	pci_write_config_byte(pdev, PCI_CFG_RETRY_TIMEOUT, 0x00);
 
 	/* TODO: Handle info */
 	/* TODO: assign and allocate txqs parameters (tfd, cmd, tso, bc) */
