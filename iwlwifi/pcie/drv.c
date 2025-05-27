@@ -391,8 +391,10 @@ EXPORT_SYMBOL_IF_IWLWIFI_KUNIT(iwl_hw_card_ids);
 				.subdevice_m_h = _HIGHEST_BIT(m)
 #define RF_TYPE(n)		.match_rf_type = 1,			\
 				.rf_type = IWL_CFG_RF_TYPE_##n
-#define RF_STEP(n)		.match_rf_step = 1,			\
-				.rf_step = SILICON_##n##_STEP
+#define DISCRETE		.match_discrete = 1,			\
+				.discrete = 1
+#define INTEGRATED		.match_discrete = 1,			\
+				.discrete = 0
 #define RF_ID(n)		.match_rf_id = 1,			\
 				.rf_id = IWL_CFG_RF_ID_##n
 #define NO_CDB			.match_cdb = 1, .cdb = 0
@@ -643,9 +645,8 @@ VISIBLE_IF_IWLWIFI_KUNIT const struct iwl_dev_info iwl_dev_info_table[] = {
 /* FM RF */
 	IWL_DEV_INFO(iwl_rf_fm, iwl_be201_name, RF_TYPE(FM)),
 	IWL_DEV_INFO(iwl_rf_fm, iwl_be401_name, RF_TYPE(FM), CDB),
-	/* the discrete NICs got the RF B0, it's only for the name anyway */
 	IWL_DEV_INFO(iwl_rf_fm, iwl_be200_name, RF_TYPE(FM),
-		     DEVICE(0x272B), RF_STEP(B)),
+		     DEVICE(0x272B), DISCRETE),
 	IWL_DEV_INFO(iwl_rf_fm_160mhz, iwl_be202_name,
 		     RF_TYPE(FM), BW_LIMITED),
 
@@ -685,7 +686,7 @@ EXPORT_SYMBOL_IF_IWLWIFI_KUNIT(iwl_dev_info_table);
 
 const struct iwl_dev_info *
 iwl_pci_find_dev_info(u16 device, u16 subsystem_device, u16 rf_type, u8 cdb,
-		      u8 rf_id, u8 bw_limit, u8 rf_step)
+		      u8 rf_id, u8 bw_limit, bool discrete)
 {
 	int i;
 
@@ -719,7 +720,7 @@ iwl_pci_find_dev_info(u16 device, u16 subsystem_device, u16 rf_type, u8 cdb,
 		if (dev_info->match_bw_limit && dev_info->bw_limit != bw_limit)
 			continue;
 
-		if (dev_info->match_rf_step && dev_info->rf_step != rf_step)
+		if (dev_info->match_discrete && dev_info->discrete != discrete)
 			continue;
 
 		return dev_info;
