@@ -630,16 +630,6 @@ static void iwl_mvm_update_link_sig(struct ieee80211_vif *vif, int sig,
 			sig,
 			GFP_KERNEL);
 	}
-
-	/* ESR recalculation */
-	if (!vif->cfg.assoc || !ieee80211_vif_is_mld(vif))
-		return;
-
-	/* We're not in EMLSR and our signal is bad, try to switch link maybe */
-	if (sig < IWL_MVM_LOW_RSSI_MLO_SCAN_THRESH && !mvmvif->esr_active) {
-		iwl_mvm_int_mlo_scan(mvm, vif);
-		return;
-	}
 }
 
 static void iwl_mvm_stat_iterator(void *_data, u8 *mac,
