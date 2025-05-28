@@ -6,7 +6,6 @@
 #include "time-event.h"
 
 #define HANDLE_ESR_REASONS(HOW)		\
-	HOW(BLOCKED_PREVENTION)		\
 	HOW(EXIT_MISSED_BEACON)
 
 static const char *const iwl_mvm_esr_states_names[] = {
@@ -691,62 +690,6 @@ u8 iwl_mvm_get_other_link(struct ieee80211_vif *vif, u8 link_id)
 	}
 }
 
-/* Reasons that can cause esr prevention */
-#define IWL_MVM_ESR_PREVENT_REASONS	IWL_MVM_ESR_EXIT_MISSED_BEACON
-#define IWL_MVM_PREVENT_ESR_TIMEOUT	(HZ * 400)
-#define IWL_MVM_ESR_PREVENT_SHORT	(HZ * 300)
-#define IWL_MVM_ESR_PREVENT_LONG	(HZ * 600)
-
-static bool iwl_mvm_check_esr_prevention(struct iwl_mvm *mvm,
-					 struct iwl_mvm_vif *mvmvif,
-					 enum iwl_mvm_esr_state reason)
-{
-	bool timeout_expired = time_after(jiffies,
-					  mvmvif->last_esr_exit.ts +
-					  IWL_MVM_PREVENT_ESR_TIMEOUT);
-	unsigned long delay;
-
-	lockdep_assert_held(&mvm->mutex);
-
-	/* Only handle reasons that can cause prevention */
-	if (!(reason & IWL_MVM_ESR_PREVENT_REASONS))
-		return false;
-
-	/*
-	 * Reset the counter if more than 400 seconds have passed between one
-	 * exit and the other, or if we exited due to a different reason.
-	 * Will also reset the counter after the long prevention is done.
-	 */
-	if (timeout_expired || mvmvif->last_esr_exit.reason != reason) {
-		mvmvif->exit_same_reason_count = 1;
-		return false;
-	}
-
-	mvmvif->exit_same_reason_count++;
-	if (WARN_ON(mvmvif->exit_same_reason_count < 2 ||
-		    mvmvif->exit_same_reason_count > 3))
-		return false;
-
-	mvmvif->esr_disable_reason |= IWL_MVM_ESR_BLOCKED_PREVENTION;
-
-	/*
-	 * For the second exit, use a short prevention, and for the third one,
-	 * use a long prevention.
-	 */
-	delay = mvmvif->exit_same_reason_count == 2 ?
-		IWL_MVM_ESR_PREVENT_SHORT :
-		IWL_MVM_ESR_PREVENT_LONG;
-
-	IWL_DEBUG_INFO(mvm,
-		       "Preventing EMLSR for %ld seconds due to %u exits with the reason = %s (0x%x)\n",
-		       delay / HZ, mvmvif->exit_same_reason_count,
-		       iwl_get_esr_state_string(reason), reason);
-
-	wiphy_delayed_work_queue(mvm->hw->wiphy,
-				 &mvmvif->prevent_esr_done_wk, delay);
-	return true;
-}
-
 #define IWL_MVM_TRIGGER_LINK_SEL_TIME (IWL_MVM_TRIGGER_LINK_SEL_TIME_SEC * HZ)
 
 /* API to exit eSR mode */
@@ -756,7 +699,6 @@ void iwl_mvm_exit_esr(struct iwl_mvm *mvm, struct ieee80211_vif *vif,
 {
 	struct iwl_mvm_vif *mvmvif = iwl_mvm_vif_from_mac80211(vif);
 	u16 new_active_links;
-	bool prevented;
 
 	lockdep_assert_held(&mvm->mutex);
 
@@ -781,19 +723,15 @@ void iwl_mvm_exit_esr(struct iwl_mvm *mvm, struct ieee80211_vif *vif,
 
 	ieee80211_set_active_links_async(vif, new_active_links);
 
-	/* Prevent EMLSR if needed */
-	prevented = iwl_mvm_check_esr_prevention(mvm, mvmvif, reason);
-
 	/* Remember why and when we exited EMLSR */
 	mvmvif->last_esr_exit.ts = jiffies;
 	mvmvif->last_esr_exit.reason = reason;
 
 	/*
-	 * If EMLSR is prevented now - don't try to get back to EMLSR.
 	 * If we exited due to a blocking event, we will try to get back to
 	 * EMLSR when the corresponding unblocking event will happen.
 	 */
-	if (prevented || reason & IWL_MVM_BLOCK_ESR_REASONS)
+	if (reason & IWL_MVM_BLOCK_ESR_REASONS)
 		return;
 
 	/* If EMLSR is not blocked - try enabling it again in 30 seconds */

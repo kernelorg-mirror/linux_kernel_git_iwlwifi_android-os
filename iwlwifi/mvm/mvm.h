@@ -363,12 +363,9 @@ struct iwl_mvm_vif_link_info {
  *
  * Note: new reasons shall be added to HANDLE_ESR_REASONS as well (for logs)
  *
- * @IWL_MVM_ESR_BLOCKED_PREVENTION: Prevent EMLSR to avoid entering and exiting
- *	in a loop.
  * @IWL_MVM_ESR_EXIT_MISSED_BEACON: exited EMLSR due to missed beacons
  */
 enum iwl_mvm_esr_state {
-	IWL_MVM_ESR_BLOCKED_PREVENTION	= 0x1,
 	IWL_MVM_ESR_EXIT_MISSED_BEACON	= 0x10000,
 };
 
@@ -433,7 +430,6 @@ struct iwl_mvm_esr_exit {
  * @exit_same_reason_count: The number of times we exited due to the specified
  *	@last_esr_exit::reason, only counting exits due to
  *	&IWL_MVM_ESR_PREVENT_REASONS.
- * @prevent_esr_done_wk: work that should be done when esr prevention ends.
  * @mlo_int_scan_wk: work for the internal MLO scan.
  * @roc_activity: currently running ROC activity for this vif (or
  *	ROC_NUM_ACTIVITIES if no activity is running).
@@ -568,7 +564,6 @@ struct iwl_mvm_vif {
 	u8 primary_link;
 	struct iwl_mvm_esr_exit last_esr_exit;
 	u8 exit_same_reason_count;
-	struct wiphy_delayed_work prevent_esr_done_wk;
 	struct wiphy_delayed_work mlo_int_scan_wk;
 
 	struct iwl_mvm_vif_link_info deflink;

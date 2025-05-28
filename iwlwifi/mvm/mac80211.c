@@ -1773,19 +1773,6 @@ static int iwl_mvm_alloc_bcast_mcast_sta(struct iwl_mvm *mvm,
 					IWL_STA_MULTICAST);
 }
 
-static void iwl_mvm_prevent_esr_done_wk(struct wiphy *wiphy,
-					struct wiphy_work *wk)
-{
-	struct iwl_mvm_vif *mvmvif =
-		container_of(wk, struct iwl_mvm_vif, prevent_esr_done_wk.work);
-	struct iwl_mvm *mvm = mvmvif->mvm;
-	struct ieee80211_vif *vif =
-		container_of((void *)mvmvif, struct ieee80211_vif, drv_priv);
-
-	guard(mvm)(mvm);
-	iwl_mvm_unblock_esr(mvm, vif, IWL_MVM_ESR_BLOCKED_PREVENTION);
-}
-
 static void iwl_mvm_mlo_int_scan_wk(struct wiphy *wiphy, struct wiphy_work *wk)
 {
 	struct iwl_mvm_vif *mvmvif = container_of(wk, struct iwl_mvm_vif,
@@ -1808,9 +1795,6 @@ void iwl_mvm_mac_init_mvmvif(struct iwl_mvm *mvm, struct iwl_mvm_vif *mvmvif)
 
 	INIT_DELAYED_WORK(&mvmvif->csa_work,
 			  iwl_mvm_channel_switch_disconnect_wk);
-
-	wiphy_delayed_work_init(&mvmvif->prevent_esr_done_wk,
-				iwl_mvm_prevent_esr_done_wk);
 
 	wiphy_delayed_work_init(&mvmvif->mlo_int_scan_wk,
 				iwl_mvm_mlo_int_scan_wk);
@@ -1950,9 +1934,6 @@ void iwl_mvm_prepare_mac_removal(struct iwl_mvm *mvm,
 		 */
 		flush_work(&mvm->roc_done_wk);
 	}
-
-	wiphy_delayed_work_cancel(mvm->hw->wiphy,
-				  &mvmvif->prevent_esr_done_wk);
 
 	wiphy_delayed_work_cancel(mvm->hw->wiphy,
 				  &mvmvif->mlo_int_scan_wk);
@@ -4098,9 +4079,6 @@ iwl_mvm_sta_state_authorized_to_assoc(struct iwl_mvm *mvm,
 
 		/* disable beacon filtering */
 		iwl_mvm_disable_beacon_filter(mvm, vif);
-
-		wiphy_delayed_work_cancel(mvm->hw->wiphy,
-					  &mvmvif->prevent_esr_done_wk);
 
 		wiphy_delayed_work_cancel(mvm->hw->wiphy,
 					  &mvmvif->mlo_int_scan_wk);
