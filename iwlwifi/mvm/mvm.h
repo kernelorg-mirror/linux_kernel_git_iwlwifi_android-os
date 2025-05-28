@@ -418,7 +418,6 @@ struct iwl_mvm_esr_exit {
  * @deflink: default link data for use in non-MLO
  * @link: link data for each link in MLO
  * @esr_active: indicates eSR mode is active
- * @esr_disable_reason: a bitmap of &enum iwl_mvm_esr_state
  * @pm_enabled: indicates powersave is enabled
  * @link_selection_res: bitmap of active links as it was decided in the last
  *	link selection. Valid only for a MLO vif after assoc. 0 if there wasn't
@@ -486,7 +485,6 @@ struct iwl_mvm_vif {
 	u8 authorized:1;
 	bool ps_disabled;
 
-	u32 esr_disable_reason;
 	u32 ap_beacon_time;
 	bool bf_enabled;
 	bool ba_enabled;
@@ -3037,11 +3035,6 @@ int iwl_mvm_roc_add_cmd(struct iwl_mvm *mvm,
 
 /* EMLSR */
 bool iwl_mvm_vif_has_esr_cap(struct iwl_mvm *mvm, struct ieee80211_vif *vif);
-void iwl_mvm_block_esr(struct iwl_mvm *mvm, struct ieee80211_vif *vif,
-		       enum iwl_mvm_esr_state reason,
-		       u8 link_to_keep);
-void iwl_mvm_unblock_esr(struct iwl_mvm *mvm, struct ieee80211_vif *vif,
-			 enum iwl_mvm_esr_state reason);
 void iwl_mvm_exit_esr(struct iwl_mvm *mvm, struct ieee80211_vif *vif,
 		      enum iwl_mvm_esr_state reason,
 		      u8 link_to_keep);
