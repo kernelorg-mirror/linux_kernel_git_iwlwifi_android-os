@@ -354,37 +354,6 @@ struct iwl_mvm_vif_link_info {
 };
 
 /**
- * enum iwl_mvm_esr_state - defines reasons for which the EMLSR is exited or
- * blocked.
- * The low 16 bits are used for blocking reasons, and the 16 higher bits
- * are used for exit reasons.
- * For the blocking reasons - use iwl_mvm_(un)block_esr(), and for the exit
- * reasons - use iwl_mvm_exit_esr().
- *
- * Note: new reasons shall be added to HANDLE_ESR_REASONS as well (for logs)
- *
- * @IWL_MVM_ESR_EXIT_MISSED_BEACON: exited EMLSR due to missed beacons
- */
-enum iwl_mvm_esr_state {
-	IWL_MVM_ESR_EXIT_MISSED_BEACON	= 0x10000,
-};
-
-#define IWL_MVM_BLOCK_ESR_REASONS 0xffff
-
-const char *iwl_get_esr_state_string(enum iwl_mvm_esr_state state);
-
-/**
- * struct iwl_mvm_esr_exit - details of the last exit from EMLSR mode.
- * @reason: The reason for the last exit from EMLSR.
- *	&iwl_mvm_prevent_esr_reasons. Will be 0 before exiting EMLSR.
- * @ts: the time stamp of the last time we existed EMLSR.
- */
-struct iwl_mvm_esr_exit {
-	unsigned long ts;
-	enum iwl_mvm_esr_state reason;
-};
-
-/**
  * struct iwl_mvm_vif - data per Virtual Interface, it is a MAC context
  * @mvm: pointer back to the mvm struct
  * @id: between 0 and 3
@@ -425,10 +394,6 @@ struct iwl_mvm_esr_exit {
  * @link_selection_primary: primary link selected by link selection
  * @primary_link: primary link in eSR. Valid only for an associated MLD vif,
  *	and in eSR mode. Valid only for a STA.
- * @last_esr_exit: Details of the last exit from EMLSR.
- * @exit_same_reason_count: The number of times we exited due to the specified
- *	@last_esr_exit::reason, only counting exits due to
- *	&IWL_MVM_ESR_PREVENT_REASONS.
  * @mlo_int_scan_wk: work for the internal MLO scan.
  * @roc_activity: currently running ROC activity for this vif (or
  *	ROC_NUM_ACTIVITIES if no activity is running).
@@ -560,8 +525,6 @@ struct iwl_mvm_vif {
 	u16 link_selection_res;
 	u8 link_selection_primary;
 	u8 primary_link;
-	struct iwl_mvm_esr_exit last_esr_exit;
-	u8 exit_same_reason_count;
 	struct wiphy_delayed_work mlo_int_scan_wk;
 
 	struct iwl_mvm_vif_link_info deflink;
@@ -2126,7 +2089,6 @@ int iwl_mvm_disable_link(struct iwl_mvm *mvm, struct ieee80211_vif *vif,
 
 void iwl_mvm_select_links(struct iwl_mvm *mvm, struct ieee80211_vif *vif);
 u8 iwl_mvm_get_primary_link(struct ieee80211_vif *vif);
-u8 iwl_mvm_get_other_link(struct ieee80211_vif *vif, u8 link_id);
 
 struct iwl_mvm_link_sel_data {
 	u8 link_id;
@@ -3035,9 +2997,6 @@ int iwl_mvm_roc_add_cmd(struct iwl_mvm *mvm,
 
 /* EMLSR */
 bool iwl_mvm_vif_has_esr_cap(struct iwl_mvm *mvm, struct ieee80211_vif *vif);
-void iwl_mvm_exit_esr(struct iwl_mvm *mvm, struct ieee80211_vif *vif,
-		      enum iwl_mvm_esr_state reason,
-		      u8 link_to_keep);
 void
 iwl_mvm_send_ap_tx_power_constraint_cmd(struct iwl_mvm *mvm,
 					struct ieee80211_vif *vif,

@@ -4023,9 +4023,6 @@ iwl_mvm_sta_state_assoc_to_authorized(struct iwl_mvm *mvm,
 		callbacks->mac_ctxt_changed(mvm, vif, false);
 		iwl_mvm_mei_host_associated(mvm, vif, mvm_sta);
 
-		memset(&mvmvif->last_esr_exit, 0,
-		       sizeof(mvmvif->last_esr_exit));
-
 		/* when client is authorized (AP station marked as such),
 		 * try to enable the best link(s).
 		 */

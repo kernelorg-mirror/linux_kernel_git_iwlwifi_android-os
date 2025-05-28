@@ -5,25 +5,6 @@
 #include "mvm.h"
 #include "time-event.h"
 
-#define HANDLE_ESR_REASONS(HOW)		\
-	HOW(EXIT_MISSED_BEACON)
-
-static const char *const iwl_mvm_esr_states_names[] = {
-#define NAME_ENTRY(x) [ilog2(IWL_MVM_ESR_##x)] = #x,
-	HANDLE_ESR_REASONS(NAME_ENTRY)
-};
-
-const char *iwl_get_esr_state_string(enum iwl_mvm_esr_state state)
-{
-	int offs = ilog2(state);
-
-	if (offs >= ARRAY_SIZE(iwl_mvm_esr_states_names) ||
-	    !iwl_mvm_esr_states_names[offs])
-		return "UNKNOWN";
-
-	return iwl_mvm_esr_states_names[offs];
-}
-
 static int iwl_mvm_link_cmd_send(struct iwl_mvm *mvm,
 				 struct iwl_link_config_cmd *cmd,
 				 enum iwl_ctxt_action action)
@@ -656,75 +637,6 @@ u8 iwl_mvm_get_primary_link(struct ieee80211_vif *vif)
 		return mvmvif->primary_link;
 
 	return __ffs(vif->active_links);
-}
-
-/*
- * For non-MLO/single link, this will return the deflink/single active link,
- * respectively
- */
-u8 iwl_mvm_get_other_link(struct ieee80211_vif *vif, u8 link_id)
-{
-	switch (hweight16(vif->active_links)) {
-	case 0:
-		return 0;
-	default:
-		WARN_ON(1);
-		fallthrough;
-	case 1:
-		return __ffs(vif->active_links);
-	case 2:
-		return __ffs(vif->active_links & ~BIT(link_id));
-	}
-}
-
-#define IWL_MVM_TRIGGER_LINK_SEL_TIME (IWL_MVM_TRIGGER_LINK_SEL_TIME_SEC * HZ)
-
-/* API to exit eSR mode */
-void iwl_mvm_exit_esr(struct iwl_mvm *mvm, struct ieee80211_vif *vif,
-		      enum iwl_mvm_esr_state reason,
-		      u8 link_to_keep)
-{
-	struct iwl_mvm_vif *mvmvif = iwl_mvm_vif_from_mac80211(vif);
-	u16 new_active_links;
-
-	lockdep_assert_held(&mvm->mutex);
-
-	if (!IWL_MVM_AUTO_EML_ENABLE)
-		return;
-
-	/* Nothing to do */
-	if (!mvmvif->esr_active)
-		return;
-
-	if (WARN_ON(!ieee80211_vif_is_mld(vif) || !mvmvif->authorized))
-		return;
-
-	if (WARN_ON(!(vif->active_links & BIT(link_to_keep))))
-		link_to_keep = __ffs(vif->active_links);
-
-	new_active_links = BIT(link_to_keep);
-	IWL_DEBUG_INFO(mvm,
-		       "Exiting EMLSR. reason = %s (0x%x). Current active links=0x%x, new active links = 0x%x\n",
-		       iwl_get_esr_state_string(reason), reason,
-		       vif->active_links, new_active_links);
-
-	ieee80211_set_active_links_async(vif, new_active_links);
-
-	/* Remember why and when we exited EMLSR */
-	mvmvif->last_esr_exit.ts = jiffies;
-	mvmvif->last_esr_exit.reason = reason;
-
-	/*
-	 * If we exited due to a blocking event, we will try to get back to
-	 * EMLSR when the corresponding unblocking event will happen.
-	 */
-	if (reason & IWL_MVM_BLOCK_ESR_REASONS)
-		return;
-
-	/* If EMLSR is not blocked - try enabling it again in 30 seconds */
-	wiphy_delayed_work_queue(mvm->hw->wiphy,
-				 &mvmvif->mlo_int_scan_wk,
-				 round_jiffies_relative(IWL_MVM_TRIGGER_LINK_SEL_TIME));
 }
 
 void iwl_mvm_init_link(struct iwl_mvm_vif_link_info *link)
