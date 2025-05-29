@@ -962,8 +962,6 @@ struct iwl_mvm {
 	/* For async rx handlers that require the wiphy lock */
 	struct wiphy_work async_handlers_wiphy_wk;
 
-	struct wiphy_work trig_link_selection_wk;
-
 	struct work_struct roc_done_wk;
 
 	unsigned long init_status;
@@ -2082,7 +2080,6 @@ int iwl_mvm_remove_link(struct iwl_mvm *mvm, struct ieee80211_vif *vif,
 int iwl_mvm_disable_link(struct iwl_mvm *mvm, struct ieee80211_vif *vif,
 			 struct ieee80211_bss_conf *link_conf);
 
-void iwl_mvm_select_links(struct iwl_mvm *mvm, struct ieee80211_vif *vif);
 u8 iwl_mvm_get_primary_link(struct ieee80211_vif *vif);
 
 struct iwl_mvm_link_sel_data {
