@@ -7,6 +7,8 @@
 
 #include "iwl-trans.h"
 #include "pcie/utils.h"
+#include <linux/pci.h>
+#include "interrupts.h"
 
 /**
  * struct iwl_pcie_gen3 - Generation 3 PCIe transport specific data
@@ -16,6 +18,7 @@
  * @pci_dev: basic pci-network driver stuff
  * @reg_lock: protect hw register access
  * @hw_base: PCI hardware address
+ * @msix: msix related data
  */
 struct iwl_pcie_gen3 {
 	struct iwl_trans *trans;
@@ -26,6 +29,8 @@ struct iwl_pcie_gen3 {
 	spinlock_t reg_lock;
 
 	u8 __iomem *hw_base;
+
+	struct iwl_msix msix;
 };
 
 int iwl_pci_gen3_probe(struct pci_dev *pdev,

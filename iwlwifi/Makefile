@@ -29,7 +29,7 @@ iwlwifi-$(CPTCFG_IWLWIFI_DEBUGFS) += fw/debugfs.o
 iwlwifi-$(CONFIG_PCI) += pcie/ctxt-info.o pcie/ctxt-info-v2.o pcie/drv.o pcie/utils.o
 iwlwifi-$(CONFIG_PCI) += pcie/gen1_2/rx.o pcie/gen1_2/tx.o pcie/gen1_2/trans.o
 iwlwifi-$(CONFIG_PCI) += pcie/gen1_2/trans-gen2.o pcie/gen1_2/tx-gen2.o
-iwlwifi-$(CONFIG_PCI) += pcie/gen3/trans.o
+iwlwifi-$(CONFIG_PCI) += pcie/gen3/trans.o pcie/gen3/interrupts.o
 
 CFLAGS_pcie/drv.o += -Wno-override-init
 

@@ -3,15 +3,17 @@
  * Copyright (C) 2025 Intel Corporation
  */
 
-#include <linux/pci.h>
 
 #include "fw/api/tx.h"
 #include "trans.h"
+#include "interrupts.h"
+#include "iwl-debug.h"
 
 static int
 iwl_construct_pcie_gen3(struct pci_dev *pdev,
 			struct iwl_trans *iwl_trans,
-			u8 __iomem *hw_base)
+			u8 __iomem *hw_base,
+			struct iwl_trans_info *info)
 {
 	struct iwl_pcie_gen3 *trans_pcie, **priv;
 
@@ -56,6 +58,7 @@ int iwl_pci_gen3_probe(struct pci_dev *pdev,
 	struct iwl_trans *iwl_trans;
 	unsigned int txcmd_size = sizeof(struct iwl_tx_cmd);
 	unsigned int txcmd_align = 128;
+	struct iwl_trans_info info = {};
 	int ret;
 
 	txcmd_size += sizeof(struct iwl_cmd_header);
@@ -70,7 +73,11 @@ int iwl_pci_gen3_probe(struct pci_dev *pdev,
 	if (!iwl_trans)
 		return -EINVAL;
 
-	ret = iwl_construct_pcie_gen3(pdev, iwl_trans, hw_base);
+	ret = iwl_construct_pcie_gen3(pdev, iwl_trans, hw_base, &info);
+	if (ret)
+		goto out_free_trans;
+
+	ret = iwl_pcie_alloc_msix_irqs(pdev, iwl_trans, &info);
 	if (ret)
 		goto out_free_trans;
 
@@ -87,13 +94,13 @@ int iwl_pci_gen3_probe(struct pci_dev *pdev,
 	/* TODO: make sure this is still needed. task=cfg */
 	pci_write_config_byte(pdev, PCI_CFG_RETRY_TIMEOUT, 0x00);
 
-	/* TODO: Handle info */
+	iwl_trans_set_info(iwl_trans, &info);
+
 	/* TODO: assign and allocate txqs parameters (tfd, cmd, tso, bc) */
 	/* TODO: max_skb_frags to iwl_trans */
 	/* TODO: init rx */
 	/* TODO: unset debug_rfkill */
 	/* TODO: read hw_rev and step */
-	/* TODO: set interrupt capa */
 	/* TODO: alloc invalid tx cmd */
 	/* TODO: init msix handler */
 	/* TODO: debugfs state and fw continuous recording data */
