@@ -2,6 +2,8 @@
 /*
  * Copyright (C) 2025 Intel Corporation
  */
+#ifndef __iwl_trans_pcie_gen3_h__
+#define __iwl_trans_pcie_gen3_h__
 
 #include "iwl-trans.h"
 
@@ -36,3 +38,5 @@ IWL_GET_PCIE_GEN3(struct iwl_trans *trans)
 
 /* PCI registers */
 #define PCI_CFG_RETRY_TIMEOUT	0x041
+
+#endif /* __iwl_trans_pcie_gen3_h__ */
