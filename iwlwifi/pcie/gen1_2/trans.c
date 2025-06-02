@@ -4180,8 +4180,8 @@ static void iwl_pcie_check_me_status(struct iwl_trans *trans)
 
 int iwl_pci_gen1_2_probe(struct pci_dev *pdev,
 			 const struct pci_device_id *ent,
-			 const struct iwl_mac_cfg *trans, u8 __iomem *hw_base,
-			 u32 hw_rev)
+			 const struct iwl_mac_cfg *mac_cfg,
+			 u8 __iomem *hw_base, u32 hw_rev)
 {
 	const struct iwl_dev_info *dev_info;
 	struct iwl_trans_info info = {
@@ -4195,7 +4195,7 @@ int iwl_pci_gen1_2_probe(struct pci_dev *pdev,
 #if IS_ENABLED(CPTCFG_IWLMVM)
 #endif
 
-	iwl_trans = iwl_trans_pcie_alloc(pdev, trans, &info, hw_base);
+	iwl_trans = iwl_trans_pcie_alloc(pdev, mac_cfg, &info, hw_base);
 	if (IS_ERR(iwl_trans))
 		return PTR_ERR(iwl_trans);
 
