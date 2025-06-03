@@ -63,12 +63,6 @@ int iwl_poll_bits_mask(struct iwl_trans *trans, u32 addr,
 }
 IWL_EXPORT_SYMBOL(iwl_poll_bits_mask);
 
-int iwl_poll_bits(struct iwl_trans *trans, u32 addr, u32 mask, int timeout)
-{
-	return iwl_poll_bits_mask(trans, addr, mask, mask, timeout);
-}
-IWL_EXPORT_SYMBOL(iwl_poll_bits);
-
 u32 iwl_read_direct32(struct iwl_trans *trans, u32 reg)
 {
 	if (iwl_trans_grab_nic_access(trans)) {
