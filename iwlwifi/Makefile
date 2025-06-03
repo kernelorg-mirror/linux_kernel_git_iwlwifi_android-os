@@ -37,6 +37,7 @@ iwlwifi-$(CPTCFG_IWLMVM) += cfg/7000.o cfg/8000.o
 # MAC configurations
 iwlwifi-$(CPTCFG_IWLMVM) += cfg/9000.o cfg/22000.o
 iwlwifi-$(CPTCFG_IWLMVM) += cfg/ax210.o
+iwlwifi-$(CPTCFG_IWLMVM) += cfg/bz.o cfg/sc.o
 iwlwifi-$(CPTCFG_IWLMLD) += cfg/bz.o cfg/sc.o cfg/dr.o
 # RF configurations
 iwlwifi-$(CPTCFG_IWLMVM) += cfg/rf-jf.o cfg/rf-hr.o cfg/rf-gf.o
