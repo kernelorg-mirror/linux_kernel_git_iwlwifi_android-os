@@ -356,6 +356,8 @@ CMD_VERSIONS(time_sync_confirm_notif,
 CMD_VERSIONS(omi_status_notif,
 	     CMD_VER_ENTRY(1, iwl_omi_send_status_notif))
 CMD_VERSIONS(ftm_resp_notif, CMD_VER_ENTRY(10, iwl_tof_range_rsp_ntfy))
+CMD_VERSIONS(nan_cluster_notif, CMD_VER_ENTRY(1, iwl_nan_cluster_notif))
+CMD_VERSIONS(nan_dw_end_notif, CMD_VER_ENTRY(1, iwl_nan_dw_end_notif))
 
 DEFINE_SIMPLE_CANCELLATION(session_prot, iwl_session_prot_notif, mac_link_id)
 DEFINE_SIMPLE_CANCELLATION(tlc, iwl_tlc_update_notif, sta_id)
@@ -475,6 +477,10 @@ const struct iwl_rx_handler iwl_mld_rx_handlers[] = {
 			      ftm_resp_notif)
 	RX_HANDLER_NO_VAL(LOCATION_GROUP, TOF_LC_NOTIF, lci_civic_notif,
 			  RX_HANDLER_ASYNC)
+	RX_HANDLER_NO_OBJECT(MAC_CONF_GROUP, NAN_JOINED_CLUSTER_NOTIF,
+			     nan_cluster_notif, RX_HANDLER_ASYNC)
+	RX_HANDLER_NO_OBJECT(MAC_CONF_GROUP, NAN_DW_END_NOTIF,
+			     nan_dw_end_notif, RX_HANDLER_ASYNC)
 };
 EXPORT_SYMBOL_IF_IWLWIFI_KUNIT(iwl_mld_rx_handlers);
 

@@ -37,6 +37,7 @@
 #include "time_sync.h"
 #include "ftm-initiator.h"
 #include "ftm-responder.h"
+#include "nan.h"
 
 /**
  * DOC: Introduction
@@ -195,6 +196,7 @@
  * @ftm_initiator: FTM initiator data
  * @ftm_responder: FTM responder data
  * @last_bt_notif: last received BT Coex notif
+ * @nan_device_vif: points to the NAN device vif if exists
  */
 struct iwl_mld {
 	/* Add here fields that need clean up on restart */
@@ -220,6 +222,7 @@ struct iwl_mld {
 #endif /* CONFIG_PM_SLEEP */
 		struct ieee80211_vif *p2p_device_vif;
 		struct iwl_bt_coex_profile_notif last_bt_notif;
+		struct ieee80211_vif *nan_device_vif;
 	);
 	struct ieee80211_link_sta __rcu *fw_id_to_link_sta[IWL_STATION_COUNT_MAX];
 	/* And here fields that survive a fw restart */

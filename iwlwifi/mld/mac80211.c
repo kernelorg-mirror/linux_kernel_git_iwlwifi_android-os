@@ -56,7 +56,12 @@
 	{							\
 		.max = 1,					\
 		.types = BIT(NL80211_IFTYPE_P2P_DEVICE),	\
-	}
+	},                                                      \
+	/* must be last - removed in non-NAN case */		\
+	{							\
+		.max = 1,					\
+		.types = BIT(NL80211_IFTYPE_NAN),		\
+	},
 
 static const struct ieee80211_iface_limit iwl_mld_limits[] = {
 	IWL_MLD_LIMITS(0)
@@ -72,11 +77,27 @@ iwl_mld_iface_combinations[] = {
 		.num_different_channels = 2,
 		.max_interfaces = 4,
 		.limits = iwl_mld_limits,
-		.n_limits = ARRAY_SIZE(iwl_mld_limits),
+		.n_limits = ARRAY_SIZE(iwl_mld_limits) - 1,
 	},
 	{
 		.num_different_channels = 1,
 		.max_interfaces = 4,
+		.limits = iwl_mld_limits_ap,
+		.n_limits = ARRAY_SIZE(iwl_mld_limits_ap) - 1,
+	},
+};
+
+static const struct ieee80211_iface_combination
+iwl_mld_iface_combinations_nan[] = {
+	{
+		.num_different_channels = 2,
+		.max_interfaces = 5,
+		.limits = iwl_mld_limits,
+		.n_limits = ARRAY_SIZE(iwl_mld_limits),
+	},
+	{
+		.num_different_channels = 1,
+		.max_interfaces = 5,
 		.limits = iwl_mld_limits_ap,
 		.n_limits = ARRAY_SIZE(iwl_mld_limits_ap),
 	},
@@ -366,8 +387,21 @@ static void iwl_mac_hw_set_wiphy(struct iwl_mld *mld)
 
 	wiphy->hw_timestamp_max_peers = 1;
 
-	wiphy->iface_combinations = iwl_mld_iface_combinations;
-	wiphy->n_iface_combinations = ARRAY_SIZE(iwl_mld_iface_combinations);
+	if (iwl_mld_nan_supported(mld)) {
+		hw->wiphy->interface_modes |= BIT(NL80211_IFTYPE_NAN);
+		hw->wiphy->iface_combinations = iwl_mld_iface_combinations_nan;
+		hw->wiphy->n_iface_combinations =
+			ARRAY_SIZE(iwl_mld_iface_combinations_nan);
+
+		hw->wiphy->nan_supported_bands = BIT(NL80211_BAND_2GHZ);
+		if (mld->nvm_data->bands[NL80211_BAND_5GHZ].n_channels)
+			hw->wiphy->nan_supported_bands |=
+				BIT(NL80211_BAND_5GHZ);
+	} else {
+		wiphy->iface_combinations = iwl_mld_iface_combinations;
+		wiphy->n_iface_combinations =
+			ARRAY_SIZE(iwl_mld_iface_combinations);
+	}
 
 	wiphy_ext_feature_set(wiphy, NL80211_EXT_FEATURE_VHT_IBSS);
 	wiphy_ext_feature_set(wiphy, NL80211_EXT_FEATURE_DFS_CONCURRENT);
@@ -732,10 +766,11 @@ int iwl_mld_mac80211_add_interface(struct ieee80211_hw *hw,
 	 * Add the default link, but not if this is an MLD vif as that implies
 	 * the HW is restarting and it will be configured by change_vif_links.
 	 */
-	if (!ieee80211_vif_is_mld(vif))
+	if (vif->type != NL80211_IFTYPE_NAN && !ieee80211_vif_is_mld(vif)) {
 		ret = iwl_mld_add_link(mld, &vif->bss_conf);
-	if (ret)
-		goto err;
+		if (ret)
+			goto err;
+	}
 
 	if (vif->type == NL80211_IFTYPE_STATION) {
 		vif->driver_flags |= IEEE80211_VIF_REMOVE_AP_AFTER_DISASSOC;
@@ -762,6 +797,9 @@ int iwl_mld_mac80211_add_interface(struct ieee80211_hw *hw,
 
 	if (vif->type == NL80211_IFTYPE_P2P_DEVICE)
 		mld->p2p_device_vif = vif;
+
+	if (vif->type == NL80211_IFTYPE_NAN)
+		mld->nan_device_vif = vif;
 
 	return 0;
 
@@ -790,7 +828,10 @@ void iwl_mld_mac80211_remove_interface(struct ieee80211_hw *hw,
 	if (vif->type == NL80211_IFTYPE_P2P_DEVICE)
 		mld->p2p_device_vif = NULL;
 
-	iwl_mld_remove_link(mld, &vif->bss_conf);
+	if (vif->type == NL80211_IFTYPE_NAN)
+		mld->nan_device_vif = NULL;
+	else
+		iwl_mld_remove_link(mld, &vif->bss_conf);
 
 #ifdef CPTCFG_IWLWIFI_DEBUGFS
 	debugfs_remove(iwl_mld_vif_from_mac80211(vif)->dbgfs_slink);
@@ -1701,6 +1742,9 @@ iwl_mld_mac80211_conf_tx(struct ieee80211_hw *hw,
 	struct iwl_mld_link *link;
 
 	lockdep_assert_wiphy(mld->wiphy);
+
+	if (vif->type == NL80211_IFTYPE_NAN)
+		return 0;
 
 	link = iwl_mld_link_dereference_check(mld_vif, link_id);
 	if (!link)
@@ -2891,4 +2935,8 @@ const struct ieee80211_ops iwl_mld_hw_ops = {
 	.start_pmsr = iwl_mld_start_pmsr,
 	.abort_pmsr = iwl_mld_abort_pmsr,
 	.can_neg_ttlm = iwl_mld_can_neg_ttlm,
+	.start_nan = iwl_mld_start_nan,
+	.stop_nan = iwl_mld_stop_nan,
+	.add_nan_func = iwl_mld_add_nan_func,
+	.del_nan_func = iwl_mld_del_nan_func,
 };

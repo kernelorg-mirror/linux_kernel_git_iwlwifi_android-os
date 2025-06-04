@@ -421,6 +421,7 @@ typedef unsigned int __bitwise iwl_ucode_tlv_capa_t;
  * @IWL_UCODE_TLV_CAPA_EXT_FSEQ_IMAGE_SUPPORT: external FSEQ image support
  * @IWL_UCODE_TLV_CAPA_RESTRICTED_TWT_SUPPORT: Supports restricted TWT operation
  * @IWL_UCODE_TLV_CAPA_TOF_320MHZ_SUPPORT: Supports 320 MHz ranging
+ * @IWL_UCODE_TLV_CAPA_NAN_SYNC_SUPPORT: Supports NAN synchronization
  *
  * @NUM_IWL_UCODE_TLV_CAPA: number of bits used
  */
@@ -536,7 +537,9 @@ enum iwl_ucode_tlv_capa {
 	 * @IWL_UCODE_TLV_CAPA_RESET_DURING_ASSERT: FW reset handshake is needed
 	 *	during assert handling even if the dump isn't split
 	 */
-	IWL_UCODE_TLV_CAPA_RESET_DURING_ASSERT		= (__force iwl_ucode_tlv_capa_t)(4 * 32 +  0),
+	IWL_UCODE_TLV_CAPA_RESET_DURING_ASSERT	= (__force iwl_ucode_tlv_capa_t)(4 * 32 + 0),
+	IWL_UCODE_TLV_CAPA_NAN_SYNC_SUPPORT	= (__force iwl_ucode_tlv_capa_t)(4 * 32 + 2),
+
 	NUM_IWL_UCODE_TLV_CAPA
 /*
  * This construction make both sparse (which cannot increment the previous
