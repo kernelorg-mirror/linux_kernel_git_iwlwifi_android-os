@@ -513,6 +513,9 @@ IWL_EXPORT_SYMBOL(iwl_trans_write_mem);
 
 void iwl_trans_set_pmi(struct iwl_trans *trans, bool state)
 {
+	if (WARN_ONCE(trans->mac_cfg->gen3,
+		      "iwl_trans_set_pmi() is not supported in gen3 devices\n"))
+		return;
 	if (state)
 		set_bit(STATUS_TPOWER_PMI, &trans->status);
 	else
