@@ -885,7 +885,7 @@ iwl_mld_channel_load_allows_emlsr(struct iwl_mld *mld,
 	return false;
 }
 
-VISIBLE_IF_KUNIT u32
+VISIBLE_IF_IWLWIFI_KUNIT u32
 iwl_mld_emlsr_pair_state(struct ieee80211_vif *vif,
 			 struct iwl_mld_link_sel_data *a,
 			 struct iwl_mld_link_sel_data *b)
