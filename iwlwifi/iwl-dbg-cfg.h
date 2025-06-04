@@ -312,6 +312,7 @@ struct iwl_dbg_cfg {
 	IWL_DBG_CFG_NODEF(bool, HW_CSUM_DISABLE)
 	IWL_DBG_CFG_STR(ppag_allowed)
 	IWL_DBG_CFG_STR(tas_allowed)
+	IWL_DBG_CFG_NODEF(bool, DISABLE_STUCK_TIMER)
 	IWL_DBG_CFG_NODEF(bool, disable_eml)
 	IWL_DBG_CFG_DEF(int, eml_capa_override, -1)
 	IWL_DBG_CFG_DEF(bool, load_external_fseq, false)

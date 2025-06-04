@@ -705,6 +705,11 @@ static void iwl_txq_stuck_timer(struct timer_list *t)
 	struct iwl_txq *txq = timer_container_of(txq, t, stuck_timer);
 	struct iwl_trans *trans = txq->trans;
 
+#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+	if (trans->dbg_cfg.DISABLE_STUCK_TIMER)
+		return;
+#endif
+
 	spin_lock(&txq->lock);
 	/* check if triggered erroneously */
 	if (txq->read_ptr == txq->write_ptr) {
