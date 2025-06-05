@@ -17,6 +17,7 @@ iwl_construct_pcie_gen3(struct pci_dev *pdev,
 
 	trans_pcie = IWL_GET_PCIE_GEN3(iwl_trans);
 
+	trans_pcie->trans = iwl_trans;
 	trans_pcie->hw_base = hw_base;
 
 	/* TODO: disable interrupts */
