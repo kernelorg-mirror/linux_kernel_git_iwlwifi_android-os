@@ -243,12 +243,7 @@ struct uefi_cnv_wpfc_data {
 	u32 chains[4];
 } __packed;
 
-/*
- * This is known to be broken on v4.19 and to work on v5.4.  Until we
- * figure out why this is the case and how to make it work, simply
- * disable the feature in old kernels.
- */
-#if defined(CONFIG_EFI) && LINUX_VERSION_IS_GEQ(5,4,0)
+#ifdef CONFIG_EFI
 void *iwl_uefi_get_pnvm(struct iwl_trans *trans, size_t *len);
 u8 *iwl_uefi_get_reduced_power(struct iwl_trans *trans, size_t *len);
 int iwl_uefi_reduce_power_parse(struct iwl_trans *trans,

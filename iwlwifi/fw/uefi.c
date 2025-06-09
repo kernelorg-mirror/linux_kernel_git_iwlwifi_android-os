@@ -13,12 +13,6 @@
 #include <linux/efi.h>
 #include "fw/runtime.h"
 
-/*
- * This is known to be broken on v4.19 and to work on v5.4.  Until we
- * figure out why this is the case and how to make it work, simply
- * disable the feature in old kernels.
- */
-#if LINUX_VERSION_IS_GEQ(5,4,0)
 #define IWL_EFI_WIFI_GUID	EFI_GUID(0x92daaf2f, 0xc02b, 0x455b,	\
 					 0xb2, 0xec, 0xf5, 0xa3,	\
 					 0x59, 0x4f, 0x4a, 0xea)
@@ -847,4 +841,3 @@ int iwl_uefi_get_phy_filters(struct iwl_fw_runtime *fwrt)
 	IWL_DEBUG_RADIO(fwrt, "Loaded WPFC config from UEFI\n");
 	return 0;
 }
-#endif /* >= 5.4 */
