@@ -2426,6 +2426,7 @@ static u32 iwl_dump_ini_info(struct iwl_fw_runtime *fwrt,
 	dump->hw_step = cpu_to_le32(fwrt->trans->info.hw_rev_step);
 
 	hw_type = CSR_HW_REV_TYPE(fwrt->trans->info.hw_rev);
+
 	is_cdb = CSR_HW_RFID_IS_CDB(fwrt->trans->info.hw_rf_id);
 	is_jacket = !!(iwl_read_umac_prph(fwrt->trans, WFPM_OTP_CFG1_ADDR) &
 				WFPM_OTP_CFG1_IS_JACKET_BIT);

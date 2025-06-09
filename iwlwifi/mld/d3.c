@@ -1037,7 +1037,8 @@ iwl_mld_set_netdetect_info(struct iwl_mld *mld,
 		if (!match)
 			return;
 
-		netdetect_info->matches[netdetect_info->n_matches++] = match;
+		netdetect_info->matches[netdetect_info->n_matches] = match;
+		netdetect_info->n_matches++;
 
 		/* We inverted the order of the SSIDs in the scan
 		 * request, so invert the index here.
@@ -1054,9 +1055,11 @@ iwl_mld_set_netdetect_info(struct iwl_mld *mld,
 
 		for_each_set_bit(j,
 				 (unsigned long *)&matches[i].matching_channels[0],
-				 sizeof(matches[i].matching_channels))
-			match->channels[match->n_channels++] =
+				 sizeof(matches[i].matching_channels)) {
+			match->channels[match->n_channels] =
 				netdetect_cfg->channels[j]->center_freq;
+			match->n_channels++;
+		}
 	}
 }
 
@@ -1697,7 +1700,7 @@ iwl_mld_send_proto_offload(struct iwl_mld *mld,
 
 		addrconf_addr_solict_mult(&wowlan_data->target_ipv6_addrs[i],
 					  &solicited_addr);
-		for (j = 0; j < c; j++)
+		for (j = 0; j < n_nsc && j < c; j++)
 			if (ipv6_addr_cmp(&nsc[j].dest_ipv6_addr,
 					  &solicited_addr) == 0)
 				break;

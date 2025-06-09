@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0 OR BSD-3-Clause
 /*
- * Copyright (C) 2021-2023, 2025 Intel Corporation
+ * Copyright (C) 2021-2022, 2025 Intel Corporation
  */
 
 #include <net/mac80211.h>

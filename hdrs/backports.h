@@ -69,3 +69,13 @@ static inline int cfg80211_chandef_get_width(const struct cfg80211_chan_def *c)
 #ifndef MAC_ADDR_STR_LEN
 #define MAC_ADDR_STR_LEN (3 * ETH_ALEN - 1)
 #endif
+
+#ifndef timer_container_of
+#define timer_container_of from_timer
+#endif
+
+static inline bool
+sk_requests_wifi_status(struct sock *sk)
+{
+	return sk && sk_fullsock(sk) && sock_flag(sk, SOCK_WIFI_STATUS);
+}
