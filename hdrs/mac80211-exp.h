@@ -153,5 +153,6 @@
 #define ieee80211_update_p2p_noa __iwl7000_ieee80211_update_p2p_noa
 #define ieee80211_parse_p2p_noa __iwl7000_ieee80211_parse_p2p_noa
 #define ieee80211_txq_get_depth __iwl7000_ieee80211_txq_get_depth
+#define ieee80211_vif_nan_started __iwl7000_ieee80211_vif_nan_started
 #define ieee80211_update_mu_groups __iwl7000_ieee80211_update_mu_groups
 #endif
