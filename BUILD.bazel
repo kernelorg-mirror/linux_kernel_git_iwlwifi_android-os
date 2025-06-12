@@ -1,0 +1,232 @@
+load(
+    "//build/kernel/kleaf:kernel.bzl",
+    "ddk_headers",
+    "ddk_module",
+)
+
+package(
+    default_visibility = [
+        "//private/devices/google:__subpackages__",
+        "//private/google-modules:__subpackages__",
+    ],
+)
+
+ddk_headers(
+    name = "hdrs",
+    hdrs = glob([
+        "hdrs/*.h",
+        "hdrs/**/*.h",
+    ]),
+    includes = [
+        ".",
+        "hdrs",
+    ],
+    kconfigs = [
+        "Kconfig",
+    ],
+)
+
+ddk_headers(
+    name = "mac80211_hdrs",
+    hdrs = [
+        ":hdrs",
+    ] + glob([
+        "mac80211/*.h",
+    ]),
+    includes = [
+        "mac80211",
+    ],
+)
+
+ddk_module(
+    name = "iwl7000_mac80211",
+    srcs = glob(["mac80211/*.c"]),
+    out = "iwl7000_mac80211.ko",
+    copts = [
+        "-include",
+        "hdrs/iwl-chrome.h",
+    ],
+    defconfig = "defconfig",
+    kconfig = "Kconfig",
+    kernel_build = "//common:kernel_x86_64",
+    local_defines = [
+        "CPTCFG_MAC80211_LEDS=1",
+        "CPTCFG_IWLWIFI_OPMODE_MODULAR=1",
+        "CPTCFG_IWLWIFI_DEBUG=1",
+        "CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES=1",
+        "CPTCFG_IWLWIFI=1",
+        "CPTCFG_IWLMVM=1",
+        "CPTCFG_IWLMLD=1",
+        "CPTCFG_IWLWIFI_DEVICE_TESTMODE=1",
+        "CPTCFG_IWL_VENDOR_CMDS=1",
+        "CPTCFG_IWLWIFI_DEBUGFS=1",
+        "CPTCFG_MAC80211_DEBUGFS=1",
+        "CPTCFG_IWLWIFI_DEVICE_TRACING=1",
+        "CPTCFG_MAC80211_MESSAGE_TRACING=1",
+        "CPTCFG_IWLWIFI_LEDS=1",
+        "CPTCFG_IWLXVT=1",
+    ],
+    deps = [
+        ":mac80211_hdrs",
+        "//private/desktop-google/net/wireless:cfg80211_x86_64",
+    ],
+)
+
+ddk_headers(
+    name = "iwlwifi_hdrs",
+    hdrs = [
+        ":hdrs",
+    ] + glob([
+        "iwlwifi/*.h",
+        "iwlwifi/**/*.h",
+        "iwlwifi/**/**/*.h",
+    ]),
+    includes = [
+        "iwlwifi",
+    ],
+)
+
+ddk_module(
+    name = "iwlwifi",
+    srcs = glob([
+        "iwlwifi/*.c",
+        "iwlwifi/cfg/*.c",
+        "iwlwifi/fw/*.c",
+        "iwlwifi/pcie/*.c",
+    ]),
+    out = "iwlwifi.ko",
+    copts = [
+        "-include",
+        "hdrs/iwl-chrome.h",
+    ],
+    kernel_build = "//common:kernel_x86_64",
+    local_defines = [
+        "CPTCFG_MAC80211_LEDS=1",
+        "CPTCFG_IWLWIFI_OPMODE_MODULAR=1",
+        "CPTCFG_IWLWIFI_DEBUG=1",
+        "CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES=1",
+        "CPTCFG_IWLWIFI=1",
+        "CPTCFG_IWLMVM=1",
+        "CPTCFG_IWLMLD=1",
+        "CPTCFG_IWLWIFI_DEVICE_TESTMODE=1",
+        "CPTCFG_IWL_VENDOR_CMDS=1",
+        "CPTCFG_IWLWIFI_DEBUGFS=1",
+        "CPTCFG_MAC80211_DEBUGFS=1",
+        "CPTCFG_IWLWIFI_DEVICE_TRACING=1",
+        "CPTCFG_MAC80211_MESSAGE_TRACING=1",
+        "CPTCFG_IWLWIFI_LEDS=1",
+        "CPTCFG_IWLXVT=1",
+    ],
+    deps = [
+        ":iwlwifi_hdrs",
+        "//private/desktop-google/net/wireless:cfg80211_x86_64",
+    ],
+)
+
+ddk_module(
+    name = "iwlmvm",
+    srcs = glob([
+        "iwlwifi/mvm/*.c",
+    ]),
+    out = "iwlmvm.ko",
+    copts = [
+        "-include",
+        "hdrs/iwl-chrome.h",
+    ],
+    kernel_build = "//common:kernel_x86_64",
+    local_defines = [
+        "CPTCFG_MAC80211_LEDS=1",
+        "CPTCFG_IWLWIFI_OPMODE_MODULAR=1",
+        "CPTCFG_IWLWIFI_DEBUG=1",
+        "CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES=1",
+        "CPTCFG_IWLWIFI=1",
+        "CPTCFG_IWLMVM=1",
+        "CPTCFG_IWLMLD=1",
+        "CPTCFG_IWLWIFI_DEVICE_TESTMODE=1",
+        "CPTCFG_IWL_VENDOR_CMDS=1",
+        "CPTCFG_IWLWIFI_DEBUGFS=1",
+        "CPTCFG_MAC80211_DEBUGFS=1",
+        "CPTCFG_IWLWIFI_DEVICE_TRACING=1",
+        "CPTCFG_MAC80211_MESSAGE_TRACING=1",
+        "CPTCFG_IWLWIFI_LEDS=1",
+        "CPTCFG_IWLXVT=1",
+    ],
+    deps = [
+        ":iwl7000_mac80211",
+        ":iwlwifi",
+        ":iwlwifi_hdrs",
+        "//private/desktop-google/net/wireless:cfg80211_x86_64",
+    ],
+)
+
+ddk_module(
+    name = "iwlmld",
+    srcs = glob([
+        "iwlwifi/mld/*.c",
+    ]),
+    out = "iwlmld.ko",
+    copts = [
+        "-include",
+        "hdrs/iwl-chrome.h",
+    ],
+    kernel_build = "//common:kernel_x86_64",
+    local_defines = [
+        "CPTCFG_MAC80211_LEDS=1",
+        "CPTCFG_IWLWIFI_OPMODE_MODULAR=1",
+        "CPTCFG_IWLWIFI_DEBUG=1",
+        "CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES=1",
+        "CPTCFG_IWLWIFI=1",
+        "CPTCFG_IWLMVM=1",
+        "CPTCFG_IWLMLD=1",
+        "CPTCFG_IWLWIFI_DEVICE_TESTMODE=1",
+        "CPTCFG_IWL_VENDOR_CMDS=1",
+        "CPTCFG_IWLWIFI_DEBUGFS=1",
+        "CPTCFG_MAC80211_DEBUGFS=1",
+        "CPTCFG_IWLWIFI_DEVICE_TRACING=1",
+        "CPTCFG_MAC80211_MESSAGE_TRACING=1",
+        "CPTCFG_IWLWIFI_LEDS=1",
+        "CPTCFG_IWLXVT=1",
+    ],
+    deps = [
+        ":iwl7000_mac80211",
+        ":iwlwifi",
+        ":iwlwifi_hdrs",
+        "//private/desktop-google/net/wireless:cfg80211_x86_64",
+    ],
+)
+
+ddk_module(
+    name = "iwlxvt",
+    srcs = glob([
+        "iwlwifi/xvt/*.c",
+    ]),
+    out = "iwlxvt.ko",
+    copts = [
+        "-include",
+        "hdrs/iwl-chrome.h",
+    ],
+    kernel_build = "//common:kernel_x86_64",
+    local_defines = [
+        "CPTCFG_MAC80211_LEDS=1",
+        "CPTCFG_IWLWIFI_OPMODE_MODULAR=1",
+        "CPTCFG_IWLWIFI_DEBUG=1",
+        "CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES=1",
+        "CPTCFG_IWLWIFI=1",
+        "CPTCFG_IWLMVM=1",
+        "CPTCFG_IWLMLD=1",
+        "CPTCFG_IWLWIFI_DEVICE_TESTMODE=1",
+        "CPTCFG_IWL_VENDOR_CMDS=1",
+        "CPTCFG_IWLWIFI_DEBUGFS=1",
+        "CPTCFG_MAC80211_DEBUGFS=1",
+        "CPTCFG_IWLWIFI_DEVICE_TRACING=1",
+        "CPTCFG_MAC80211_MESSAGE_TRACING=1",
+        "CPTCFG_IWLWIFI_LEDS=1",
+        "CPTCFG_IWLXVT=1",
+    ],
+    deps = [
+        ":iwl7000_mac80211",
+        ":iwlwifi",
+        ":iwlwifi_hdrs",
+        "//private/desktop-google/net/wireless:cfg80211_x86_64",
+    ],
+)
