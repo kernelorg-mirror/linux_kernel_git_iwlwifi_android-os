@@ -49,11 +49,10 @@ static inline int __printf(2, 3) debugfs_change_name(struct dentry *dentry, cons
 	if (!new_name)
 		return -ENOMEM;
 
-	parent = dget_parent(dentry);
+	parent = dentry->d_parent;
 
 	debugfs_rename(parent, dentry, parent, new_name);
 
-	dput(parent);
 	kfree_const(new_name);
 	/* We never checked the succession of debugfs_rename anyway */
 	return 0;
