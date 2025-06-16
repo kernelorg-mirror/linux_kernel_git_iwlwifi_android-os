@@ -43,4 +43,8 @@ int iwl_mld_add_pasn_key(struct iwl_mld *mld, struct ieee80211_vif *vif,
 void iwl_mld_remove_pasn_key(struct iwl_mld *mld, struct ieee80211_vif *vif,
 			     struct iwl_mld_int_sta *sta,
 			     struct ieee80211_key_conf *keyconf);
+
+void iwl_mld_track_bigtk(struct iwl_mld *mld,
+			 struct ieee80211_vif *vif,
+			 struct ieee80211_key_conf *key, bool add);
 #endif /* __iwl_mld_key_h__ */
