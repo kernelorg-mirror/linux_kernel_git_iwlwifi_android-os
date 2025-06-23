@@ -7,6 +7,7 @@
 
 #include "iwl-drv.h"
 #include "fw/notif-wait.h"
+#include "fw/img.h"
 
 #define MVM_UCODE_PNVM_TIMEOUT	(HZ / 4 * CPTCFG_IWL_TIMEOUT_FACTOR)
 
@@ -14,13 +15,11 @@
 
 int iwl_pnvm_load(struct iwl_trans *trans,
 		  struct iwl_notif_wait_data *notif_wait,
-		  const struct iwl_ucode_capabilities *capa,
-		  __le32 sku_id[3]);
+		  const struct iwl_fw *fw, __le32 sku_id[3]);
 #if IS_ENABLED(CPTCFG_IWLXVT)
 int iwl_xvt_pnvm_load(struct iwl_trans *trans,
 		      struct iwl_notif_wait_data *notif_wait,
-		      const struct iwl_ucode_capabilities *capa,
-		      __le32 sku_id[3]);
+		      const struct iwl_fw *fw, __le32 sku_id[3]);
 #endif /* CPTCFG_IWLXVT */
 
 static inline

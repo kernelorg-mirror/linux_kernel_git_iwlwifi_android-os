@@ -11,6 +11,7 @@
 #include "fw/api/nvm-reg.h"
 #include "fw/api/alive.h"
 #include "fw/uefi.h"
+#include "fw/img.h"
 
 #define IWL_PNVM_REDUCED_CAP_BIT BIT(25)
 
@@ -264,8 +265,8 @@ static int iwl_pnvm_get_from_fs(struct iwl_trans *trans, u8 **data, size_t *len)
 	return 0;
 }
 
-static u8 *iwl_get_pnvm_image(struct iwl_trans *trans_p, size_t *len,
-			      __le32 sku_id[3])
+static const u8 *iwl_get_pnvm_image(struct iwl_trans *trans_p, size_t *len,
+				    __le32 sku_id[3], const struct iwl_fw *fw)
 {
 	struct pnvm_sku_package *package;
 	u8 *image = NULL;
@@ -290,6 +291,15 @@ static u8 *iwl_get_pnvm_image(struct iwl_trans *trans_p, size_t *len,
 		}
 	}
 
+#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+	if (!trans_p->dbg_cfg.load_external_pnvm)
+#endif
+	if (fw->pnvm_data) {
+		*len = fw->pnvm_size;
+
+		return fw->pnvm_data;
+	}
+
 	/* If it's not available, or for Intel SKU, try from the filesystem */
 	if (iwl_pnvm_get_from_fs(trans_p, &image, len))
 		return NULL;
@@ -298,11 +308,11 @@ static u8 *iwl_get_pnvm_image(struct iwl_trans *trans_p, size_t *len,
 
 static void
 iwl_pnvm_load_pnvm_to_trans(struct iwl_trans *trans,
-			    const struct iwl_ucode_capabilities *capa,
+			    const struct iwl_fw *fw,
 			    __le32 sku_id[3])
 {
 	struct iwl_pnvm_image *pnvm_data = NULL;
-	u8 *data = NULL;
+	const u8 *data = NULL;
 	size_t length;
 	int ret;
 
@@ -313,7 +323,7 @@ iwl_pnvm_load_pnvm_to_trans(struct iwl_trans *trans,
 	if (trans->pnvm_loaded)
 		goto set;
 
-	data = iwl_get_pnvm_image(trans, &length, sku_id);
+	data = iwl_get_pnvm_image(trans, &length, sku_id, fw);
 	if (!data) {
 		trans->fail_to_parse_pnvm_image = true;
 		return;
@@ -329,15 +339,17 @@ iwl_pnvm_load_pnvm_to_trans(struct iwl_trans *trans,
 		goto free;
 	}
 
-	ret = iwl_trans_load_pnvm(trans, pnvm_data, capa);
+	ret = iwl_trans_load_pnvm(trans, pnvm_data, &fw->ucode_capa);
 	if (ret)
 		goto free;
 	IWL_DEBUG_INFO(trans, "loaded PNVM version %08x\n", pnvm_data->version);
 
 set:
-	iwl_trans_set_pnvm(trans, capa);
+	iwl_trans_set_pnvm(trans, &fw->ucode_capa);
 free:
-	kvfree(data);
+	/* free only if it was allocated, i.e. not just embedded PNVM data */
+	if (data != fw->pnvm_data)
+		kvfree(data);
 	kfree(pnvm_data);
 }
 
@@ -392,8 +404,7 @@ free:
 
 int iwl_pnvm_load(struct iwl_trans *trans,
 		  struct iwl_notif_wait_data *notif_wait,
-		  const struct iwl_ucode_capabilities *capa,
-		  __le32 sku_id[3])
+		  const struct iwl_fw *fw, __le32 sku_id[3])
 {
 	struct iwl_notification_wait pnvm_wait;
 	static const u16 ntf_cmds[] = { WIDE_ID(REGULATORY_AND_NVM_GROUP,
@@ -403,8 +414,8 @@ int iwl_pnvm_load(struct iwl_trans *trans,
 	if (!sku_id[0] && !sku_id[1] && !sku_id[2])
 		return 0;
 
-	iwl_pnvm_load_pnvm_to_trans(trans, capa, sku_id);
-	iwl_pnvm_load_reduce_power_to_trans(trans, capa, sku_id);
+	iwl_pnvm_load_pnvm_to_trans(trans, fw, sku_id);
+	iwl_pnvm_load_reduce_power_to_trans(trans, &fw->ucode_capa, sku_id);
 
 	iwl_init_notification_wait(notif_wait, &pnvm_wait,
 				   ntf_cmds, ARRAY_SIZE(ntf_cmds),
@@ -426,8 +437,7 @@ IWL_EXPORT_SYMBOL(iwl_pnvm_load);
 
 int iwl_xvt_pnvm_load(struct iwl_trans *trans,
 		      struct iwl_notif_wait_data *notif_wait,
-		      const struct iwl_ucode_capabilities *capa,
-		      __le32 sku_id[3])
+		      const struct iwl_fw *fw, __le32 sku_id[3])
 {
 	u32 reg_value_nic_en_isr6_bd = 0;
 	u32 reg_value_nic_en_isr6_bw = 0;
@@ -445,8 +455,8 @@ int iwl_xvt_pnvm_load(struct iwl_trans *trans,
 	if (!sku_id[0] && !sku_id[1] && !sku_id[2])
 		return 0;
 
-	iwl_pnvm_load_pnvm_to_trans(trans, capa, sku_id);
-	iwl_pnvm_load_reduce_power_to_trans(trans, capa, sku_id);
+	iwl_pnvm_load_pnvm_to_trans(trans, fw, sku_id);
+	iwl_pnvm_load_reduce_power_to_trans(trans, &fw->ucode_capa, sku_id);
 
 	iwl_init_notification_wait(notif_wait, &pnvm_wait,
 				   ntf_cmds, ARRAY_SIZE(ntf_cmds),

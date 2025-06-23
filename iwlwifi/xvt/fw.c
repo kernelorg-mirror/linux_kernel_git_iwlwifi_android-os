@@ -244,8 +244,7 @@ static int iwl_xvt_load_ucode_wait_alive(struct iwl_xvt *xvt,
 	iwl_trans_fw_alive(xvt->trans);
 
 	ret = iwl_xvt_pnvm_load(xvt->trans, &xvt->notif_wait,
-				&xvt->fw->ucode_capa,
-				alive_data.sku_id);
+				xvt->fw, alive_data.sku_id);
 	if (ret) {
 		IWL_ERR(xvt, "Timeout waiting for PNVM load!\n");
 		iwl_fw_set_current_image(&xvt->fwrt, old_type);
