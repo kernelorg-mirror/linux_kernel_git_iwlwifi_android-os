@@ -624,8 +624,7 @@ static const struct ieee80211_sband_iftype_data iwl_he_eht_capa[] = {
 			.has_he = true,
 			.he_cap_elem = {
 				.mac_cap_info[0] =
-					IEEE80211_HE_MAC_CAP0_HTC_HE |
-					IEEE80211_HE_MAC_CAP0_TWT_REQ,
+					IEEE80211_HE_MAC_CAP0_HTC_HE,
 				.mac_cap_info[1] =
 					IEEE80211_HE_MAC_CAP1_TF_MAC_PAD_DUR_16US |
 					IEEE80211_HE_MAC_CAP1_MULTI_TID_AGG_RX_QOS_8,
@@ -1091,6 +1090,12 @@ iwl_nvm_fixup_sband_iftd(struct iwl_trans *trans,
 	if (fw_has_capa(&fw->ucode_capa, IWL_UCODE_TLV_CAPA_RESTRICTED_TWT_SUPPORT))
 		iftype_data->eht_cap.eht_cap_elem.mac_cap_info[0] |=
 			IEEE80211_EHT_MAC_CAP0_RESTRICTED_TWT;
+
+#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+	if (trans->dbg_cfg.allow_twt)
+		iftype_data->he_cap.he_cap_elem.mac_cap_info[0] |=
+			IEEE80211_HE_MAC_CAP0_TWT_REQ;
+#endif
 }
 
 static void iwl_init_he_hw_capab(struct iwl_trans *trans,
