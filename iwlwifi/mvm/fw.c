@@ -1004,17 +1004,11 @@ int iwl_mvm_sar_select_profile(struct iwl_mvm *mvm, int prof_a, int prof_b)
 		len = sizeof(cmd_v9_v10.v9);
 		n_subbands = IWL_NUM_SUB_BANDS_V1;
 		per_chain = &cmd_v9_v10.v9.per_chain[0][0];
-	} else if (cmd_ver >= 7) {
-		len = sizeof(cmd.v7);
+	} else if (cmd_ver == 8) {
+		len = sizeof(cmd.v8);
 		n_subbands = IWL_NUM_SUB_BANDS_V2;
-		per_chain = cmd.v7.per_chain[0][0];
-		cmd.v7.flags = cpu_to_le32(mvm->fwrt.reduced_power_flags);
-		if (cmd_ver == 8)
-			len = sizeof(cmd.v8);
-	} else if (cmd_ver == 6) {
-		len = sizeof(cmd.v6);
-		n_subbands = IWL_NUM_SUB_BANDS_V2;
-		per_chain = cmd.v6.per_chain[0][0];
+		per_chain = cmd.v8.per_chain[0][0];
+		cmd.v8.flags = cpu_to_le32(mvm->fwrt.reduced_power_flags);
 	} else if (fw_has_api(&mvm->fw->ucode_capa,
 			      IWL_UCODE_TLV_API_REDUCE_TX_POWER)) {
 		len = sizeof(cmd.v5);
@@ -1749,14 +1743,9 @@ int iwl_mvm_up(struct iwl_mvm *mvm)
 	if (le32_to_cpu(mvm->txp_cmd.common.set_mode) ==
 	    IWL_TX_POWER_MODE_SET_DEVICE) {
 		int len;
-		u8 cmd_ver = iwl_fw_lookup_cmd_ver(mvm->fw,
-						   REDUCE_TX_POWER_CMD,
-						   IWL_FW_CMD_VER_UNKNOWN);
 
-		if (cmd_ver == 6)
-			len = sizeof(mvm->txp_cmd.v6);
-		else if (fw_has_api(&mvm->fw->ucode_capa,
-				    IWL_UCODE_TLV_API_REDUCE_TX_POWER))
+		if (fw_has_api(&mvm->fw->ucode_capa,
+			       IWL_UCODE_TLV_API_REDUCE_TX_POWER))
 			len = sizeof(mvm->txp_cmd.v5);
 		else if (fw_has_capa(&mvm->fw->ucode_capa,
 				     IWL_UCODE_TLV_CAPA_TX_POWER_ACK))
