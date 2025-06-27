@@ -1773,6 +1773,25 @@ static int iwl_mvm_vendor_host_get_ownership(struct wiphy *wiphy,
 	return ret;
 }
 
+static int iwl_mvm_vendor_dbg_clear_monitor_buf(struct wiphy *wiphy,
+						struct wireless_dev *wdev,
+						const void *data, int data_len)
+{
+	struct ieee80211_hw *hw = wiphy_to_ieee80211_hw(wiphy);
+	struct iwl_mvm *mvm = IWL_MAC80211_GET_MVM(hw);
+
+	/* If the firmware is not running, silently succeed since there is
+	 * no data to clear.
+	 */
+	if (!iwl_mvm_firmware_running(mvm))
+		return 0;
+
+	guard(mvm)(mvm);
+
+	iwl_fw_dbg_clear_monitor_buf(&mvm->fwrt);
+
+	return 0;
+}
 static const struct wiphy_vendor_command iwl_mvm_vendor_commands[] = {
 	{
 		.info = {
@@ -2034,6 +2053,17 @@ static const struct wiphy_vendor_command iwl_mvm_vendor_commands[] = {
 		},
 		.doit = iwl_mvm_vendor_host_get_ownership,
 		.flags = WIPHY_VENDOR_CMD_NEED_WDEV,
+		.policy = iwl_mvm_vendor_attr_policy,
+		.maxattr = MAX_IWL_MVM_VENDOR_ATTR,
+	},
+	{
+		.info = {
+			.vendor_id = INTEL_OUI,
+			.subcmd = IWL_MVM_VENDOR_CMD_DBG_CLEAR_MONITOR_BUFFER,
+		},
+		.flags = WIPHY_VENDOR_CMD_NEED_WDEV |
+			 WIPHY_VENDOR_CMD_NEED_RUNNING,
+		.doit = iwl_mvm_vendor_dbg_clear_monitor_buf,
 		.policy = iwl_mvm_vendor_attr_policy,
 		.maxattr = MAX_IWL_MVM_VENDOR_ATTR,
 	},
