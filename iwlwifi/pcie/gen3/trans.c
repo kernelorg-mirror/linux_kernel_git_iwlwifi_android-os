@@ -80,15 +80,15 @@ static int iwl_pcie_gen3_acquire_hw_ownership(struct iwl_trans *trans)
 
 static int
 iwl_construct_pcie_gen3(struct pci_dev *pdev,
-			struct iwl_trans *iwl_trans,
+			struct iwl_trans *trans,
 			u8 __iomem *hw_base,
 			struct iwl_trans_info *info)
 {
 	struct iwl_pcie_gen3 *trans_pcie, **priv;
 
-	trans_pcie = IWL_GET_PCIE_GEN3(iwl_trans);
+	trans_pcie = IWL_GET_PCIE_GEN3(trans);
 
-	trans_pcie->trans = iwl_trans;
+	trans_pcie->trans = trans;
 	trans_pcie->hw_base = hw_base;
 
 	/* TODO: init msi interrupts (task=msi) */
@@ -112,9 +112,9 @@ iwl_construct_pcie_gen3(struct pci_dev *pdev,
 }
 
 static void
-iwl_pcie_gen3_free(struct iwl_trans *iwl_trans)
+iwl_pcie_gen3_free(struct iwl_trans *trans)
 {
-	struct iwl_pcie_gen3 *trans_pcie = IWL_GET_PCIE_GEN3(iwl_trans);
+	struct iwl_pcie_gen3 *trans_pcie = IWL_GET_PCIE_GEN3(trans);
 
 	if (trans_pcie->msix.is_enabled) {
 		for (int i = 0; i < trans_pcie->msix.alloc_irqs; i++) {
@@ -126,7 +126,7 @@ iwl_pcie_gen3_free(struct iwl_trans *iwl_trans)
 	/* TODO: free msi interrupts (task=msi) */
 
 	free_netdev(trans_pcie->napi_dev);
-	iwl_trans_free(iwl_trans);
+	iwl_trans_free(trans);
 }
 
 int iwl_pci_gen3_probe(struct pci_dev *pdev,
@@ -134,7 +134,7 @@ int iwl_pci_gen3_probe(struct pci_dev *pdev,
 		       const struct iwl_mac_cfg *mac_cfg, u8 __iomem *hw_base,
 		       u32 hw_rev)
 {
-	struct iwl_trans *iwl_trans;
+	struct iwl_trans *trans;
 	unsigned int txcmd_size = sizeof(struct iwl_tx_cmd);
 	unsigned int txcmd_align = 128;
 	struct iwl_trans_info info = {};
@@ -147,16 +147,16 @@ int iwl_pci_gen3_probe(struct pci_dev *pdev,
 	if (WARN_ON(txcmd_size >= txcmd_align))
 		return -EINVAL;
 
-	iwl_trans = iwl_trans_alloc(sizeof(struct iwl_pcie_gen3),
-				    &pdev->dev, mac_cfg, txcmd_size, txcmd_align);
-	if (!iwl_trans)
+	trans = iwl_trans_alloc(sizeof(struct iwl_pcie_gen3),
+				&pdev->dev, mac_cfg, txcmd_size, txcmd_align);
+	if (!trans)
 		return -EINVAL;
 
-	ret = iwl_construct_pcie_gen3(pdev, iwl_trans, hw_base, &info);
+	ret = iwl_construct_pcie_gen3(pdev, trans, hw_base, &info);
 	if (ret)
 		goto out_free_trans;
 
-	ret = iwl_pcie_setup_msix(pdev, iwl_trans, &info);
+	ret = iwl_pcie_setup_msix(pdev, trans, &info);
 	if (ret)
 		goto out_free_trans;
 
@@ -175,10 +175,10 @@ int iwl_pci_gen3_probe(struct pci_dev *pdev,
 	/* TODO: make sure this is still needed. task=cfg */
 	pci_write_config_byte(pdev, PCI_CFG_RETRY_TIMEOUT, 0x00);
 
-	iwl_trans_set_info(iwl_trans, &info);
+	iwl_trans_set_info(trans, &info);
 
 	/* TODO: assign and allocate txqs parameters (tfd, cmd, tso, bc) */
-	/* TODO: max_skb_frags to iwl_trans */
+	/* TODO: max_skb_frags to trans */
 	/* TODO: init rx */
 	/* TODO: unset debug_rfkill */
 	/* TODO: read hw_rev and step */
@@ -193,21 +193,21 @@ int iwl_pci_gen3_probe(struct pci_dev *pdev,
 	/* TODO: pcie_dbgfs_register */
 	/* TODO: iwl_pcie_prepare_card_hw */
 
-	iwl_dbg_tlv_init(iwl_trans);
+	iwl_dbg_tlv_init(trans);
 
-	pci_set_drvdata(pdev, iwl_trans);
+	pci_set_drvdata(pdev, trans);
 
-	iwl_trans->drv = iwl_drv_start(iwl_trans);
+	trans->drv = iwl_drv_start(trans);
 
-	if (IS_ERR(iwl_trans->drv)) {
-		ret = PTR_ERR(iwl_trans->drv);
+	if (IS_ERR(trans->drv)) {
+		ret = PTR_ERR(trans->drv);
 		goto out_free_trans;
 	}
 
 	return 0;
 
 out_free_trans:
-	iwl_pcie_gen3_free(iwl_trans);
+	iwl_pcie_gen3_free(trans);
 	return ret;
 }
 

@@ -21,9 +21,9 @@ enum iwl_def_rxq_shared_irq_flags {
 };
 
 int iwl_pcie_setup_msix(struct pci_dev *pdev,
-			struct iwl_trans *iwl_trans,
+			struct iwl_trans *trans,
 			struct iwl_trans_info *info);
-void iwl_pcie_gen3_sync_irqs(struct iwl_trans *iwl_trans);
+void iwl_pcie_gen3_sync_irqs(struct iwl_trans *trans);
 
 /**
  * struct iwl_msix - MSIX related data

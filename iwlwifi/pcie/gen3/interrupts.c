@@ -9,10 +9,10 @@
 #include "trans.h"
 
 static int iwl_pcie_alloc_msix_irqs(struct pci_dev *pdev,
-				    struct iwl_trans *iwl_trans,
+				    struct iwl_trans *trans,
 				    struct iwl_trans_info *info)
 {
-	struct iwl_pcie_gen3 *trans_pcie = IWL_GET_PCIE_GEN3(iwl_trans);
+	struct iwl_pcie_gen3 *trans_pcie = IWL_GET_PCIE_GEN3(trans);
 	int max_irqs, num_irqs;
 
 	/* We want to allocate an rxq for each CPU plus a default queue (rxq 0).
@@ -27,13 +27,13 @@ static int iwl_pcie_alloc_msix_irqs(struct pci_dev *pdev,
 					 MSIX_MIN_INTERRUPT_VECTORS,
 					 max_irqs);
 	if (num_irqs < 0) {
-		IWL_DEBUG_ISR(iwl_trans,
+		IWL_DEBUG_ISR(trans,
 			      "Failed to enable msi-x mode (ret %d).\n",
 			      num_irqs);
 		return -ENODEV;
 	}
 
-	IWL_DEBUG_ISR(iwl_trans,
+	IWL_DEBUG_ISR(trans,
 		      "MSI-X enabled. %d irqs were allocated\n",
 		      num_irqs);
 
@@ -63,7 +63,7 @@ static int iwl_pcie_alloc_msix_irqs(struct pci_dev *pdev,
 
 	WARN_ON(info->num_rxqs > IWL_MAX_RX_HW_QUEUES);
 
-	IWL_DEBUG_ISR(iwl_trans,
+	IWL_DEBUG_ISR(trans,
 		      "MSI-X enabled. rx queues=%d, shared_irq_mask=0x%x\n",
 		      info->num_rxqs, trans_pcie->msix.shared_irq_mask);
 
@@ -90,11 +90,11 @@ static irqreturn_t iwl_pcie_gen3_msix_isr(int irq, void *data)
 }
 
 static void
-iwl_pcie_gen3_irq_set_affinity(struct iwl_trans *iwl_trans,
+iwl_pcie_gen3_irq_set_affinity(struct iwl_trans *trans,
 			       struct iwl_trans_info *info)
 {
 #if defined(CONFIG_SMP)
-	struct iwl_pcie_gen3 *trans_pcie = IWL_GET_PCIE_GEN3(iwl_trans);
+	struct iwl_pcie_gen3 *trans_pcie = IWL_GET_PCIE_GEN3(trans);
 	unsigned int cpu, cpu_iter = 0;
 	int ret;
 
@@ -120,7 +120,7 @@ iwl_pcie_gen3_irq_set_affinity(struct iwl_trans *iwl_trans,
 		ret = irq_set_affinity_hint(trans_pcie->msix.entries[irq_iter].vector,
 					    &trans_pcie->msix.affinity_mask[irq_iter]);
 		if (ret)
-			IWL_ERR(iwl_trans,
+			IWL_ERR(trans,
 				"Failed to set affinity mask for IRQ %d\n",
 				trans_pcie->msix.entries[irq_iter].vector);
 		cpu_iter++;
@@ -185,16 +185,16 @@ iwl_gen3_register_handlers(struct pci_dev *pdev,
 }
 
 int iwl_pcie_setup_msix(struct pci_dev *pdev,
-			struct iwl_trans *iwl_trans,
+			struct iwl_trans *trans,
 			struct iwl_trans_info *info)
 {
-	struct iwl_pcie_gen3 *trans_pcie = IWL_GET_PCIE_GEN3(iwl_trans);
+	struct iwl_pcie_gen3 *trans_pcie = IWL_GET_PCIE_GEN3(trans);
 	int ret;
 
 	if (!iwlwifi_mod_params.disable_msix)
 		return -EOPNOTSUPP;
 
-	ret = iwl_pcie_alloc_msix_irqs(pdev, iwl_trans, info);
+	ret = iwl_pcie_alloc_msix_irqs(pdev, trans, info);
 	if (ret)
 		return ret;
 
@@ -207,9 +207,9 @@ int iwl_pcie_setup_msix(struct pci_dev *pdev,
 	return 0;
 }
 
-void iwl_pcie_gen3_sync_irqs(struct iwl_trans *iwl_trans)
+void iwl_pcie_gen3_sync_irqs(struct iwl_trans *trans)
 {
-	struct iwl_pcie_gen3 *trans_pcie = IWL_GET_PCIE_GEN3(iwl_trans);
+	struct iwl_pcie_gen3 *trans_pcie = IWL_GET_PCIE_GEN3(trans);
 
 	if (!trans_pcie->msix.is_enabled)
 		/* TODO: sync msi irq, task=msi*/
