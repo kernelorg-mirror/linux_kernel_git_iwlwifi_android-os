@@ -1213,8 +1213,9 @@ static void iwl_mld_add_rtap_sniffer_config(struct iwl_mld *mld,
 	radiotap->oui[0] = 0xf6;
 	radiotap->oui[1] = 0x54;
 	radiotap->oui[2] = 0x25;
-	/* radiotap sniffer config sub-namespace */
+	/* Intel OUI default radiotap subtype */
 	radiotap->oui_subtype = 1;
+	/* Sniffer config element type */
 	radiotap->vendor_type = 0;
 
 	/* fill the data now */
@@ -1224,6 +1225,34 @@ static void iwl_mld_add_rtap_sniffer_config(struct iwl_mld *mld,
 	rx_status->flag |= RX_FLAG_RADIOTAP_TLV_AT_END;
 }
 #endif
+
+static void iwl_mld_add_rtap_sniffer_phy_data(struct iwl_mld *mld,
+					      struct sk_buff *skb,
+					      struct iwl_rx_phy_air_sniffer_ntfy *ntfy)
+{
+	struct ieee80211_rx_status *rx_status = IEEE80211_SKB_RXCB(skb);
+	struct ieee80211_radiotap_vendor_content *radiotap;
+	const u16 vendor_data_len = sizeof(*ntfy);
+
+	radiotap =
+		iwl_mld_radiotap_put_tlv(skb,
+					 IEEE80211_RADIOTAP_VENDOR_NAMESPACE,
+					 sizeof(*radiotap) + vendor_data_len);
+
+	/* Intel OUI */
+	radiotap->oui[0] = 0xf6;
+	radiotap->oui[1] = 0x54;
+	radiotap->oui[2] = 0x25;
+	/* Intel OUI default radiotap subtype */
+	radiotap->oui_subtype = 1;
+	/* PHY data element type */
+	radiotap->vendor_type = cpu_to_le16(1);
+
+	/* fill the data now */
+	memcpy(radiotap->data, ntfy, vendor_data_len);
+
+	rx_status->flag |= RX_FLAG_RADIOTAP_TLV_AT_END;
+}
 
 static void
 iwl_mld_set_rx_nonlegacy_rate_info(u32 rate_n_flags,
@@ -1355,6 +1384,9 @@ static void iwl_mld_rx_fill_status(struct iwl_mld *mld, int link_id,
 	if (unlikely(mld->monitor.on))
 		iwl_mld_add_rtap_sniffer_config(mld, skb);
 #endif
+
+	if (phy_data->ntfy)
+		iwl_mld_add_rtap_sniffer_phy_data(mld, skb, phy_data->ntfy);
 }
 
 /* iwl_mld_create_skb adds the rxb to a new skb */
@@ -1847,6 +1879,7 @@ void iwl_mld_rx_mpdu(struct iwl_mld *mld, struct napi_struct *napi,
 	u32 pkt_len, mpdu_len;
 	enum iwl_mld_reorder_result reorder_res;
 	struct ieee80211_rx_status *rx_status;
+	unsigned int alloc_size;
 	__le32 len_n_flags;
 
 	if (unlikely(mld->fw_status.in_hw_restart))
@@ -1893,9 +1926,15 @@ void iwl_mld_rx_mpdu(struct iwl_mld *mld, struct napi_struct *napi,
 	 * _really_ expensive, so in that case allocate a large SKB so we copy
 	 * the whole thing, since the memory bandwidth is high enough to make
 	 * that faster than the IOMMU flush...
+	 *
+	 * For monitor mode we need more space to include the full PHY
+	 * notification data.
 	 */
-	skb = alloc_skb(mld->trans->info.dma_protection ? mpdu_len : 128,
-			GFP_ATOMIC);
+	alloc_size = mld->trans->info.dma_protection ? mpdu_len : 128;
+	if (unlikely(mld->monitor.on) && phy_data.ntfy)
+		alloc_size += sizeof(struct iwl_rx_phy_air_sniffer_ntfy);
+
+	skb = alloc_skb(alloc_size, GFP_ATOMIC);
 	if (!skb) {
 		IWL_ERR(mld, "alloc_skb failed\n");
 		return;
@@ -2113,7 +2152,8 @@ static void iwl_mld_no_data_rx(struct iwl_mld *mld,
 	u32 format = phy_data.rate_n_flags & RATE_MCS_MOD_TYPE_MSK;
 	struct sk_buff *skb;
 
-	skb = alloc_skb(128, GFP_ATOMIC);
+	skb = alloc_skb(128 + sizeof(struct iwl_rx_phy_air_sniffer_ntfy),
+			GFP_ATOMIC);
 	if (!skb)
 		return;
 
