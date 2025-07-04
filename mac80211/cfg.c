@@ -3246,42 +3246,6 @@ static void ieee80211_rfkill_poll(struct wiphy *wiphy)
 	drv_rfkill_poll(local);
 }
 
-#ifdef CPTCFG_NL80211_TESTMODE
-static int ieee80211_testmode_cmd(struct wiphy *wiphy,
-				  struct wireless_dev *wdev,
-				  void *data, int len)
-{
-	struct ieee80211_local *local = wiphy_priv(wiphy);
-	struct ieee80211_vif *vif = NULL;
-
-	if (!local->ops->testmode_cmd)
-		return -EOPNOTSUPP;
-
-	if (wdev) {
-		struct ieee80211_sub_if_data *sdata;
-
-		sdata = IEEE80211_WDEV_TO_SUB_IF(wdev);
-		if (sdata->flags & IEEE80211_SDATA_IN_DRIVER)
-			vif = &sdata->vif;
-	}
-
-	return local->ops->testmode_cmd(&local->hw, vif, data, len);
-}
-
-static int ieee80211_testmode_dump(struct wiphy *wiphy,
-				   struct sk_buff *skb,
-				   struct netlink_callback *cb,
-				   void *data, int len)
-{
-	struct ieee80211_local *local = wiphy_priv(wiphy);
-
-	if (!local->ops->testmode_dump)
-		return -EOPNOTSUPP;
-
-	return local->ops->testmode_dump(&local->hw, skb, cb, data, len);
-}
-#endif
-
 int __ieee80211_request_smps_mgd(struct ieee80211_sub_if_data *sdata,
 				 struct ieee80211_link_data *link,
 				 enum ieee80211_smps_mode smps_mode)
@@ -5258,8 +5222,6 @@ const struct cfg80211_ops mac80211_config_ops = {
 	.set_tx_power = ieee80211_set_tx_power,
 	.get_tx_power = ieee80211_get_tx_power,
 	.rfkill_poll = ieee80211_rfkill_poll,
-	CFG80211_TESTMODE_CMD(ieee80211_testmode_cmd)
-	CFG80211_TESTMODE_DUMP(ieee80211_testmode_dump)
 	.set_power_mgmt = ieee80211_set_power_mgmt,
 	.set_bitrate_mask = ieee80211_set_bitrate_mask,
 	.remain_on_channel = ieee80211_remain_on_channel,

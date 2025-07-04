@@ -1,6 +1,6 @@
 /******************************************************************************
  *
- * Copyright(c) 2018-2024 Intel Corporation
+ * Copyright(c) 2018-2025 Intel Corporation
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of version 2 of the GNU General Public License as
@@ -37,6 +37,7 @@
 #define CPTCFG_IWLWIFI_DISALLOW_OLDER_FW 1
 #define CPTCFG_REJECT_NONUPSTREAM_NL80211 1
 #define CPTCFG_IWLWIFI_ATLAS_PLATFORM_WORKAROUND 1
+#define CPTCFG_IWLWIFI_DEVICE_TESTMODE 1
 
 #ifdef CONFIG_IWL7000_DEBUGFS
 #define CPTCFG_MAC80211_DEBUGFS 1
@@ -51,11 +52,6 @@
 #ifdef CONFIG_IWL7000_TRACING
 #define CPTCFG_MAC80211_MESSAGE_TRACING 1
 #define CPTCFG_IWLWIFI_DEVICE_TRACING 1
-#endif
-
-#ifdef CONFIG_IWL7000_TESTMODE
-#define CPTCFG_IWLWIFI_DEVICE_TESTMODE 1
-#define CPTCFG_NL80211_TESTMODE 1
 #endif
 
 #ifdef CONFIG_IWL7000_XVT_MODULE
