@@ -16,9 +16,3 @@ void iwl_mld_handle_nan_cluster_notif(struct iwl_mld *mld,
 				      struct iwl_rx_packet *pkt);
 void iwl_mld_handle_nan_dw_end_notif(struct iwl_mld *mld,
 				     struct iwl_rx_packet *pkt);
-int iwl_mld_add_nan_func(struct ieee80211_hw *hw,
-			 struct ieee80211_vif *vif,
-			 const struct cfg80211_nan_func *nan_func);
-void iwl_mld_del_nan_func(struct ieee80211_hw *hw,
-			  struct ieee80211_vif *vif,
-			  u8 instance_id);

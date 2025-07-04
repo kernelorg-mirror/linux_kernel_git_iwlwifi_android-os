@@ -2941,6 +2941,4 @@ const struct ieee80211_ops iwl_mld_hw_ops = {
 	.can_neg_ttlm = iwl_mld_can_neg_ttlm,
 	.start_nan = iwl_mld_start_nan,
 	.stop_nan = iwl_mld_stop_nan,
-	.add_nan_func = iwl_mld_add_nan_func,
-	.del_nan_func = iwl_mld_del_nan_func,
 };

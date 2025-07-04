@@ -165,17 +165,3 @@ void iwl_mld_handle_nan_dw_end_notif(struct iwl_mld *mld,
 
 	iwl_mld_flush_link_sta_txqs(mld, mld_vif->aux_sta.sta_id);
 }
-
-int iwl_mld_add_nan_func(struct ieee80211_hw *hw,
-			 struct ieee80211_vif *vif,
-			 const struct cfg80211_nan_func *nan_func)
-{
-	return -EOPNOTSUPP;
-}
-
-void iwl_mld_del_nan_func(struct ieee80211_hw *hw,
-			  struct ieee80211_vif *vif,
-			  u8 instance_id)
-{
-}
-
