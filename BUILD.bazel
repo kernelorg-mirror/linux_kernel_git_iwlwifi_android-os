@@ -21,9 +21,6 @@ ddk_headers(
         ".",
         "hdrs",
     ],
-    kconfigs = [
-        "Kconfig",
-    ],
 )
 
 ddk_headers(
@@ -39,33 +36,25 @@ ddk_headers(
 )
 
 DRIVER_CONFIG = [
-    "CPTCFG_MAC80211_LEDS=1",
-    "CPTCFG_IWLWIFI_OPMODE_MODULAR=1",
-    "CPTCFG_IWLWIFI_DEBUG=1",
-    "CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES=1",
-    "CPTCFG_IWLWIFI=1",
-    "CPTCFG_IWLMVM=1",
-    "CPTCFG_IWLMLD=1",
-    "CPTCFG_IWLWIFI_DEVICE_TESTMODE=1",
-    "CPTCFG_IWL_VENDOR_CMDS=1",
-    "CPTCFG_IWLWIFI_DEBUGFS=1",
-    "CPTCFG_MAC80211_DEBUGFS=1",
-    "CPTCFG_IWLWIFI_DEVICE_TRACING=1",
-    "CPTCFG_MAC80211_MESSAGE_TRACING=1",
-    "CPTCFG_IWLWIFI_LEDS=1",
-    "CPTCFG_IWLXVT=1",
+    "CONFIG_IWL7000_LEDS=1",
+    "CONFIG_IWL7000_TRACING=1",
+    "CONFIG_IWL7000_XVT=1",
+    "CONFIG_IWL7000_VENDOR_CMDS=1",
+    "CONFIG_IWL7000_MLD_MODULE=1",
 ]
 
 ddk_module(
     name = "iwl7000_mac80211",
-    srcs = glob(["mac80211/*.c"]),
+    srcs = glob([
+        "mac80211/*.c"
+    ], exclude=[
+        "mac80211/debugfs*.c"
+    ]),
     out = "iwl7000_mac80211.ko",
     copts = [
         "-include",
         "hdrs/iwl-chrome.h",
     ],
-    defconfig = "defconfig",
-    kconfig = "Kconfig",
     kernel_build = "//common:kernel_x86_64",
     local_defines = DRIVER_CONFIG,
     deps = [
@@ -96,6 +85,8 @@ ddk_module(
         "iwlwifi/fw/*.c",
         "iwlwifi/pcie/*.c",
         "iwlwifi/pcie/*/*.c",
+    ], exclude=[
+        "iwlwifi/fw/debugfs.c",
     ]),
     out = "iwlwifi.ko",
     copts = [
@@ -114,6 +105,8 @@ ddk_module(
     name = "iwlmvm",
     srcs = glob([
         "iwlwifi/mvm/*.c",
+    ], exclude=[
+        "iwlwifi/mvm/debugfs*.c",
     ]),
     out = "iwlmvm.ko",
     copts = [
@@ -134,6 +127,8 @@ ddk_module(
     name = "iwlmld",
     srcs = glob([
         "iwlwifi/mld/*.c",
+    ], exclude=[
+        "iwlwifi/mld/debugfs.c",
     ]),
     out = "iwlmld.ko",
     copts = [
