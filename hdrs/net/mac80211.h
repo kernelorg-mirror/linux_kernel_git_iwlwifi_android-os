@@ -3039,9 +3039,6 @@ enum ieee80211_hw_flags {
  *	deliver to a WMM STA during any Service Period triggered by the WMM STA.
  *	Use IEEE80211_WMM_IE_STA_QOSINFO_SP_* for correct values.
  *
- * @max_nan_de_entries: maximum number of NAN DE functions supported by the
- *	device.
- *
  * @tx_sk_pacing_shift: Pacing shift to set on TCP sockets when frames from
  *	them are encountered. The default should typically not be changed,
  *	unless the driver has good reasons for needing more buffers.
@@ -3088,7 +3085,6 @@ struct ieee80211_hw {
 	netdev_features_t netdev_features;
 	u8 uapsd_queues;
 	u8 uapsd_max_sp_len;
-	u8 max_nan_de_entries;
 	u8 tx_sk_pacing_shift;
 	u8 weight_multiplier;
 	u32 max_mtu;
@@ -4420,12 +4416,6 @@ struct ieee80211_prep_tx_info {
  *	The driver gets both full configuration and the changed parameters since
  *	some devices may need the full configuration while others need only the
  *	changed parameters.
- * @add_nan_func: Add a NAN function. Returns 0 on success. The data in
- *	cfg80211_nan_func must not be referenced outside the scope of
- *	this call.
- * @del_nan_func: Remove a NAN function. The driver must call
- *	ieee80211_nan_func_terminated() with
- *	NL80211_NAN_FUNC_TERM_REASON_USER_REQUEST reason code upon removal.
  * @can_aggregate_in_amsdu: Called in order to determine if HW supports
  *	aggregating two specific frames in the same A-MSDU. The relation
  *	between the skbs should be symmetric and transitive. Note that while
@@ -4806,12 +4796,6 @@ struct ieee80211_ops {
 	int (*nan_change_conf)(struct ieee80211_hw *hw,
 			       struct ieee80211_vif *vif,
 			       struct cfg80211_nan_conf *conf, u32 changes);
-	int (*add_nan_func)(struct ieee80211_hw *hw,
-			    struct ieee80211_vif *vif,
-			    const struct cfg80211_nan_func *nan_func);
-	void (*del_nan_func)(struct ieee80211_hw *hw,
-			    struct ieee80211_vif *vif,
-			    u8 instance_id);
 	bool (*can_aggregate_in_amsdu)(struct ieee80211_hw *hw,
 				       struct sk_buff *head,
 				       struct sk_buff *skb);
@@ -7549,37 +7533,6 @@ bool ieee80211_txq_may_transmit(struct ieee80211_hw *hw,
 void ieee80211_txq_get_depth(struct ieee80211_txq *txq,
 			     unsigned long *frame_cnt,
 			     unsigned long *byte_cnt);
-
-/**
- * ieee80211_nan_func_terminated - notify about NAN function termination.
- *
- * This function is used to notify mac80211 about NAN function termination.
- * Note that this function can't be called from hard irq.
- *
- * @vif: &struct ieee80211_vif pointer from the add_interface callback.
- * @inst_id: the local instance id
- * @reason: termination reason (one of the NL80211_NAN_FUNC_TERM_REASON_*)
- * @gfp: allocation flags
- */
-void ieee80211_nan_func_terminated(struct ieee80211_vif *vif,
-				   u8 inst_id,
-				   enum nl80211_nan_func_term_reason reason,
-				   gfp_t gfp);
-
-/**
- * ieee80211_nan_func_match - notify about NAN function match event.
- *
- * This function is used to notify mac80211 about NAN function match. The
- * cookie inside the match struct will be assigned by mac80211.
- * Note that this function can't be called from hard irq.
- *
- * @vif: &struct ieee80211_vif pointer from the add_interface callback.
- * @match: match event information
- * @gfp: allocation flags
- */
-void ieee80211_nan_func_match(struct ieee80211_vif *vif,
-			      struct cfg80211_nan_match_params *match,
-			      gfp_t gfp);
 
 /**
  * ieee80211_calc_rx_airtime - calculate estimated transmission airtime for RX.
