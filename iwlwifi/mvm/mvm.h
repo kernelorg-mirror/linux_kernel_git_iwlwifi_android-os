@@ -1374,7 +1374,6 @@ struct iwl_mvm {
 		u8 range_resp;
 	} cmd_ver;
 
-	struct ieee80211_vif *nan_vif;
 	struct iwl_mvm_baid_data __rcu *baid_map[IWL_MAX_BAID];
 
 	/*
@@ -2642,26 +2641,6 @@ void iwl_mvm_ptp_init(struct iwl_mvm *mvm);
 void iwl_mvm_ptp_remove(struct iwl_mvm *mvm);
 u64 iwl_mvm_ptp_get_adj_time(struct iwl_mvm *mvm, u64 base_time);
 
-
-/* NAN */
-void iwl_mvm_nan_match(struct iwl_mvm *mvm,
-		       struct iwl_rx_cmd_buffer *rxb);
-void iwl_mvm_nan_de_term_notif(struct iwl_mvm *mvm,
-			       struct iwl_rx_cmd_buffer *rxb);
-int iwl_mvm_start_nan(struct ieee80211_hw *hw,
-		      struct ieee80211_vif *vif,
-		      struct cfg80211_nan_conf *conf);
-int iwl_mvm_stop_nan(struct ieee80211_hw *hw,
-		     struct ieee80211_vif *vif);
-int iwl_mvm_add_nan_func(struct ieee80211_hw *hw,
-			 struct ieee80211_vif *vif,
-			 const struct cfg80211_nan_func *nan_func);
-void iwl_mvm_del_nan_func(struct ieee80211_hw *hw,
-			  struct ieee80211_vif *vif,
-			  u8 instance_id);
-int iwl_mvm_nan_config_nan_faw_cmd(struct iwl_mvm *mvm,
-				   struct cfg80211_chan_def *chandef,
-				   u8 slots);
 int iwl_mvm_sar_select_profile(struct iwl_mvm *mvm, int prof_a, int prof_b);
 int iwl_mvm_get_sar_geo_profile(struct iwl_mvm *mvm);
 int iwl_mvm_ppag_send_cmd(struct iwl_mvm *mvm);

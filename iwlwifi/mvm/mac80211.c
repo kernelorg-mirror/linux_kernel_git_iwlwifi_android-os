@@ -29,7 +29,6 @@
 #include "fw/error-dump.h"
 #include "iwl-prph.h"
 #include "iwl-nvm-parse.h"
-#include "fw/api/nan.h"
 #include "time-sync.h"
 
 #define IWL_MVM_LIMITS(ap)					\
@@ -46,11 +45,6 @@
 	{							\
 		.max = 1,					\
 		.types = BIT(NL80211_IFTYPE_P2P_DEVICE),	\
-	},							\
-	/* must be last - removed in non-NAN case */		\
-	{							\
-		.max = 1,					\
-		.types = BIT(NL80211_IFTYPE_NAN),		\
 	}
 
 static const struct ieee80211_iface_limit iwl_mvm_limits[] = {
@@ -73,22 +67,6 @@ static const struct ieee80211_iface_combination iwl_mvm_iface_combinations[] = {
 		.max_interfaces = 3,
 		.limits = iwl_mvm_limits_ap,
 		.n_limits = ARRAY_SIZE(iwl_mvm_limits_ap) - 1,
-	},
-};
-
-static const struct ieee80211_iface_combination
-iwl_mvm_iface_combinations_nan[] = {
-	{
-		.num_different_channels = 2,
-		.max_interfaces = 4,
-		.limits = iwl_mvm_limits,
-		.n_limits = ARRAY_SIZE(iwl_mvm_limits),
-	},
-	{
-		.num_different_channels = 1,
-		.max_interfaces = 4,
-		.limits = iwl_mvm_limits_ap,
-		.n_limits = ARRAY_SIZE(iwl_mvm_limits_ap),
 	},
 };
 
@@ -587,22 +565,9 @@ int iwl_mvm_mac_setup_register(struct iwl_mvm *mvm)
 	hw->wiphy->flags |= WIPHY_FLAG_HAS_CHANNEL_SWITCH;
 	hw->wiphy->flags |= WIPHY_FLAG_SPLIT_SCAN_6GHZ;
 
-	if (fw_has_capa(&mvm->fw->ucode_capa,
-			IWL_UCODE_TLV_CAPA_NAN_SUPPORT)) {
-		hw->wiphy->interface_modes |= BIT(NL80211_IFTYPE_NAN);
-		hw->wiphy->iface_combinations = iwl_mvm_iface_combinations_nan;
-		hw->wiphy->n_iface_combinations =
-			ARRAY_SIZE(iwl_mvm_iface_combinations_nan);
-		hw->wiphy->nan_supported_bands = BIT(NL80211_BAND_2GHZ);
-		if (mvm->nvm_data->bands[NL80211_BAND_5GHZ].n_channels)
-			hw->wiphy->nan_supported_bands |=
-				BIT(NL80211_BAND_5GHZ);
-		hw->max_nan_de_entries = NAN_MAX_SUPPORTED_DE_ENTRIES;
-	} else {
-		hw->wiphy->iface_combinations = iwl_mvm_iface_combinations;
-		hw->wiphy->n_iface_combinations =
-			ARRAY_SIZE(iwl_mvm_iface_combinations);
-	}
+	hw->wiphy->iface_combinations = iwl_mvm_iface_combinations;
+	hw->wiphy->n_iface_combinations =
+		ARRAY_SIZE(iwl_mvm_iface_combinations);
 
 	hw->wiphy->max_remain_on_channel_duration = 10000;
 	hw->max_listen_interval = IWL_MVM_CONN_LISTEN_INTERVAL;
@@ -1909,12 +1874,6 @@ static int iwl_mvm_mac_add_interface(struct ieee80211_hw *hw,
 
 	rcu_assign_pointer(mvm->vif_id_to_mac[mvmvif->id], vif);
 
-	/* Currently not much to do for NAN */
-	if (vif->type == NL80211_IFTYPE_NAN) {
-		ret = 0;
-		goto out;
-	}
-
 	/*
 	 * The AP binding flow can be done only after the beacon
 	 * template is configured (which happens only in the mac80211
@@ -2027,15 +1986,6 @@ static void iwl_mvm_mac_remove_interface(struct ieee80211_hw *hw,
 	struct iwl_probe_resp_data *probe_data;
 
 	iwl_mvm_prepare_mac_removal(mvm, vif);
-
-	if (vif->type == NL80211_IFTYPE_NAN) {
-		struct wireless_dev *wdev = ieee80211_vif_to_wdev(vif);
-		/* cfg80211 should stop NAN before interface removal */
-		if (wdev && WARN_ON(wdev_running(wdev)))
-			iwl_mvm_stop_nan(hw, vif);
-
-		return;
-	}
 
 	if (!(vif->type == NL80211_IFTYPE_AP ||
 	      vif->type == NL80211_IFTYPE_ADHOC))
@@ -6688,11 +6638,6 @@ const struct ieee80211_ops iwl_mvm_hw_ops = {
 	.get_ftm_responder_stats = iwl_mvm_mac_get_ftm_responder_stats,
 	.start_pmsr = iwl_mvm_start_pmsr,
 	.abort_pmsr = iwl_mvm_abort_pmsr,
-
-	.start_nan = iwl_mvm_start_nan,
-	.stop_nan = iwl_mvm_stop_nan,
-	.add_nan_func = iwl_mvm_add_nan_func,
-	.del_nan_func = iwl_mvm_del_nan_func,
 
 	.can_aggregate_in_amsdu = iwl_mvm_mac_can_aggregate,
 #ifdef CPTCFG_IWLWIFI_DEBUGFS

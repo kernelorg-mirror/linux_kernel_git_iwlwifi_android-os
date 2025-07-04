@@ -700,9 +700,10 @@ enum iwl_vendor_link_type {
  * @IWL_MVM_VENDOR_ATTR_DBG_COLLECT_TRIGGER: description of collect debug data
  *	trigger.
  * @IWL_MVM_VENDOR_ATTR_NAN_FAW_FREQ: u32 attribute. Frequency (in MHz) to be
- *	used for NAN further availability.
+ *	used for NAN further availability. This attribute is now deprecated.
  * @IWL_MVM_VENDOR_ATTR_NAN_FAW_SLOTS: u8 attribute. Number of 16TU slots
- *	the NAN device will be available on it's FAW between DWs.
+ *	the NAN device will be available on it's FAW between DWs. This attribute
+ *	is now deprecated.
  * @IWL_MVM_VENDOR_ATTR_GSCAN_MAX_HOTLIST_SSIDS: maximum number of entries for
  *	hotlist SSID's
  * @IWL_MVM_VENDOR_ATTR_GSCAN_MAX_NUM_EPNO_NETWORKS: max number of epno entries

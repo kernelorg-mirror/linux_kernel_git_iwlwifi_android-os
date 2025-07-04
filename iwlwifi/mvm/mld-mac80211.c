@@ -128,15 +128,6 @@ static void iwl_mvm_mld_mac_remove_interface(struct ieee80211_hw *hw,
 
 	iwl_mvm_prepare_mac_removal(mvm, vif);
 
-	if (vif->type == NL80211_IFTYPE_NAN) {
-		struct wireless_dev *wdev = ieee80211_vif_to_wdev(vif);
-		/* cfg80211 should stop NAN before interface removal */
-		if (wdev && WARN_ON(wdev_running(wdev)))
-			iwl_mvm_stop_nan(hw, vif);
-
-		return;
-	}
-
 	if (!(vif->type == NL80211_IFTYPE_AP ||
 	      vif->type == NL80211_IFTYPE_ADHOC))
 		iwl_mvm_tcm_rm_vif(mvm, vif);
@@ -1394,10 +1385,6 @@ const struct ieee80211_ops iwl_mvm_mld_hw_ops = {
 	.start_pmsr = iwl_mvm_start_pmsr,
 	.abort_pmsr = iwl_mvm_abort_pmsr,
 
-	.start_nan = iwl_mvm_start_nan,
-	.stop_nan = iwl_mvm_stop_nan,
-	.add_nan_func = iwl_mvm_add_nan_func,
-	.del_nan_func = iwl_mvm_del_nan_func,
 #ifdef CPTCFG_IWLWIFI_DEBUGFS
 	.vif_add_debugfs = iwl_mvm_vif_add_debugfs,
 	.link_add_debugfs = iwl_mvm_link_add_debugfs,

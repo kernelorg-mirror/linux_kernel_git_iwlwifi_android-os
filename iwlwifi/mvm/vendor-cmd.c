@@ -967,55 +967,6 @@ free:
 	return err;
 }
 
-static int iwl_mvm_vendor_nan_faw_conf(struct wiphy *wiphy,
-				       struct wireless_dev *wdev,
-				       const void *data, int data_len)
-{
-	struct nlattr **tb;
-	struct ieee80211_hw *hw = wiphy_to_ieee80211_hw(wiphy);
-	struct iwl_mvm *mvm = IWL_MAC80211_GET_MVM(hw);
-	struct cfg80211_chan_def def = {};
-	struct ieee80211_channel *chan;
-	u32 freq;
-	u8 slots;
-	int err;
-
-	tb = iwl_mvm_parse_vendor_data(data, data_len);
-	if (IS_ERR(tb))
-		return PTR_ERR(tb);
-
-	if (!tb[IWL_MVM_VENDOR_ATTR_NAN_FAW_SLOTS]) {
-		err = -EINVAL;
-		goto free;
-	}
-
-	if (!tb[IWL_MVM_VENDOR_ATTR_NAN_FAW_FREQ]) {
-		err = -EINVAL;
-		goto free;
-	}
-
-	freq = nla_get_u32(tb[IWL_MVM_VENDOR_ATTR_NAN_FAW_FREQ]);
-	slots = nla_get_u8(tb[IWL_MVM_VENDOR_ATTR_NAN_FAW_SLOTS]);
-
-	chan = ieee80211_get_channel(wiphy, freq);
-	if (!chan) {
-		err = -EINVAL;
-		goto free;
-	}
-
-	cfg80211_chandef_create(&def, chan, NL80211_CHAN_NO_HT);
-
-	if (!cfg80211_chandef_usable(wiphy, &def, IEEE80211_CHAN_DISABLED)) {
-		err = -EINVAL;
-		goto free;
-	}
-
-	err = iwl_mvm_nan_config_nan_faw_cmd(mvm, &def, slots);
-free:
-	kfree(tb);
-	return err;
-}
-
 static int iwl_mvm_vendor_set_dynamic_txp_profile(struct wiphy *wiphy,
 						  struct wireless_dev *wdev,
 						  const void *data,
@@ -1853,18 +1804,6 @@ static const struct wiphy_vendor_command iwl_mvm_vendor_commands[] = {
 		.flags = WIPHY_VENDOR_CMD_NEED_WDEV |
 			 WIPHY_VENDOR_CMD_NEED_RUNNING,
 		.doit = iwl_mvm_vendor_dbg_collect,
-		.policy = iwl_mvm_vendor_attr_policy,
-		.maxattr = MAX_IWL_MVM_VENDOR_ATTR,
-	},
-	{
-		.info = {
-			.vendor_id = INTEL_OUI,
-
-			.subcmd = IWL_MVM_VENDOR_CMD_NAN_FAW_CONF,
-		},
-		.flags = WIPHY_VENDOR_CMD_NEED_WDEV |
-			 WIPHY_VENDOR_CMD_NEED_RUNNING,
-		.doit = iwl_mvm_vendor_nan_faw_conf,
 		.policy = iwl_mvm_vendor_attr_policy,
 		.maxattr = MAX_IWL_MVM_VENDOR_ATTR,
 	},

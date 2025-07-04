@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0 OR BSD-3-Clause
 /*
- * Copyright (C) 2013-2014, 2018-2019, 2022-2024 Intel Corporation
+ * Copyright (C) 2013-2014, 2018-2019, 2022-2025 Intel Corporation
  * Copyright (C) 2013-2014 Intel Mobile Communications GmbH
  */
 #include "mvm.h"
@@ -24,8 +24,7 @@ static void iwl_mvm_bound_iface_iterator(void *_data, u8 *mac,
 	struct iwl_mvm_vif *mvmvif = iwl_mvm_vif_from_mac80211(vif);
 
 	if (vif == data->ignore_vif || !mvmvif->deflink.phy_ctxt ||
-	    vif->type == NL80211_IFTYPE_P2P_DEVICE ||
-	    vif->type == NL80211_IFTYPE_NAN)
+	    vif->type == NL80211_IFTYPE_P2P_DEVICE)
 		return;
 
 	data->num_active_macs++;
@@ -241,8 +240,7 @@ int iwl_mvm_sf_update(struct iwl_mvm *mvm, struct ieee80211_vif *changed_vif,
 	 * vif is a p2p device.
 	 */
 	if (test_bit(IWL_MVM_STATUS_IN_HW_RESTART, &mvm->status) ||
-	    (changed_vif && (changed_vif->type == NL80211_IFTYPE_P2P_DEVICE ||
-			     changed_vif->type == NL80211_IFTYPE_NAN)))
+	    (changed_vif && (changed_vif->type == NL80211_IFTYPE_P2P_DEVICE)))
 		return 0;
 
 	ieee80211_iterate_active_interfaces_atomic(mvm->hw,
