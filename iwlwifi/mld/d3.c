@@ -459,13 +459,23 @@ iwl_mld_handle_wowlan_info_notif(struct iwl_mld *mld,
 				 struct iwl_rx_packet *pkt)
 {
 	const struct iwl_wowlan_info_notif *notif = (void *)pkt->data;
-	u32 expected_len, len = iwl_rx_packet_payload_len(pkt);
+	u32 len = iwl_rx_packet_payload_len(pkt);
+	u32 len_with_mlo_keys;
 
-	expected_len = sizeof(*notif);
+	if (IWL_FW_CHECK(mld, len < sizeof(*notif),
+			 "Invalid wowlan_info_notif (expected=%zu got=%u)\n",
+			 sizeof(*notif), len))
+		return true;
 
-	if (IWL_FW_CHECK(mld, len < expected_len,
-			 "Invalid wowlan_info_notif (expected=%ud got=%ud)\n",
-			 expected_len, len))
+	/* Now that we know that we have at least sizeof(notif),
+	 * check also the variable length part
+	 */
+	len_with_mlo_keys = sizeof(*notif) +
+		notif->num_mlo_link_keys * sizeof(notif->mlo_gtks[0]);
+
+	if (IWL_FW_CHECK(mld, len < len_with_mlo_keys,
+			 "Invalid wowlan_info_notif (expected=%ud got=%u)\n",
+			 len_with_mlo_keys, len))
 		return true;
 
 	if (IWL_FW_CHECK(mld, notif->tid_offloaded_tx != IWL_WOWLAN_OFFLOAD_TID,
