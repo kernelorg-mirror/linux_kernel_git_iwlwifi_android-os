@@ -87,22 +87,6 @@ iwl_mld_iface_combinations[] = {
 	},
 };
 
-static const struct ieee80211_iface_combination
-iwl_mld_iface_combinations_nan[] = {
-	{
-		.num_different_channels = 2,
-		.max_interfaces = 5,
-		.limits = iwl_mld_limits,
-		.n_limits = ARRAY_SIZE(iwl_mld_limits),
-	},
-	{
-		.num_different_channels = 1,
-		.max_interfaces = 5,
-		.limits = iwl_mld_limits_ap,
-		.n_limits = ARRAY_SIZE(iwl_mld_limits_ap),
-	},
-};
-
 static const u8 if_types_ext_capa_sta[] = {
 	 [0] = WLAN_EXT_CAPA1_EXT_CHANNEL_SWITCHING,
 	 [2] = WLAN_EXT_CAPA3_MULTI_BSSID_SUPPORT,
@@ -411,21 +395,9 @@ static void iwl_mac_hw_set_wiphy(struct iwl_mld *mld)
 
 	wiphy->hw_timestamp_max_peers = 1;
 
-	if (iwl_mld_nan_supported(mld)) {
-		hw->wiphy->interface_modes |= BIT(NL80211_IFTYPE_NAN);
-		hw->wiphy->iface_combinations = iwl_mld_iface_combinations_nan;
-		hw->wiphy->n_iface_combinations =
-			ARRAY_SIZE(iwl_mld_iface_combinations_nan);
-
-		hw->wiphy->nan_supported_bands = BIT(NL80211_BAND_2GHZ);
-		if (mld->nvm_data->bands[NL80211_BAND_5GHZ].n_channels)
-			hw->wiphy->nan_supported_bands |=
-				BIT(NL80211_BAND_5GHZ);
-	} else {
-		wiphy->iface_combinations = iwl_mld_iface_combinations;
-		wiphy->n_iface_combinations =
-			ARRAY_SIZE(iwl_mld_iface_combinations);
-	}
+	wiphy->iface_combinations = iwl_mld_iface_combinations;
+	wiphy->n_iface_combinations =
+		ARRAY_SIZE(iwl_mld_iface_combinations);
 
 	wiphy_ext_feature_set(wiphy, NL80211_EXT_FEATURE_VHT_IBSS);
 	wiphy_ext_feature_set(wiphy, NL80211_EXT_FEATURE_DFS_CONCURRENT);
