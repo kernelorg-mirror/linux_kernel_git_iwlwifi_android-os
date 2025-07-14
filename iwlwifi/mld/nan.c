@@ -11,10 +11,6 @@
 #define IWL_NAN_RSSI_CLOSE 55
 #define IWL_NAN_RSSI_MIDDLE 70
 
-/* possible discovery channels for the 5 GHz band*/
-#define IWL_NAN_CHANNEL_UNII1 44
-#define IWL_NAN_CHANNEL_UNII3 149
-
 bool iwl_mld_nan_supported(struct iwl_mld *mld)
 {
 	return false;
