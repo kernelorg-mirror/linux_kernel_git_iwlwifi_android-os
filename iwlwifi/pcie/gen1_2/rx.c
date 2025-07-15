@@ -1304,15 +1304,16 @@ static void iwl_pcie_rx_handle_rb(struct iwl_trans *trans,
 	struct iwl_txq *txq = trans_pcie->txqs.txq[trans->conf.cmd_queue];
 	bool page_stolen = false;
 	int max_len = trans_pcie->rx_buf_bytes;
+	bool mapped = true;
 	u32 offset = 0;
 
 	if (WARN_ON(!rxb))
 		return;
 
-	dma_unmap_page(trans->dev, rxb->page_dma, max_len, DMA_FROM_DEVICE);
-
 	while (offset + sizeof(u32) + sizeof(struct iwl_cmd_header) < max_len) {
 		struct iwl_rx_packet *pkt;
+		struct iwl_cmd_header hdr;
+		__le32 len_n_flags;
 		bool reclaim;
 		int len;
 		struct iwl_rx_cmd_buffer rxcb = {
@@ -1321,33 +1322,47 @@ static void iwl_pcie_rx_handle_rb(struct iwl_trans *trans,
 			._page = rxb->page,
 			._page_stolen = false,
 			.truesize = max_len,
+			/* for unmap in rxb_steal_page() */
+			.dev = trans->dev,
+			.page_dma = rxb->page_dma,
+			.map_len = max_len,
 		};
 
 		pkt = rxb_addr(&rxcb);
+		/* copy these so that they can't be changed by device */
+		len_n_flags = READ_ONCE(pkt->len_n_flags);
+		hdr = pkt->hdr;
 
-		if (pkt->len_n_flags == cpu_to_le32(FH_RSCSR_FRAME_INVALID)) {
+		if (len_n_flags == cpu_to_le32(FH_RSCSR_FRAME_INVALID)) {
 			IWL_DEBUG_RX(trans,
 				     "Q %d: RB end marker at offset %d\n",
 				     rxq->id, offset);
 			break;
 		}
 
-		WARN((le32_to_cpu(pkt->len_n_flags) & FH_RSCSR_RXQ_MASK) >>
-			FH_RSCSR_RXQ_POS != rxq->id,
+		WARN(le32_get_bits(len_n_flags, FH_RSCSR_RXQ_MASK) != rxq->id,
 		     "frame on invalid queue - is on %d and indicates %d\n",
-		     rxq->id,
-		     (le32_to_cpu(pkt->len_n_flags) & FH_RSCSR_RXQ_MASK) >>
-			FH_RSCSR_RXQ_POS);
+		     rxq->id, le32_get_bits(len_n_flags, FH_RSCSR_RXQ_MASK));
 
 		IWL_DEBUG_RX(trans,
 			     "Q %d: cmd at offset %d: %s (%.2x.%2x, seq 0x%x)\n",
 			     rxq->id, offset,
 			     iwl_get_cmd_string(trans,
-						WIDE_ID(pkt->hdr.group_id, pkt->hdr.cmd)),
-			     pkt->hdr.group_id, pkt->hdr.cmd,
-			     le16_to_cpu(pkt->hdr.sequence));
+						WIDE_ID(hdr.group_id, hdr.cmd)),
+			     hdr.group_id, hdr.cmd,
+			     le16_to_cpu(hdr.sequence));
 
-		len = iwl_rx_packet_len(pkt);
+		if (mapped &&
+		    (!trans->conf.rx_mpdu_no_unmap ||
+		     WIDE_ID(hdr.group_id, hdr.cmd) != trans->conf.rx_mpdu_cmd)) {
+			dma_unmap_page(trans->dev, rxb->page_dma, max_len,
+				       DMA_FROM_DEVICE);
+			mapped = false;
+			rxcb.dev = NULL;
+		}
+
+		/* open-code iwl_rx_packet_len() since pkt could be mapped */
+		len = le32_get_bits(len_n_flags, FH_RSCSR_FRAME_SIZE_MSK);
 		len += sizeof(u32); /* account for status word */
 
 		offset += ALIGN(len, FH_RSCSR_FRAME_ALIGN);
@@ -1364,13 +1379,13 @@ static void iwl_pcie_rx_handle_rb(struct iwl_trans *trans,
 		 *   there is no command buffer to reclaim.
 		 * Ucode should set SEQ_RX_FRAME bit if ucode-originated,
 		 *   but apparently a few don't get set; catch them here. */
-		reclaim = !(pkt->hdr.sequence & SEQ_RX_FRAME);
-		if (reclaim && !pkt->hdr.group_id) {
+		reclaim = !(hdr.sequence & SEQ_RX_FRAME);
+		if (reclaim && !hdr.group_id) {
 			int i;
 
 			for (i = 0; i < trans->conf.n_no_reclaim_cmds; i++) {
 				if (trans->conf.no_reclaim_cmds[i] ==
-							pkt->hdr.cmd) {
+							hdr.cmd) {
 					reclaim = false;
 					break;
 				}
@@ -1390,7 +1405,7 @@ static void iwl_pcie_rx_handle_rb(struct iwl_trans *trans,
 		 */
 
 		if (reclaim && txq) {
-			u16 sequence = le16_to_cpu(pkt->hdr.sequence);
+			u16 sequence = le16_to_cpu(hdr.sequence);
 			int index = SEQ_TO_INDEX(sequence);
 			int cmd_index = iwl_txq_get_cmd_index(txq, index);
 
@@ -1418,29 +1433,38 @@ static void iwl_pcie_rx_handle_rb(struct iwl_trans *trans,
 		rxb->page = NULL;
 	}
 
-	/* Reuse the page if possible. For notification packets and
-	 * SKBs that fail to Rx correctly, add them back into the
-	 * rx_free list for reuse later. */
+	/*
+	 * Reuse the page and DMA mapping if possible. For notification packets
+	 * and SKBs that fail to Rx correctly or are copied, add them back into
+	 * the rx_free list for reuse later, mapping only if it was even
+	 * unmapped at all.
+	 */
 	if (rxb->page != NULL) {
-		rxb->page_dma =
-			dma_map_page(trans->dev, rxb->page, rxb->offset,
-				     trans_pcie->rx_buf_bytes,
-				     DMA_FROM_DEVICE);
-		if (dma_mapping_error(trans->dev, rxb->page_dma)) {
-			/*
-			 * free the page(s) as well to not break
-			 * the invariant that the items on the used
-			 * list have no page(s)
-			 */
-			__free_pages(rxb->page, trans_pcie->rx_page_order);
-			rxb->page = NULL;
-			iwl_pcie_rx_reuse_rbd(trans, rxb, rxq, emergency);
-		} else {
-			list_add_tail(&rxb->list, &rxq->rx_free);
-			rxq->free_count++;
+		if (!mapped) {
+			rxb->page_dma =
+				dma_map_page(trans->dev, rxb->page,
+					     rxb->offset, max_len,
+					     DMA_FROM_DEVICE);
+			if (dma_mapping_error(trans->dev, rxb->page_dma)) {
+				/*
+				 * free the page(s) as well to not break
+				 * the invariant that the items on the used
+				 * list have no page(s)
+				 */
+				__free_pages(rxb->page,
+					     trans_pcie->rx_page_order);
+				rxb->page = NULL;
+				goto reuse_without_page;
+			}
 		}
-	} else
-		iwl_pcie_rx_reuse_rbd(trans, rxb, rxq, emergency);
+
+		list_add_tail(&rxb->list, &rxq->rx_free);
+		rxq->free_count++;
+		return;
+	}
+
+reuse_without_page:
+	iwl_pcie_rx_reuse_rbd(trans, rxb, rxq, emergency);
 }
 
 static struct iwl_rx_mem_buffer *iwl_pcie_get_rxb(struct iwl_trans *trans,

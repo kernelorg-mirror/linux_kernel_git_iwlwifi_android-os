@@ -243,6 +243,10 @@ struct iwl_rx_cmd_buffer {
 	bool _page_stolen;
 	u32 _rx_page_order;
 	unsigned int truesize;
+	/* for unmap */
+	struct device *dev;
+	dma_addr_t page_dma;
+	unsigned int map_len;
 };
 
 static inline void *rxb_addr(struct iwl_rx_cmd_buffer *r)
@@ -257,6 +261,11 @@ static inline int rxb_offset(struct iwl_rx_cmd_buffer *r)
 
 static inline struct page *rxb_steal_page(struct iwl_rx_cmd_buffer *r)
 {
+	if (r->dev) {
+		dma_unmap_page(r->dev, r->page_dma, r->map_len,
+			       DMA_FROM_DEVICE);
+		r->dev = NULL;
+	}
 	r->_page_stolen = true;
 	get_page(r->_page);
 	return r->_page;
@@ -419,6 +428,10 @@ struct iwl_dump_sanitize_ops {
  * @mbx_addr_0_step: step address data 0
  * @mbx_addr_1_step: step address data 1
  * @ext_32khz_clock_valid: if true, the external 32 KHz clock can be used
+ * @rx_mpdu_no_unmap: don't unmap @rx_mdpu_cmd notifications. Note that if set,
+ *	the opmode must be very careful as the device is still able to write to
+ *	them as they're being processed, so must make copies and check those,
+ *	and cannot even trust e.g. iwl_rx_packet_payload_len() to be unmodified.
  */
 struct iwl_trans_config {
 	u8 cmd_queue;
@@ -440,7 +453,8 @@ struct iwl_trans_config {
 
 	u8 dsbr_urm_fw_dependent:1,
 	   dsbr_urm_permanent:1,
-	   ext_32khz_clock_valid:1;
+	   ext_32khz_clock_valid:1,
+	   rx_mpdu_no_unmap:1;
 
 	u32 mbx_addr_0_step;
 	u32 mbx_addr_1_step;
