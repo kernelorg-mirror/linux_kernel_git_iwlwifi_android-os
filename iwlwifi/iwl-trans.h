@@ -850,6 +850,8 @@ struct iwl_txq {
  * @pcie_link_speed: current PCIe link speed (%PCI_EXP_LNKSTA_CLS_*),
  *	only valid for discrete (not integrated) NICs
  * @num_rxqs: number of RX queues allocated by the transport
+ * @dma_protection: indicates that the (PCI) device is untrusted and
+ *	has DMA protection (via IOMMU) enabled
  */
 struct iwl_trans_info {
 	const char *name;
@@ -862,6 +864,7 @@ struct iwl_trans_info {
 	u32 hw_id;
 	u8 pcie_link_speed;
 	u8 num_rxqs;
+	u8 dma_protection:1;
 };
 
 /**
