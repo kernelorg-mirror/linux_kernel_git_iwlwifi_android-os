@@ -1348,10 +1348,9 @@ static void iwl_mld_rx_fill_status(struct iwl_mld *mld, int link_id,
 /* iwl_mld_create_skb adds the rxb to a new skb */
 static int iwl_mld_build_rx_skb(struct iwl_mld *mld, struct sk_buff *skb,
 				struct ieee80211_hdr *hdr, u16 len,
-				u8 crypt_len, struct iwl_rx_cmd_buffer *rxb)
+				u8 crypt_len, struct iwl_rx_cmd_buffer *rxb,
+				const struct iwl_rx_mpdu_desc *desc)
 {
-	struct iwl_rx_packet *pkt = rxb_addr(rxb);
-	struct iwl_rx_mpdu_desc *desc = (void *)pkt->data;
 	unsigned int headlen, fraglen, pad_len = 0;
 	unsigned int hdrlen = ieee80211_hdrlen(hdr->frame_control);
 	u8 mic_crc_len = u8_get_bits(desc->mac_flags1,
@@ -1535,7 +1534,7 @@ static void iwl_mld_update_last_rx_timestamp(struct iwl_mld *mld, u8 baid)
  */
 static struct ieee80211_sta *
 iwl_mld_rx_with_sta(struct iwl_mld *mld, struct ieee80211_hdr *hdr,
-		    struct sk_buff *skb,
+		    struct sk_buff *skb, __le32 len_n_flags,
 		    const struct iwl_rx_mpdu_desc *mpdu_desc,
 		    const struct iwl_rx_packet *pkt, int queue, bool *drop)
 {
@@ -1576,7 +1575,7 @@ iwl_mld_rx_with_sta(struct iwl_mld *mld, struct ieee80211_hdr *hdr,
 
 	/* fill checksum */
 	if (ieee80211_is_data(hdr->frame_control) &&
-	    pkt->len_n_flags & cpu_to_le32(FH_RSCSR_RPA_EN)) {
+	    len_n_flags & cpu_to_le32(FH_RSCSR_RPA_EN)) {
 		u16 hwsum = be16_to_cpu(mpdu_desc->v3.raw_xsum);
 
 		skb->ip_summed = CHECKSUM_COMPLETE;
@@ -1799,45 +1798,72 @@ void iwl_mld_rx_mpdu(struct iwl_mld *mld, struct napi_struct *napi,
 {
 	struct iwl_rx_packet *pkt = rxb_addr(rxb);
 	struct iwl_mld_rx_phy_data phy_data = {};
-	struct iwl_rx_mpdu_desc *mpdu_desc = (void *)pkt->data;
+	struct iwl_rx_mpdu_desc mpdu_desc;
 	struct ieee80211_sta *sta;
 	struct ieee80211_hdr *hdr;
 	struct sk_buff *skb;
-	size_t mpdu_desc_size = sizeof(*mpdu_desc);
 	bool drop = false;
 	u8 crypto_len = 0, band, link_id;
-	u32 pkt_len = iwl_rx_packet_payload_len(pkt);
-	u32 mpdu_len;
+	u32 pkt_len, mpdu_len;
 	enum iwl_mld_reorder_result reorder_res;
 	struct ieee80211_rx_status *rx_status;
+	__le32 len_n_flags;
 
 	if (unlikely(mld->fw_status.in_hw_restart))
 		return;
 
-	if (IWL_FW_CHECK(mld, pkt_len < mpdu_desc_size,
+	/*
+	 * This code needs to be really careful - the page(s) is/are still
+	 * mapped to the device, so it can modify them underneath us.
+	 *
+	 * So first, copy the relevant data that we access multiple times
+	 * to the stack, so we can access consistent copies.
+	 *
+	 * Secondly, since the HW packet header (len_n_flags) is also still
+	 * mapped, double-check that still fits into the buffer.
+	 */
+	len_n_flags = READ_ONCE(pkt->len_n_flags);
+	mpdu_desc = *(struct iwl_rx_mpdu_desc *)pkt->data;
+	pkt_len = le32_get_bits(len_n_flags, FH_RSCSR_FRAME_SIZE_MSK) -
+		  sizeof(pkt->hdr);
+
+	if (IWL_FW_CHECK(mld, rxb_offset(rxb) + pkt_len > rxb->map_len,
+			 "FW/HW changed packet len during RX (offs:%d, len:%d)\n",
+			 rxb_offset(rxb), pkt_len))
+		return;
+
+	if (IWL_FW_CHECK(mld,
+			 pkt_len < sizeof(mpdu_desc),
 			 "Bad REPLY_RX_MPDU_CMD size (%d)\n", pkt_len))
 		return;
 
-	mpdu_len = le16_to_cpu(mpdu_desc->mpdu_len);
+	mpdu_len = le16_to_cpu(mpdu_desc.mpdu_len);
 
-	if (IWL_FW_CHECK(mld, mpdu_len + mpdu_desc_size > pkt_len,
+	if (IWL_FW_CHECK(mld, mpdu_len + sizeof(mpdu_desc) > pkt_len,
 			 "FW lied about packet len (%d)\n", pkt_len))
 		return;
 
-	/* Don't use dev_alloc_skb(), we'll have enough headroom once
+	/*
+	 * Don't use dev_alloc_skb(), we'll have enough headroom once
 	 * ieee80211_hdr pulled.
+	 *
+	 * If the device is marked with DMA protection, then the IOMMU unmap is
+	 * _really_ expensive, so in that case allocate a large SKB so we copy
+	 * the whole thing, since the memory bandwidth is high enough to make
+	 * that faster than the IOMMU flush...
 	 */
-	skb = alloc_skb(128, GFP_ATOMIC);
+	skb = alloc_skb(mld->trans->info.dma_protection ? mpdu_len : 128,
+			GFP_ATOMIC);
 	if (!skb) {
 		IWL_ERR(mld, "alloc_skb failed\n");
 		return;
 	}
 
-	hdr = (void *)(pkt->data + mpdu_desc_size);
+	hdr = (void *)(pkt->data + sizeof(mpdu_desc));
 
-	iwl_mld_fill_phy_data(mld, mpdu_desc, &phy_data);
+	iwl_mld_fill_phy_data(mld, &mpdu_desc, &phy_data);
 
-	if (mpdu_desc->mac_flags2 & IWL_RX_MPDU_MFLG2_PAD) {
+	if (mpdu_desc.mac_flags2 & IWL_RX_MPDU_MFLG2_PAD) {
 		/* If the device inserted padding it means that (it thought)
 		 * the 802.11 header wasn't a multiple of 4 bytes long. In
 		 * this case, reserve two bytes at the start of the SKB to
@@ -1849,14 +1875,15 @@ void iwl_mld_rx_mpdu(struct iwl_mld *mld, struct napi_struct *napi,
 	rx_status = IEEE80211_SKB_RXCB(skb);
 
 	/* this is needed early */
-	band = u8_get_bits(mpdu_desc->mac_phy_band,
+	band = u8_get_bits(mpdu_desc.mac_phy_band,
 			   IWL_RX_MPDU_MAC_PHY_BAND_BAND_MASK);
 	iwl_mld_fill_rx_status_band_freq(rx_status, band,
-					 mpdu_desc->v3.channel);
+					 mpdu_desc.v3.channel);
 
 	rcu_read_lock();
 
-	sta = iwl_mld_rx_with_sta(mld, hdr, skb, mpdu_desc, pkt, queue, &drop);
+	sta = iwl_mld_rx_with_sta(mld, hdr, skb, len_n_flags, &mpdu_desc, pkt,
+				  queue, &drop);
 	if (drop)
 		goto drop;
 
@@ -1867,16 +1894,16 @@ void iwl_mld_rx_mpdu(struct iwl_mld *mld, struct napi_struct *napi,
 	/* Keep packets with CRC errors (and with overrun) for monitor mode
 	 * (otherwise the firmware discards them) but mark them as bad.
 	 */
-	if (!(mpdu_desc->status & cpu_to_le32(IWL_RX_MPDU_STATUS_CRC_OK)) ||
-	    !(mpdu_desc->status & cpu_to_le32(IWL_RX_MPDU_STATUS_OVERRUN_OK))) {
+	if (!(mpdu_desc.status & cpu_to_le32(IWL_RX_MPDU_STATUS_CRC_OK)) ||
+	    !(mpdu_desc.status & cpu_to_le32(IWL_RX_MPDU_STATUS_OVERRUN_OK))) {
 		IWL_DEBUG_RX(mld, "Bad CRC or FIFO: 0x%08X.\n",
-			     le32_to_cpu(mpdu_desc->status));
+			     le32_to_cpu(mpdu_desc.status));
 		rx_status->flag |= RX_FLAG_FAILED_FCS_CRC;
 	}
 
 	if (likely(!(phy_data.phy_info & IWL_RX_MPDU_PHY_TSF_OVERLOAD))) {
 		rx_status->mactime =
-			le64_to_cpu(mpdu_desc->v3.tsf_on_air_rise);
+			le64_to_cpu(mpdu_desc.v3.tsf_on_air_rise);
 
 		/* TSF as indicated by the firmware is at INA time */
 		rx_status->flag |= RX_FLAG_MACTIME_PLCP_START;
@@ -1893,16 +1920,17 @@ void iwl_mld_rx_mpdu(struct iwl_mld *mld, struct napi_struct *napi,
 				SCHED_SCAN_PASS_ALL_STATE_FOUND;
 	}
 
-	link_id = u8_get_bits(mpdu_desc->mac_phy_band,
+	link_id = u8_get_bits(mpdu_desc.mac_phy_band,
 			      IWL_RX_MPDU_MAC_PHY_BAND_LINK_MASK);
 
 	iwl_mld_rx_fill_status(mld, link_id, hdr, skb, &phy_data, queue);
 
-	if (iwl_mld_rx_crypto(mld, sta, hdr, rx_status, mpdu_desc, queue,
-			      le32_to_cpu(pkt->len_n_flags), &crypto_len))
+	if (iwl_mld_rx_crypto(mld, sta, hdr, rx_status, &mpdu_desc, queue,
+			      le32_to_cpu(len_n_flags), &crypto_len))
 		goto drop;
 
-	if (iwl_mld_build_rx_skb(mld, skb, hdr, mpdu_len, crypto_len, rxb))
+	if (iwl_mld_build_rx_skb(mld, skb, hdr, mpdu_len, crypto_len,
+				 rxb, &mpdu_desc))
 		goto drop;
 
 	/* time sync frame is saved and will be released later when the
@@ -1911,7 +1939,7 @@ void iwl_mld_rx_mpdu(struct iwl_mld *mld, struct napi_struct *napi,
 	if (iwl_mld_time_sync_frame(mld, skb, hdr->addr2))
 		goto out;
 
-	reorder_res = iwl_mld_reorder(mld, napi, queue, sta, skb, mpdu_desc);
+	reorder_res = iwl_mld_reorder(mld, napi, queue, sta, skb, &mpdu_desc);
 	switch (reorder_res) {
 	case IWL_MLD_PASS_SKB:
 		break;
