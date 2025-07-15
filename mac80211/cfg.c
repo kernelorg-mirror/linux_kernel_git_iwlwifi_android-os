@@ -310,6 +310,40 @@ static void ieee80211_stop_p2p_device(struct wiphy *wiphy,
 	ieee80211_sdata_stop(IEEE80211_WDEV_TO_SUB_IF(wdev));
 }
 
+static void ieee80211_nan_conf_free(struct cfg80211_nan_conf *conf)
+{
+}
+
+static void ieee80211_stop_nan(struct wiphy *wiphy,
+			       struct wireless_dev *wdev)
+{
+	struct ieee80211_sub_if_data *sdata = IEEE80211_WDEV_TO_SUB_IF(wdev);
+
+	if (!sdata->u.nan.started)
+		return;
+
+	drv_stop_nan(sdata->local, sdata);
+	sdata->u.nan.started = false;
+
+	ieee80211_nan_conf_free(&sdata->u.nan.conf);
+
+	ieee80211_sdata_stop(sdata);
+	ieee80211_recalc_idle(sdata->local);
+}
+
+static int ieee80211_nan_conf_copy(struct cfg80211_nan_conf *dst,
+				   struct cfg80211_nan_conf *src,
+				   u32 changes)
+{
+	if (changes & CFG80211_NAN_CONF_CHANGED_PREF)
+		dst->master_pref = src->master_pref;
+
+	if (changes & CFG80211_NAN_CONF_CHANGED_BANDS)
+		dst->bands = src->bands;
+
+	return 0;
+}
+
 static int ieee80211_start_nan(struct wiphy *wiphy,
 			       struct wireless_dev *wdev,
 			       struct cfg80211_nan_conf *conf)
@@ -339,24 +373,13 @@ static int ieee80211_start_nan(struct wiphy *wiphy,
 	sdata->u.nan.started = true;
 	ieee80211_recalc_idle(sdata->local);
 
-	sdata->u.nan.conf.master_pref = conf->master_pref;
-	sdata->u.nan.conf.bands = conf->bands;
+	ret = ieee80211_nan_conf_copy(&sdata->u.nan.conf, conf, 0xFFFFFFFF);
+	if (ret) {
+		ieee80211_stop_nan(wiphy, wdev);
+		return ret;
+	}
 
 	return 0;
-}
-
-static void ieee80211_stop_nan(struct wiphy *wiphy,
-			       struct wireless_dev *wdev)
-{
-	struct ieee80211_sub_if_data *sdata = IEEE80211_WDEV_TO_SUB_IF(wdev);
-
-	if (!sdata->u.nan.started)
-		return;
-
-	drv_stop_nan(sdata->local, sdata);
-	sdata->u.nan.started = false;
-	ieee80211_sdata_stop(sdata);
-	ieee80211_recalc_idle(sdata->local);
 }
 
 static int ieee80211_nan_change_conf(struct wiphy *wiphy,
@@ -365,7 +388,7 @@ static int ieee80211_nan_change_conf(struct wiphy *wiphy,
 				     u32 changes)
 {
 	struct ieee80211_sub_if_data *sdata = IEEE80211_WDEV_TO_SUB_IF(wdev);
-	struct cfg80211_nan_conf new_conf;
+	struct cfg80211_nan_conf new_conf = {};
 	int ret = 0;
 
 	if (sdata->vif.type != NL80211_IFTYPE_NAN)
@@ -374,17 +397,28 @@ static int ieee80211_nan_change_conf(struct wiphy *wiphy,
 	if (!ieee80211_sdata_running(sdata))
 		return -ENETDOWN;
 
-	new_conf = sdata->u.nan.conf;
+	if (!changes)
+		return 0;
 
-	if (changes & CFG80211_NAN_CONF_CHANGED_PREF)
-		new_conf.master_pref = conf->master_pref;
+	/* First make a full copy of the previous configuration and then apply
+	 * the changes. This might be a little wasteful, but it is simpler.
+	 */
+	ret = ieee80211_nan_conf_copy(&new_conf, &sdata->u.nan.conf,
+				      0xFFFFFFFF);
+	if (ret < 0)
+		return ret;
 
-	if (changes & CFG80211_NAN_CONF_CHANGED_BANDS)
-		new_conf.bands = conf->bands;
+	ret = ieee80211_nan_conf_copy(&new_conf, conf, changes);
+	if (ret < 0)
+		return ret;
 
 	ret = drv_nan_change_conf(sdata->local, sdata, &new_conf, changes);
-	if (!ret)
+	if (ret) {
+		ieee80211_nan_conf_free(&new_conf);
+	} else {
+		ieee80211_nan_conf_free(&sdata->u.nan.conf);
 		sdata->u.nan.conf = new_conf;
+	}
 
 	return ret;
 }
