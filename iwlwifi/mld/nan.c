@@ -22,6 +22,14 @@ int iwl_mld_start_nan(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
 	return 0;
 }
 
+int iwl_mld_nan_change_config(struct ieee80211_hw *hw,
+			      struct ieee80211_vif *vif,
+			      struct cfg80211_nan_conf *conf,
+			      u32 changes)
+{
+	return 0;
+}
+
 int iwl_mld_stop_nan(struct ieee80211_hw *hw,
 		     struct ieee80211_vif *vif)
 {
