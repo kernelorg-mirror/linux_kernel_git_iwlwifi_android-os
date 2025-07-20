@@ -1145,9 +1145,6 @@ struct iwl_mvm {
 	u8 offload_tid;
 #ifdef CPTCFG_IWLWIFI_DEBUGFS
 	bool d3_wake_sysassert;
-	bool d3_test_active;
-	u32 d3_test_pme_ptr;
-	struct ieee80211_vif *keep_vif;
 	u32 last_netdetect_scans; /* no. of scans in the last net-detect wake */
 #endif
 #endif
