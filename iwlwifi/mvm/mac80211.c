@@ -248,6 +248,17 @@ static const u8 he_if_types_ext_capa_sta[] = {
 	 [8] = WLAN_EXT_CAPA9_MAX_MSDU_IN_AMSDU_MSB,
 };
 
+#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+static const u8 he_if_types_ext_capa_with_twt_sta[] = {
+	[0] = WLAN_EXT_CAPA1_EXT_CHANNEL_SWITCHING,
+	[2] = WLAN_EXT_CAPA3_MULTI_BSSID_SUPPORT,
+	[7] = WLAN_EXT_CAPA8_OPMODE_NOTIF |
+	      WLAN_EXT_CAPA8_MAX_MSDU_IN_AMSDU_LSB,
+	[8] = WLAN_EXT_CAPA9_MAX_MSDU_IN_AMSDU_MSB,
+	[9] = WLAN_EXT_CAPA10_TWT_REQUESTER_SUPPORT,
+};
+#endif
+
 static const u8 tm_if_types_ext_capa_sta[] = {
 	 [0] = WLAN_EXT_CAPA1_EXT_CHANNEL_SWITCHING,
 	 [2] = WLAN_EXT_CAPA3_MULTI_BSSID_SUPPORT |
@@ -255,8 +266,19 @@ static const u8 tm_if_types_ext_capa_sta[] = {
 	 [7] = WLAN_EXT_CAPA8_OPMODE_NOTIF |
 	       WLAN_EXT_CAPA8_MAX_MSDU_IN_AMSDU_LSB,
 	 [8] = WLAN_EXT_CAPA9_MAX_MSDU_IN_AMSDU_MSB,
-	 [9] = WLAN_EXT_CAPA10_TWT_REQUESTER_SUPPORT,
 };
+
+#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+static const u8 tm_if_types_ext_capa_with_twt_sta[] = {
+	[0] = WLAN_EXT_CAPA1_EXT_CHANNEL_SWITCHING,
+	[2] = WLAN_EXT_CAPA3_MULTI_BSSID_SUPPORT |
+	      WLAN_EXT_CAPA3_TIMING_MEASUREMENT_SUPPORT,
+	[7] = WLAN_EXT_CAPA8_OPMODE_NOTIF |
+	      WLAN_EXT_CAPA8_MAX_MSDU_IN_AMSDU_LSB,
+	[8] = WLAN_EXT_CAPA9_MAX_MSDU_IN_AMSDU_MSB,
+	[9] = WLAN_EXT_CAPA10_TWT_REQUESTER_SUPPORT,
+};
+#endif
 
 /* Additional interface types for which extended capabilities are
  * specified separately
@@ -292,6 +314,31 @@ static const struct wiphy_iftype_ext_capab add_iftypes_ext_capa[] = {
 		.mld_capa_and_ops = IWL_MVM_MLD_CAPA_OPS,
 	},
 };
+
+#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+static const struct wiphy_iftype_ext_capab add_iftypes_ext_capa_with_twt[] = {
+	{
+		.iftype = NL80211_IFTYPE_STATION,
+		.extended_capabilities = he_if_types_ext_capa_with_twt_sta,
+		.extended_capabilities_mask = he_if_types_ext_capa_with_twt_sta,
+		.extended_capabilities_len =
+			sizeof(he_if_types_ext_capa_with_twt_sta),
+		/* relevant only if EHT is supported */
+		.eml_capabilities = IWL_MVM_EMLSR_CAPA,
+		.mld_capa_and_ops = IWL_MVM_MLD_CAPA_OPS,
+	},
+	{
+		.iftype = NL80211_IFTYPE_STATION,
+		.extended_capabilities = tm_if_types_ext_capa_with_twt_sta,
+		.extended_capabilities_mask = tm_if_types_ext_capa_with_twt_sta,
+		.extended_capabilities_len =
+			sizeof(tm_if_types_ext_capa_with_twt_sta),
+		/* relevant only if EHT is supported */
+		.eml_capabilities = IWL_MVM_EMLSR_CAPA,
+		.mld_capa_and_ops = IWL_MVM_MLD_CAPA_OPS,
+	},
+};
+#endif
 
 int iwl_mvm_op_get_antenna(struct ieee80211_hw *hw, u32 *tx_ant, u32 *rx_ant)
 {
@@ -342,6 +389,8 @@ int iwl_mvm_mac_setup_register(struct iwl_mvm *mvm)
 #endif
 	u32 sec_key_id = WIDE_ID(DATA_PATH_GROUP, SEC_KEY_CMD);
 	u8 sec_key_ver = iwl_fw_lookup_cmd_ver(mvm->fw, sec_key_id, 0);
+	const struct wiphy_iftype_ext_capab *iftype_ext_capab_arr;
+	unsigned int iftype_ext_capab_arr_len;
 
 	/* Tell mac80211 our characteristics */
 	ieee80211_hw_set(hw, SIGNAL_DBM);
@@ -710,11 +759,20 @@ int iwl_mvm_mac_setup_register(struct iwl_mvm *mvm)
 	hw->wiphy->iftype_ext_capab = NULL;
 	hw->wiphy->num_iftype_ext_capab = 0;
 
+	iftype_ext_capab_arr = add_iftypes_ext_capa;
+	iftype_ext_capab_arr_len = ARRAY_SIZE(add_iftypes_ext_capa);
+#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+	if (mvm->trans->dbg_cfg.allow_twt) {
+		iftype_ext_capab_arr = add_iftypes_ext_capa_with_twt;
+		iftype_ext_capab_arr_len =
+			ARRAY_SIZE(add_iftypes_ext_capa_with_twt);
+	}
+#endif
+
 	if (mvm->nvm_data->sku_cap_11ax_enable &&
 	    !iwlwifi_mod_params.disable_11ax) {
-		hw->wiphy->iftype_ext_capab = add_iftypes_ext_capa;
-		hw->wiphy->num_iftype_ext_capab =
-			ARRAY_SIZE(add_iftypes_ext_capa) - 1;
+		hw->wiphy->iftype_ext_capab = iftype_ext_capab_arr;
+		hw->wiphy->num_iftype_ext_capab = iftype_ext_capab_arr_len - 1;
 
 		ieee80211_hw_set(hw, SUPPORTS_MULTI_BSSID);
 		ieee80211_hw_set(hw, SUPPORTS_ONLY_HE_MULTI_BSSID);
@@ -728,10 +786,10 @@ int iwl_mvm_mac_setup_register(struct iwl_mvm *mvm)
 
 		if (!hw->wiphy->iftype_ext_capab) {
 			hw->wiphy->num_iftype_ext_capab = 1;
-			hw->wiphy->iftype_ext_capab = add_iftypes_ext_capa +
-				ARRAY_SIZE(add_iftypes_ext_capa) - 1;
+			hw->wiphy->iftype_ext_capab = iftype_ext_capab_arr +
+				iftype_ext_capab_arr_len - 1;
 		} else {
-			hw->wiphy->iftype_ext_capab = add_iftypes_ext_capa + 1;
+			hw->wiphy->iftype_ext_capab = iftype_ext_capab_arr + 1;
 		}
 	}
 

@@ -1046,10 +1046,6 @@ iwl_nvm_fixup_sband_iftd(struct iwl_trans *trans,
 		iftype_data->he_cap.he_cap_elem.phy_cap_info[2] |=
 			IEEE80211_HE_PHY_CAP2_UL_MU_FULL_MU_MIMO;
 
-	if (fw_has_capa(&fw->ucode_capa, IWL_UCODE_TLV_CAPA_BROADCAST_TWT))
-		iftype_data->he_cap.he_cap_elem.mac_cap_info[2] |=
-			IEEE80211_HE_MAC_CAP2_BCAST_TWT;
-
 	if (trans->mac_cfg->device_family == IWL_DEVICE_FAMILY_22000 &&
 	    !is_ap) {
 		iftype_data->vendor_elems.data = iwl_vendor_caps;
@@ -1087,14 +1083,19 @@ iwl_nvm_fixup_sband_iftd(struct iwl_trans *trans,
 			~IEEE80211_EHT_PHY_CAP8_RX_4096QAM_WIDER_BW_DL_OFDMA;
 	}
 
-	if (fw_has_capa(&fw->ucode_capa, IWL_UCODE_TLV_CAPA_RESTRICTED_TWT_SUPPORT))
-		iftype_data->eht_cap.eht_cap_elem.mac_cap_info[0] |=
-			IEEE80211_EHT_MAC_CAP0_RESTRICTED_TWT;
-
 #ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
-	if (trans->dbg_cfg.allow_twt)
+	if (trans->dbg_cfg.allow_twt && !is_ap) {
 		iftype_data->he_cap.he_cap_elem.mac_cap_info[0] |=
 			IEEE80211_HE_MAC_CAP0_TWT_REQ;
+		if (fw_has_capa(&fw->ucode_capa,
+				IWL_UCODE_TLV_CAPA_BROADCAST_TWT))
+			iftype_data->he_cap.he_cap_elem.mac_cap_info[2] |=
+				IEEE80211_HE_MAC_CAP2_BCAST_TWT;
+		if (fw_has_capa(&fw->ucode_capa,
+				IWL_UCODE_TLV_CAPA_RESTRICTED_TWT_SUPPORT))
+			iftype_data->eht_cap.eht_cap_elem.mac_cap_info[0] |=
+				IEEE80211_EHT_MAC_CAP0_RESTRICTED_TWT;
+	}
 #endif
 }
 

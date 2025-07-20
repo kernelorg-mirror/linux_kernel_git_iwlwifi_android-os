@@ -109,8 +109,18 @@ static const u8 if_types_ext_capa_sta[] = {
 	 [7] = WLAN_EXT_CAPA8_OPMODE_NOTIF |
 	       WLAN_EXT_CAPA8_MAX_MSDU_IN_AMSDU_LSB,
 	 [8] = WLAN_EXT_CAPA9_MAX_MSDU_IN_AMSDU_MSB,
+};
+
+#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+static const u8 if_types_ext_capa_with_twt_sta[] = {
+	 [0] = WLAN_EXT_CAPA1_EXT_CHANNEL_SWITCHING,
+	 [2] = WLAN_EXT_CAPA3_MULTI_BSSID_SUPPORT,
+	 [7] = WLAN_EXT_CAPA8_OPMODE_NOTIF |
+	       WLAN_EXT_CAPA8_MAX_MSDU_IN_AMSDU_LSB,
+	 [8] = WLAN_EXT_CAPA9_MAX_MSDU_IN_AMSDU_MSB,
 	 [9] = WLAN_EXT_CAPA10_TWT_REQUESTER_SUPPORT,
 };
+#endif
 
 #define IWL_MLD_EMLSR_CAPA	(IEEE80211_EML_CAP_EMLSR_SUPP | \
 				 IEEE80211_EML_CAP_EMLSR_PADDING_DELAY_32US << \
@@ -133,6 +143,21 @@ static const struct wiphy_iftype_ext_capab iftypes_ext_capa[] = {
 		.mld_capa_and_ops = IWL_MLD_CAPA_OPS,
 	},
 };
+
+#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+static const struct wiphy_iftype_ext_capab iftypes_ext_capa_with_twt[] = {
+	{
+		.iftype = NL80211_IFTYPE_STATION,
+		.extended_capabilities = if_types_ext_capa_with_twt_sta,
+		.extended_capabilities_mask = if_types_ext_capa_with_twt_sta,
+		.extended_capabilities_len =
+			sizeof(if_types_ext_capa_with_twt_sta),
+		/* relevant only if EHT is supported */
+		.eml_capabilities = IWL_MLD_EMLSR_CAPA,
+		.mld_capa_and_ops = IWL_MLD_CAPA_OPS,
+	},
+};
+#endif
 
 static const struct cfg80211_pmsr_capabilities iwl_mld_pmsr_capa = {
 	.max_peers = IWL_TOF_MAX_APS,
@@ -428,7 +453,13 @@ static void iwl_mac_hw_set_wiphy(struct iwl_mld *mld)
 	if (!iwlwifi_mod_params.disable_11ax) {
 		wiphy->iftype_ext_capab = iftypes_ext_capa;
 		wiphy->num_iftype_ext_capab = ARRAY_SIZE(iftypes_ext_capa);
-
+#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+		if (mld->trans->dbg_cfg.allow_twt) {
+			wiphy->iftype_ext_capab = iftypes_ext_capa_with_twt;
+			wiphy->num_iftype_ext_capab =
+				ARRAY_SIZE(iftypes_ext_capa_with_twt);
+		}
+#endif
 		ieee80211_hw_set(hw, SUPPORTS_MULTI_BSSID);
 		ieee80211_hw_set(hw, SUPPORTS_ONLY_HE_MULTI_BSSID);
 	}
