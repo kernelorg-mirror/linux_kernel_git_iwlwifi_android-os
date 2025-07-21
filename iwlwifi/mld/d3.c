@@ -782,16 +782,12 @@ iwl_mld_add_mcast_rekey(struct ieee80211_vif *vif,
 {
 	struct ieee80211_key_conf *key_config;
 	int link_id = vif->active_links ? __ffs(vif->active_links) : -1;
-	u8 key[WOWLAN_KEY_MAX_SIZE];
 
 	if (!key_data->len)
 		return;
 
-	BUILD_BUG_ON(sizeof(key) != sizeof(key_data->key));
-	memcpy(key, key_data->key, sizeof(key_data->key));
-
-	key_config = ieee80211_gtk_rekey_add(vif, key_data->id, key,
-					     sizeof(key), link_id);
+	key_config = ieee80211_gtk_rekey_add(vif, key_data->id, key_data->key,
+					     sizeof(key_data->key), link_id);
 	if (IS_ERR(key_config))
 		return;
 
