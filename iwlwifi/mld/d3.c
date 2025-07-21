@@ -848,7 +848,6 @@ static void iwl_mld_mlo_rekey(struct iwl_mld *mld,
 		struct iwl_mld_wowlan_mlo_key *mlo_key = &wowlan_status->mlo_keys[i];
 		struct ieee80211_key_conf *key;
 		struct ieee80211_key_seq seq;
-		u8 key_data[WOWLAN_KEY_MAX_SIZE];
 		u8 link_id = mlo_key->link_id;
 
 		if (IWL_FW_CHECK(mld, mlo_key->link_id >= IEEE80211_MLD_MAX_NUM_LINKS ||
@@ -862,14 +861,11 @@ static void iwl_mld_mlo_rekey(struct iwl_mld *mld,
 		    (vif->active_links & BIT(link_id)))
 			continue;
 
-		BUILD_BUG_ON(sizeof(mlo_key->key) != sizeof(key_data));
-		memcpy(key_data, mlo_key->key, WOWLAN_KEY_MAX_SIZE);
-
 		IWL_DEBUG_WOWLAN(mld, "Add MLO key id %d, link id %d\n",
 				 mlo_key->idx, link_id);
 
-		key = ieee80211_gtk_rekey_add(vif, mlo_key->idx, key_data,
-					      sizeof(key_data), link_id);
+		key = ieee80211_gtk_rekey_add(vif, mlo_key->idx, mlo_key->key,
+					      sizeof(mlo_key->key), link_id);
 
 		if (IS_ERR(key))
 			continue;
