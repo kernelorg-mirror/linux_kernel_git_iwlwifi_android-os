@@ -192,8 +192,8 @@ struct iwl_family_base_params {
 
 	u8 max_ll_items;
 	u8 led_compensation;
-	u8 ucode_api_max;
-	u8 ucode_api_min;
+	u16 ucode_api_max;
+	u16 ucode_api_min;
 	u32 mac_addr_from_csr:10;
 	u8 nvm_hw_section_num;
 	netdev_features_t features;
@@ -209,6 +209,17 @@ struct iwl_family_base_params {
 	const struct iwl_fw_mon_regs mon_smem_regs;
 	const struct iwl_fw_mon_regs mon_dbgi_regs;
 };
+
+/*
+ * FW is released as "core N release", and we used to have a
+ * gap of 3 between the API version and core number. Now the
+ * reported API version will be 1000 + core and we encode it
+ * in the filename as "c<core>".
+ */
+#define CORE_TO_API(core)	(1000 + core)
+#define FW_API_FMT		"%s%d"
+#define FW_API_ARG(n)		(n) > 1000 ? "c" : "",	\
+				(n) > 1000 ? (n) - 1000 : (n)
 
 /*
  * @stbc: support Tx STBC and 1*SS Rx STBC
@@ -424,8 +435,8 @@ struct iwl_rf_cfg {
 	u8 valid_tx_ant;
 	u8 valid_rx_ant;
 	u8 non_shared_ant;
-	u8 ucode_api_max;
-	u8 ucode_api_min;
+	u16 ucode_api_max;
+	u16 ucode_api_min;
 	u16 num_rbds;
 };
 

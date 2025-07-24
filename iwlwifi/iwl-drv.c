@@ -559,6 +559,9 @@ static int iwl_request_firmware(struct iwl_drv *drv, bool first)
 
 	if (first)
 		drv->fw_index = ucode_api_max;
+	else if (drv->fw_index == CORE_TO_API(99))
+		/* FIXME: change to 101 once FW is updated */
+		drv->fw_index = 102;
 	else
 		drv->fw_index--;
 
@@ -579,13 +582,15 @@ static int iwl_request_firmware(struct iwl_drv *drv, bool first)
 		IWL_ERR(drv, "no suitable firmware found!\n");
 
 		if (ucode_api_min == ucode_api_max) {
-			IWL_ERR(drv, "%s-%d is required\n", fw_name_pre,
-				ucode_api_max);
+			IWL_ERR(drv, "%s-" FW_API_FMT " is required\n",
+				fw_name_pre, FW_API_ARG(ucode_api_max));
 		} else {
-			IWL_ERR(drv, "minimum version required: %s-%d\n",
-				fw_name_pre, ucode_api_min);
-			IWL_ERR(drv, "maximum version supported: %s-%d\n",
-				fw_name_pre, ucode_api_max);
+			IWL_ERR(drv,
+				"minimum version required: %s-" FW_API_FMT "\n",
+				fw_name_pre, FW_API_ARG(ucode_api_min));
+			IWL_ERR(drv,
+				"maximum version supported: %s-" FW_API_FMT "\n",
+				fw_name_pre, FW_API_ARG(ucode_api_max));
 		}
 
 		IWL_ERR(drv,
@@ -593,8 +598,9 @@ static int iwl_request_firmware(struct iwl_drv *drv, bool first)
 		return -ENOENT;
 	}
 
-	snprintf(drv->firmware_name, sizeof(drv->firmware_name), "%s-%d.ucode",
-		 fw_name_pre, drv->fw_index);
+	snprintf(drv->firmware_name, sizeof(drv->firmware_name),
+		 "%s-" FW_API_FMT ".ucode",
+		 fw_name_pre, FW_API_ARG(drv->fw_index));
 
 #ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
 	if (drv->trans->dbg_cfg.fw_file_pre) {
