@@ -559,7 +559,7 @@ static int iwl_request_firmware(struct iwl_drv *drv, bool first)
 
 	if (first)
 		drv->fw_index = ucode_api_max;
-	else if (drv->fw_index == CORE_TO_API(99))
+	else if (drv->fw_index == ENCODE_CORE_AS_API(99))
 		/* FIXME: change to 101 once FW is updated */
 		drv->fw_index = 102;
 	else
@@ -2031,6 +2031,7 @@ static int iwl_drv_load_fseq_image(struct iwl_trans *trans, struct iwl_fw *fw,
  */
 static void iwl_req_fw_callback(const struct firmware *ucode_raw, void *context)
 {
+	unsigned int min_core, max_core, loaded_core;
 	struct iwl_drv *drv = context;
 	struct iwl_fw *fw = &drv->fw;
 	const struct iwl_ucode_header *ucode;
@@ -2114,11 +2115,24 @@ static void iwl_req_fw_callback(const struct firmware *ucode_raw, void *context)
 	 * firmware filename ... but we don't check for that and only rely
 	 * on the API version read from firmware header from here on forward
 	 */
-	if (api_ver < api_min || api_ver > api_max) {
+
+	/*
+	 * if -cN.ucode file was loaded, core version == file version,
+	 * otherwise core version == file version (API version) - 3
+	 */
+	if (iwl_api_is_core_number(drv->fw_index))
+		loaded_core = api_ver;
+	else
+		loaded_core = api_ver - API_TO_CORE_OFFS;
+
+	min_core = iwl_api_to_core(api_min);
+	max_core = iwl_api_to_core(api_max);
+
+	if (loaded_core < min_core || loaded_core > max_core) {
 		IWL_ERR(drv,
 			"Driver unable to support your firmware API. "
-			"Driver supports v%u, firmware is v%u.\n",
-			api_max, api_ver);
+			"Driver supports FW core %u..%u, firmware is %u.\n",
+			min_core, max_core, loaded_core);
 		goto try_again;
 	}
 

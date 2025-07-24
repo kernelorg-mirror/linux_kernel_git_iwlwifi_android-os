@@ -107,6 +107,9 @@ enum iwl_nvm_type {
 	MODULE_FIRMWARE(pfx "-" __stringify(api) ".ucode");	\
 	MODULE_FIRMWARE(pfx ".pnvm")
 
+#define IWL_CORE_FW(pfx, core)					\
+	MODULE_FIRMWARE(pfx "-c" __stringify(core) ".ucode")
+
 static inline u8 num_of_ant(u8 mask)
 {
 	return  !!((mask) & ANT_A) +
@@ -216,10 +219,27 @@ struct iwl_family_base_params {
  * reported API version will be 1000 + core and we encode it
  * in the filename as "c<core>".
  */
-#define CORE_TO_API(core)	(1000 + core)
-#define FW_API_FMT		"%s%d"
-#define FW_API_ARG(n)		(n) > 1000 ? "c" : "",	\
-				(n) > 1000 ? (n) - 1000 : (n)
+#define API_IS_CORE_START		1000
+#define API_TO_CORE_OFFS		3
+#define ENCODE_CORE_AS_API(core)	(API_IS_CORE_START + (core))
+
+static inline bool iwl_api_is_core_number(int api)
+{
+	return api >= API_IS_CORE_START;
+}
+
+static inline int iwl_api_to_core(int api)
+{
+	if (iwl_api_is_core_number(api))
+		return api - API_IS_CORE_START;
+
+	return api - API_TO_CORE_OFFS;
+}
+
+#define FW_API_FMT			"%s%d"
+#define FW_API_ARG(n)						\
+	iwl_api_is_core_number(n) ? "c" : "",			\
+	iwl_api_is_core_number(n) ? (n) - API_IS_CORE_START : (n)
 
 /*
  * @stbc: support Tx STBC and 1*SS Rx STBC
