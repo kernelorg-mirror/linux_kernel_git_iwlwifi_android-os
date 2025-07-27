@@ -392,11 +392,11 @@ static int iwl_mvm_rx_mgmt_prot(struct ieee80211_sta *sta,
 			goto report;
 	}
 
-	if (len < key->icv_len + 2)
+	if (len < key->icv_len)
 		goto report;
 
 	/* get the real key ID */
-	mmie = frame + (len - key->icv_len + 2);
+	mmie = frame + (len - key->icv_len);
 
 	/* the position of the key_id in ieee80211_mmie_16 is the same */
 	keyid = le16_to_cpu(((const struct ieee80211_mmie *) mmie)->key_id);

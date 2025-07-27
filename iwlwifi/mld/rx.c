@@ -1674,10 +1674,10 @@ static int iwl_mld_rx_mgmt_prot(struct ieee80211_sta *sta,
 	}
 
 	/* get the real key ID */
-	if (mpdu_len < key->icv_len + 2)
+	if (mpdu_len < key->icv_len)
 		goto report;
 
-	mmie = frame + (mpdu_len - key->icv_len + 2);
+	mmie = frame + (mpdu_len - key->icv_len);
 
 	/* the position of the key_id in ieee80211_mmie_16 is the same */
 	keyidx = le16_to_cpu(((const struct ieee80211_mmie *) mmie)->key_id);
