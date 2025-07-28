@@ -559,9 +559,8 @@ static int iwl_request_firmware(struct iwl_drv *drv, bool first)
 
 	if (first)
 		drv->fw_index = ucode_api_max;
-	else if (drv->fw_index == ENCODE_CORE_AS_API(99))
-		/* FIXME: change to 101 once FW is updated */
-		drv->fw_index = 102;
+	else if (drv->fw_index == ENCODE_CORE_AS_API(100))
+		drv->fw_index = 102; /* last API-scheme number below core 100 */
 	else
 		drv->fw_index--;
 
