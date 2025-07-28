@@ -78,154 +78,19 @@ static int iwl_pcie_gen3_acquire_hw_ownership(struct iwl_trans *trans)
 	return err;
 }
 
-static int
-iwl_construct_pcie_gen3(struct pci_dev *pdev,
-			struct iwl_trans *trans,
-			u8 __iomem *hw_base,
-			struct iwl_trans_info *info)
-{
-	struct iwl_pcie_gen3 *trans_pcie, **priv;
-
-	trans_pcie = IWL_GET_PCIE_GEN3(trans);
-
-	trans_pcie->trans = trans;
-	trans_pcie->hw_base = hw_base;
-
-	/* TODO: init msi interrupts (task=msi) */
-	/* TODO: disable interrupts */
-	/* TODO: assign num_rx_bufs */
-
-	trans_pcie->napi_dev =
-		alloc_netdev_dummy(sizeof(struct iwl_pcie_gen3 *));
-	if (!trans_pcie->napi_dev)
-		return -ENODEV;
-
-	/* The private struct in netdev is a pointer to struct iwl_pcie_gen3 */
-	priv = netdev_priv(trans_pcie->napi_dev);
-	*priv = trans_pcie;
-
-	trans_pcie->pci_dev = pdev;
-
-	spin_lock_init(&trans_pcie->reg_lock);
-
-	return 0;
-}
-
-static void
-iwl_pcie_gen3_free(struct iwl_trans *trans)
-{
-	struct iwl_pcie_gen3 *trans_pcie = IWL_GET_PCIE_GEN3(trans);
-
-	if (trans_pcie->msix.is_enabled) {
-		for (int i = 0; i < trans_pcie->msix.alloc_irqs; i++) {
-			irq_set_affinity_hint(trans_pcie->msix.entries[i].vector,
-					      NULL);
-		}
-	}
-
-	/* TODO: free msi interrupts (task=msi) */
-
-	free_netdev(trans_pcie->napi_dev);
-	iwl_trans_free(trans);
-}
-
 int iwl_pci_gen3_probe(struct pci_dev *pdev,
 		       const struct pci_device_id *ent,
 		       const struct iwl_mac_cfg *mac_cfg, u8 __iomem *hw_base,
 		       u32 hw_rev)
 {
-	struct iwl_trans *trans;
-	unsigned int txcmd_size = sizeof(struct iwl_tx_cmd);
-	unsigned int txcmd_align = 128;
-	struct iwl_trans_info info = {};
-	int ret;
-
-	txcmd_size += sizeof(struct iwl_cmd_header);
-	txcmd_size += 36; /* biggest possible 802.11 header */
-
-	/* Ensure device TX cmd cannot reach/cross a page boundary */
-	if (WARN_ON(txcmd_size >= txcmd_align))
-		return -EINVAL;
-
-	trans = iwl_trans_alloc(sizeof(struct iwl_pcie_gen3),
-				&pdev->dev, mac_cfg, txcmd_size, txcmd_align);
-	if (!trans)
-		return -EINVAL;
-
-	ret = iwl_construct_pcie_gen3(pdev, trans, hw_base, &info);
-	if (ret)
-		goto out_free_trans;
-
-	ret = iwl_pcie_setup_msix(pdev, trans, &info);
-	if (ret)
-		goto out_free_trans;
-
-	/* TODO: setup msi if msix fails task=msi */
-
-	ret = dma_set_mask_and_coherent(&pdev->dev, DMA_BIT_MASK(64));
-	if (ret) {
-		ret = dma_set_mask_and_coherent(&pdev->dev, DMA_BIT_MASK(32));
-		/* both attempts failed: */
-		if (ret) {
-			dev_err(&pdev->dev, "No suitable DMA available\n");
-			goto out_free_trans;
-		}
-	}
-
-	/* TODO: make sure this is still needed. task=cfg */
-	pci_write_config_byte(pdev, PCI_CFG_RETRY_TIMEOUT, 0x00);
-
-	iwl_trans_set_info(trans, &info);
-
-	/* TODO: assign and allocate txqs parameters (tfd, cmd, tso, bc) */
-	/* TODO: max_skb_frags to trans */
-	/* TODO: init rx */
-	/* TODO: unset debug_rfkill */
-	/* TODO: read hw_rev and step */
-	/* TODO: alloc invalid tx cmd */
-	/* TODO: debugfs state and fw continuous recording data */
-	/* TODO: check_product_reset status and mode */
-	/* TODO: handle pcie info struct */
-	/* TODO: get_crf_id: prepare_card_hw,finish_nic_init,grab_nic_access */
-	/* TODO: find_dev_info - iwl_dev_info */
-	/* TODO: link status for discrete case */
-	/* TODO: check_me_status */
-	/* TODO: pcie_dbgfs_register */
-	/* TODO: iwl_pcie_prepare_card_hw */
-
-	iwl_dbg_tlv_init(trans);
-
-	pci_set_drvdata(pdev, trans);
-
-	trans->drv = iwl_drv_start(trans);
-
-	if (IS_ERR(trans->drv)) {
-		ret = PTR_ERR(trans->drv);
-		goto out_free_trans;
-	}
-
-	return 0;
-
-out_free_trans:
-	iwl_pcie_gen3_free(trans);
-	return ret;
+	WARN_ONCE(1, "%s NOT IMPLEMENTED\n", __func__);
+	return -EINVAL;
 }
 
 int iwl_pcie_gen3_start_hw(struct iwl_trans *trans)
 {
-	int err = 0;
-
-	err = iwl_pcie_gen3_sw_reset(trans, true);
-	if (err)
-		return err;
-
-	/* TODO: apm init. */
-
-	/* TODO: init msix. */
-
-	/* TODO: Check if rfkill is needed here (task=rf_kill). */
-
-	return err;
+	IWL_ERR(trans, "%s NOT IMPLEMENTED\n", __func__);
+	return -EINVAL;
 }
 
 int iwl_pcie_gen3_sw_reset(struct iwl_trans *trans, bool retake_ownership)
