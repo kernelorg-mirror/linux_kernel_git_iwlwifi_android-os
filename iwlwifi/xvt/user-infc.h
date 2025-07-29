@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0 OR BSD-3-Clause */
 /*
- * Copyright (C) 2005-2014, 2018, 2022 Intel Corporation
+ * Copyright (C) 2005-2014, 2018, 2022, 2025 Intel Corporation
  */
 #ifndef __user_infc_h__
 #define __user_infc_h__
@@ -18,11 +18,15 @@ static inline int iwl_xvt_user_send_notif(struct iwl_xvt *xvt, u32 cmd,
 					  void *data, u32 size, gfp_t flags)
 {
 	int err;
+
 	IWL_DEBUG_INFO(xvt, "send user notification: cmd=0x%x, size=%d\n",
 		       cmd, size);
 	err = iwl_tm_gnl_send_msg(xvt->trans, cmd, false, data, size, flags);
 
-	WARN_ONCE(err, "failed to send notification to user, err %d\n", err);
+	if (err)
+		IWL_ERR(xvt, "failed to send notification to user, err %d\n",
+			err);
+
 	return err;
 }
 
