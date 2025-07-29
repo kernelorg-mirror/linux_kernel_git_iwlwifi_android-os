@@ -783,6 +783,9 @@ static void iwl_pci_remove(struct pci_dev *pdev)
 	if (!trans)
 		return;
 
+	if (trans->mac_cfg->gen3)
+		return iwl_pcie_gen3_remove(trans);
+
 	iwl_pcie_gen1_2_remove(trans);
 }
 

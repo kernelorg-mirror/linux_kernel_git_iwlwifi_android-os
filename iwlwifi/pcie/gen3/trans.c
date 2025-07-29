@@ -9,6 +9,8 @@
 #include "interrupts.h"
 #include "iwl-debug.h"
 #include "iwl-io.h"
+#include "iwl-trans.h"
+#include "iwl-prph.h"
 
 static int iwl_pcie_gen3_take_hw_ownership_semaphore(struct iwl_trans *trans)
 {
@@ -78,13 +80,219 @@ static int iwl_pcie_gen3_acquire_hw_ownership(struct iwl_trans *trans)
 	return err;
 }
 
+static void iwl_pcie_gen3_free(struct iwl_trans *trans)
+{
+	iwl_trans_free(trans);
+}
+
+static struct iwl_trans *iwl_alloc_pcie_gen3(struct pci_dev *pdev,
+					     const struct iwl_mac_cfg *mac_cfg,
+					     u8 __iomem *hw_base)
+{
+	struct iwl_pcie_gen3 *trans_pcie;
+	struct iwl_trans *trans;
+
+	trans = iwl_trans_alloc(sizeof(struct iwl_pcie_gen3), &pdev->dev,
+				mac_cfg);
+	if (!trans)
+		return ERR_PTR(-ENOMEM);
+
+	trans_pcie = IWL_GET_PCIE_GEN3(trans);
+
+	trans_pcie->trans = trans;
+	trans_pcie->hw_base = hw_base;
+	trans_pcie->pci_dev = pdev;
+
+	spin_lock_init(&trans_pcie->reg_lock);
+
+	iwl_dbg_tlv_init(trans);
+
+	return trans;
+}
+
+static int iwl_pcie_gen3_build_hw_rf_id(struct iwl_trans *trans)
+{
+	IWL_ERR(trans, " %s NOT IMPLEMENTED\n", __func__);
+	return -EOPNOTSUPP;
+}
+
+static int iwl_pcie_gen3_init_hw_info(struct iwl_trans *trans,
+				      struct iwl_trans_info *info, u32 hw_rev)
+{
+	struct iwl_pcie_gen3 *trans_pcie = IWL_GET_PCIE_GEN3(trans);
+	struct pci_dev *pdev = trans_pcie->pci_dev;
+	u32 tmp, hw_wfpm_id;
+	u8 step;
+
+	info->hw_id = (pdev->device << 16) + pdev->subsystem_device,
+	info->hw_rev = hw_rev;
+	info->hw_rev_step = info->hw_rev & 0xF;
+	info->hw_rf_id = iwl_read32(trans, CSR_HW_RF_ID);
+	/* TODO: info->max_skb_frags (task = tx) */
+
+	if (!trans->mac_cfg->integrated) {
+		u16 link_status;
+
+		pcie_capability_read_word(pdev, PCI_EXP_LNKSTA, &link_status);
+
+		info->pcie_link_speed =
+			u16_get_bits(link_status, PCI_EXP_LNKSTA_CLS);
+	}
+
+	/* Enable access to peripheral registers */
+	tmp = iwl_read_umac_prph_no_grab(trans, WFPM_CTRL_REG);
+	tmp |= WFPM_AUX_CTL_AUX_IF_MAC_OWNER_MSK;
+	iwl_write_umac_prph_no_grab(trans, WFPM_CTRL_REG, tmp);
+
+	/* Read crf info */
+	info->hw_crf_id = iwl_read_prph_no_grab(trans, SD_REG_VER_GEN2);
+
+	/* Read cnv info */
+	info->hw_cnv_id = iwl_read_prph_no_grab(trans, CNVI_AUX_MISC_CHIP);
+
+	/* For BZ-W, take B step also when A step is indicated */
+	if (CSR_HW_REV_TYPE(info->hw_rev) == IWL_CFG_MAC_TYPE_BZ_W)
+		step = SILICON_B_STEP;
+
+	/* In BZ, the MAC step must be read from the CNVI aux register */
+	if (CSR_HW_REV_TYPE(info->hw_rev) == IWL_CFG_MAC_TYPE_BZ) {
+		step = CNVI_AUX_MISC_CHIP_MAC_STEP(info->hw_cnv_id);
+
+		/* For BZ-U, take B step also when A step is indicated */
+		if ((CNVI_AUX_MISC_CHIP_PROD_TYPE(info->hw_cnv_id) ==
+		    CNVI_AUX_MISC_CHIP_PROD_TYPE_BZ_U) &&
+		    step == SILICON_A_STEP)
+			step = SILICON_B_STEP;
+	}
+
+	if (CSR_HW_REV_TYPE(info->hw_rev) == IWL_CFG_MAC_TYPE_BZ ||
+	    CSR_HW_REV_TYPE(info->hw_rev) == IWL_CFG_MAC_TYPE_BZ_W) {
+		info->hw_rev_step = step;
+		info->hw_rev |= step;
+	}
+
+	hw_wfpm_id = iwl_read_umac_prph_no_grab(trans, WFPM_OTP_CFG1_ADDR);
+
+	IWL_INFO(trans, "Detected hw_id 0x%x, hw_rev 0x%x hw_rev_step %d\n",
+		 info->hw_id, info->hw_rev, info->hw_rev_step);
+	IWL_INFO(trans, "Detected hw_cnv_id 0x%x, hw_crf_id 0x%x hw_wfpm_id 0x%x\n",
+		 info->hw_cnv_id, info->hw_crf_id, hw_wfpm_id);
+
+	/* Blank OTP. Build hw_rf_id from hw_crf_id */
+	if (!CSR_HW_RFID_TYPE(info->hw_rf_id))
+		return iwl_pcie_gen3_build_hw_rf_id(trans);
+
+	return 0;
+}
+
+static bool iwl_pcie_gen3_nic_is_ok(struct iwl_trans *trans,
+				    struct iwl_trans_info *info, u32 hw_rev)
+{
+	int ret;
+
+	/*
+	 * Let's try to access the NIC early here. Sometimes, NICs may
+	 * fail to initialize, and if that happens it's better if we see
+	 * issues early on, than later when the first interface is brought up.
+	 */
+
+	ret = iwl_pcie_gen3_acquire_hw_ownership(trans);
+	if (ret)
+		return false;
+
+	ret = iwl_pcie_gen3_activate_nic(trans);
+	if (ret)
+		return false;
+
+	if (!iwl_trans_grab_nic_access(trans))
+		return false;
+
+	/*
+	 * Ok, we are good to go.
+	 * But since we already have the nic ready, let's read some information
+	 * we need from its memory.
+	 */
+	ret = iwl_pcie_gen3_init_hw_info(trans, info, hw_rev);
+
+	iwl_trans_release_nic_access(trans);
+
+	return ret == 0;
+}
+
 int iwl_pci_gen3_probe(struct pci_dev *pdev,
 		       const struct pci_device_id *ent,
 		       const struct iwl_mac_cfg *mac_cfg, u8 __iomem *hw_base,
 		       u32 hw_rev)
 {
-	WARN_ONCE(1, "%s NOT IMPLEMENTED\n", __func__);
-	return -EINVAL;
+	const struct iwl_dev_info *dev_info;
+	struct iwl_trans_info info;
+	struct iwl_trans *trans;
+	int ret;
+
+	trans = iwl_alloc_pcie_gen3(pdev, mac_cfg, hw_base);
+	if (IS_ERR(trans))
+		return PTR_ERR(trans);
+
+	IWL_INFO(trans, "PCI dev %04x/%04x\n", pdev->device,
+		 pdev->subsystem_device);
+
+	if (!iwl_pcie_gen3_nic_is_ok(trans, &info, hw_rev)) {
+		ret = -EOPNOTSUPP;
+		goto free;
+	}
+
+	dev_info = iwl_pci_find_dev_info(pdev->device, pdev->subsystem_device,
+					 CSR_HW_RFID_TYPE(info.hw_rf_id),
+					 CSR_HW_RFID_IS_CDB(info.hw_rf_id),
+					 IWL_SUBDEVICE_RF_ID(pdev->subsystem_device),
+					 IWL_SUBDEVICE_BW_LIM(pdev->subsystem_device),
+					 !trans->mac_cfg->integrated);
+	if (!dev_info) {
+		pr_err("No config found for PCI dev %04x/%04x, hw_rev=0x%x, hw_rf_id=0x%x\n",
+		       pdev->device, pdev->subsystem_device,
+		       info.hw_rev, info.hw_rf_id);
+		ret = -EINVAL;
+		goto free;
+	}
+
+	trans->cfg = dev_info->cfg;
+	info.name = dev_info->name;
+	IWL_INFO(trans, "Detected %s\n", info.name);
+
+	/* info is fully set. Copy it to trans */
+	iwl_trans_set_info(trans, &info);
+
+	ret = dma_set_mask_and_coherent(&pdev->dev, DMA_BIT_MASK(64));
+	if (ret) {
+		ret = dma_set_mask_and_coherent(&pdev->dev, DMA_BIT_MASK(32));
+		/* both attempts failed: */
+		if (ret) {
+			dev_err(&pdev->dev, "No suitable DMA available\n");
+			goto free;
+		}
+	}
+
+	pci_set_drvdata(pdev, trans);
+
+	trans->drv = iwl_drv_start(trans);
+	if (IS_ERR(trans->drv)) {
+		ret = PTR_ERR(trans->drv);
+		goto free;
+	}
+
+	/* TODO: add debugfs files (task = debugfs) */
+
+	return 0;
+free:
+	iwl_pcie_gen3_free(trans);
+	return ret;
+}
+
+void iwl_pcie_gen3_remove(struct iwl_trans *trans)
+{
+	iwl_drv_stop(trans->drv);
+
+	iwl_pcie_gen3_free(trans);
 }
 
 int iwl_pcie_gen3_start_hw(struct iwl_trans *trans)

@@ -38,6 +38,8 @@ int iwl_pci_gen3_probe(struct pci_dev *pdev,
 		       const struct iwl_mac_cfg *mac_cfg, u8 __iomem *hw_base,
 		       u32 hw_rev);
 
+void iwl_pcie_gen3_remove(struct iwl_trans *trans);
+
 int iwl_pcie_gen3_start_hw(struct iwl_trans *trans);
 
 int iwl_pcie_gen3_sw_reset(struct iwl_trans *trans, bool retake_ownership);
