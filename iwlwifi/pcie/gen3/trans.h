@@ -42,6 +42,10 @@ int iwl_pcie_gen3_start_hw(struct iwl_trans *trans);
 
 int iwl_pcie_gen3_sw_reset(struct iwl_trans *trans, bool retake_ownership);
 
+void iwl_pcie_gen3_op_mode_enter(struct iwl_trans *trans);
+
+void iwl_pcie_gen3_op_mode_leave(struct iwl_trans *trans);
+
 static inline struct iwl_pcie_gen3 *
 IWL_GET_PCIE_GEN3(struct iwl_trans *trans)
 {

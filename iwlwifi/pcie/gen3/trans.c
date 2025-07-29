@@ -222,3 +222,13 @@ int iwl_trans_pcie_gen3_read_mem(struct iwl_trans *trans, u32 addr,
 
 	return 0;
 }
+
+void iwl_pcie_gen3_op_mode_enter(struct iwl_trans *trans)
+{
+	IWL_ERR(trans, "%s NOT IMPLEMENTED\n", __func__);
+}
+
+void iwl_pcie_gen3_op_mode_leave(struct iwl_trans *trans)
+{
+	IWL_ERR(trans, "%s NOT IMPLEMENTED\n", __func__);
+}

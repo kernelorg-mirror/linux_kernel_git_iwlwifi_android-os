@@ -404,7 +404,10 @@ void iwl_trans_op_mode_enter(struct iwl_trans *trans,
 
 	WARN_ON_ONCE(!trans->conf.rx_mpdu_cmd);
 
-	iwl_pcie_gen1_2_op_mode_enter(trans);
+	if (trans->mac_cfg->gen3)
+		iwl_pcie_gen3_op_mode_enter(trans);
+	else
+		iwl_pcie_gen1_2_op_mode_enter(trans);
 }
 IWL_EXPORT_SYMBOL(iwl_trans_op_mode_enter);
 
@@ -425,7 +428,9 @@ void iwl_trans_op_mode_leave(struct iwl_trans *trans)
 {
 	might_sleep();
 
-	if (trans->mac_cfg->gen2)
+	if (trans->mac_cfg->gen3)
+		iwl_pcie_gen3_op_mode_leave(trans);
+	else if (trans->mac_cfg->gen2)
 		iwl_trans_pcie_gen2_op_mode_leave(trans);
 	else
 		iwl_trans_pcie_op_mode_leave(trans);
