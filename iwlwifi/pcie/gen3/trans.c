@@ -3,7 +3,6 @@
  * Copyright (C) 2025 Intel Corporation
  */
 
-
 #include "fw/api/tx.h"
 #include "trans.h"
 #include "interrupts.h"
@@ -470,3 +469,4 @@ void iwl_pcie_gen3_op_mode_leave(struct iwl_trans *trans)
 {
 	IWL_ERR(trans, "%s NOT IMPLEMENTED\n", __func__);
 }
+

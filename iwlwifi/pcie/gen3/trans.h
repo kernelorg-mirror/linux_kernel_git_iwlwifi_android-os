@@ -31,6 +31,7 @@ struct iwl_pcie_gen3 {
 	u8 __iomem *hw_base;
 
 	struct iwl_msix msix;
+
 };
 
 int iwl_pci_gen3_probe(struct pci_dev *pdev,
