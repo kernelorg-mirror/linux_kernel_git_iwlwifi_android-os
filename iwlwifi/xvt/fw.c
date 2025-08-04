@@ -298,7 +298,7 @@ static int iwl_xvt_config_ltr(struct iwl_xvt *xvt)
 		.flags = cpu_to_le32(LTR_CFG_FLAG_FEATURE_ENABLE),
 	};
 
-	if (!xvt->trans->ltr_enabled)
+	if (!iwl_trans_is_ltr_enabled(xvt->trans))
 		return 0;
 
 	return iwl_xvt_send_cmd_pdu(xvt, LTR_CONFIG, 0, sizeof(cmd), &cmd);
