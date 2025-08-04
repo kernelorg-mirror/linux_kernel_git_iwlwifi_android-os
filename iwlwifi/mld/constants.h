@@ -78,9 +78,12 @@
 #define IWL_MLD_FTM_NON_TB_MIN_TIME_BETWEEN_MSR	7
 #define IWL_MLD_FTM_NON_TB_MAX_TIME_BETWEEN_MSR	1000
 #define IWL_MLD_FTM_INITIATOR_SECURE_LTF	false
+#define IWL_MLD_STA_EXT_CAPA_SIZE		9
 
 #else
+#define IWL_MLD_EXT_CAPA_NUM_IFTYPES		1
 #define IWL_MLD_DIS_RANDOM_FW_ID	        (mld->trans->dbg_cfg.MLD_DIS_RANDOM_FW_ID)
+#define IWL_MLD_STA_EXT_CAPA_SIZE		10
 #define IWL_MLD_D3_DEBUG		        (((struct iwl_mld *)ctx)->trans->dbg_cfg.MLD_D3_DEBUG)
 #define IWL_MLD_NON_TRANSMITTING_AP	        (mld->trans->dbg_cfg.MLD_NON_TRANSMITTING_AP)
 #define IWL_MLD_6GHZ_PASSIVE_SCAN_TIMEOUT	(mld->trans->dbg_cfg.MLD_6GHZ_PASSIVE_SCAN_TIMEOUT)
