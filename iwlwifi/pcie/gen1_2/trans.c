@@ -270,7 +270,7 @@ static int iwl_pcie_apm_init(struct iwl_trans *trans)
 	if (trans->mac_cfg->base->pll_cfg)
 		iwl_set_bit(trans, CSR_ANA_PLL_CFG, CSR50_ANA_PLL_CFG_VAL);
 
-	ret = iwl_finish_nic_init(trans);
+	ret = iwl_trans_activate_nic(trans);
 	if (ret)
 		return ret;
 
@@ -343,7 +343,7 @@ static void iwl_pcie_apm_lp_xtal_enable(struct iwl_trans *trans)
 	ret = iwl_trans_pcie_sw_reset(trans, true);
 
 	if (!ret)
-		ret = iwl_finish_nic_init(trans);
+		ret = iwl_trans_activate_nic(trans);
 
 	if (WARN_ON(ret)) {
 		/* Release XTAL ON request */
@@ -1584,7 +1584,7 @@ int iwl_trans_pcie_d3_resume(struct iwl_trans *trans,
 		iwl_set_bit(trans, CSR_GP_CNTRL,
 			    CSR_GP_CNTRL_REG_FLAG_MAC_ACCESS_REQ);
 
-	ret = iwl_finish_nic_init(trans);
+	ret = iwl_trans_activate_nic(trans);
 	if (ret) {
 		IWL_ERR(trans, "Failed to init nic upon resume. err = %d\n",
 			ret);
@@ -1808,7 +1808,7 @@ static int iwl_pcie_gen2_force_power_gating(struct iwl_trans *trans)
 {
 	int ret;
 
-	ret = iwl_finish_nic_init(trans);
+	ret = iwl_trans_activate_nic(trans);
 	if (ret < 0)
 		return ret;
 
@@ -4243,7 +4243,7 @@ int iwl_pci_gen1_2_probe(struct pci_dev *pdev,
 	 */
 	ret = iwl_pcie_prepare_card_hw(iwl_trans);
 	if (!ret) {
-		ret = iwl_finish_nic_init(iwl_trans);
+		ret = iwl_trans_activate_nic(iwl_trans);
 		if (ret)
 			goto out_free_trans;
 		if (iwl_trans_grab_nic_access(iwl_trans)) {
@@ -4362,7 +4362,7 @@ void iwl_pcie_gen1_2_remove(struct iwl_trans *trans)
 	iwl_trans_pcie_free(trans);
 }
 
-int iwl_pcie_gen1_2_finish_nic_init(struct iwl_trans *trans)
+int iwl_pcie_gen1_2_activate_nic(struct iwl_trans *trans)
 {
 	const struct iwl_mac_cfg *mac_cfg = trans->mac_cfg;
 	u32 poll_ready;
