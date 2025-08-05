@@ -46,6 +46,8 @@ void iwl_pcie_gen3_op_mode_enter(struct iwl_trans *trans);
 
 void iwl_pcie_gen3_op_mode_leave(struct iwl_trans *trans);
 
+int iwl_pcie_gen3_activate_nic(struct iwl_trans *trans);
+
 static inline struct iwl_pcie_gen3 *
 IWL_GET_PCIE_GEN3(struct iwl_trans *trans)
 {

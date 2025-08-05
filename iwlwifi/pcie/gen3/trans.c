@@ -106,6 +106,36 @@ int iwl_pcie_gen3_sw_reset(struct iwl_trans *trans, bool retake_ownership)
 	return 0;
 }
 
+int iwl_pcie_gen3_activate_nic(struct iwl_trans *trans)
+{
+	int err;
+
+	/* Unknown W/A, leave it to avoid a risk */
+	iwl_set_bit(trans, CSR_DBG_HPET_MEM_REG, CSR_DBG_HPET_MEM_REG_VAL);
+
+	/* request MAC initialization */
+	iwl_set_bit(trans, CSR_GP_CNTRL,
+		    CSR_GP_CNTRL_REG_FLAG_MAC_INIT);
+
+	/*
+	 * Check the status, once it is set, we can access the MAC
+	 * registers and perform operations that require MAC access,
+	 * such as using iwl_write_prph() or accessing the uCode SRAM.
+	 */
+	err = iwl_poll_bits(trans, CSR_GP_CNTRL,
+			    CSR_GP_CNTRL_REG_FLAG_MAC_STATUS,
+			    25000 * CPTCFG_IWL_TIMEOUT_FACTOR);
+
+	if (err) {
+		IWL_DEBUG_INFO(trans, "Failed to initialize NIC\n");
+
+		IWL_ERR(trans, "CSR_RESET = 0x%x\n",
+			iwl_read32(trans, CSR_RESET));
+	}
+
+	return err;
+}
+
 bool iwl_trans_pcie_gen3_grab_nic_access(struct iwl_trans *trans)
 {
 	int ret;
