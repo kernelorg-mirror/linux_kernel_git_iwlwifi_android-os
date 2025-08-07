@@ -17,8 +17,7 @@
 
 bool iwl_mld_nan_supported(struct iwl_mld *mld)
 {
-	return fw_has_capa(&mld->fw->ucode_capa,
-			   IWL_UCODE_TLV_CAPA_NAN_SYNC_SUPPORT);
+	return false;
 }
 
 static bool iwl_mld_nan_can_beacon(struct ieee80211_vif *vif,
