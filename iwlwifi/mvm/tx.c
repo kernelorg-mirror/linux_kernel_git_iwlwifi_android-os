@@ -397,9 +397,9 @@ static __le32 iwl_mvm_get_tx_rate_n_flags(struct iwl_mvm *mvm,
  * Sets the fields in the Tx cmd that are rate related
  */
 void iwl_mvm_set_tx_cmd_rate(struct iwl_mvm *mvm,
-			    struct iwl_tx_cmd_v6_params *tx_cmd_params,
-			    struct ieee80211_tx_info *info,
-			    struct ieee80211_sta *sta, __le16 fc)
+			     struct iwl_tx_cmd_v6_params *tx_cmd_params,
+			     struct ieee80211_tx_info *info,
+			     struct ieee80211_sta *sta, __le16 fc)
 {
 	/* Set retry limit on RTS packets */
 	tx_cmd_params->rts_retry_limit = IWL_RTS_DFAULT_RETRY_LIMIT;

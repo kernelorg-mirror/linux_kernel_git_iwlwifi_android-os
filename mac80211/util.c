@@ -1796,13 +1796,13 @@ int ieee80211_reconfig(struct ieee80211_local *local)
 	}
 
 	/* setup fragmentation threshold */
-	drv_set_frag_threshold(local, hw->wiphy->frag_threshold);
+	drv_set_frag_threshold(local, -1, hw->wiphy->frag_threshold);
 
 	/* setup RTS threshold */
-	drv_set_rts_threshold(local, hw->wiphy->rts_threshold);
+	drv_set_rts_threshold(local, -1, hw->wiphy->rts_threshold);
 
 	/* reset coverage class */
-	drv_set_coverage_class(local, hw->wiphy->coverage_class);
+	drv_set_coverage_class(local, -1, hw->wiphy->coverage_class);
 
 	ieee80211_led_radio(local, true);
 	ieee80211_mod_tpt_led_trig(local,
@@ -1860,11 +1860,11 @@ int ieee80211_reconfig(struct ieee80211_local *local)
 		ieee80211_assign_chanctx(local, sdata, &sdata->deflink);
 
 	/* reconfigure hardware */
-	ieee80211_hw_config(local, IEEE80211_CONF_CHANGE_LISTEN_INTERVAL |
-				   IEEE80211_CONF_CHANGE_MONITOR |
-				   IEEE80211_CONF_CHANGE_PS |
-				   IEEE80211_CONF_CHANGE_RETRY_LIMITS |
-				   IEEE80211_CONF_CHANGE_IDLE);
+	ieee80211_hw_config(local, -1, IEEE80211_CONF_CHANGE_LISTEN_INTERVAL |
+				       IEEE80211_CONF_CHANGE_MONITOR |
+				       IEEE80211_CONF_CHANGE_PS |
+				       IEEE80211_CONF_CHANGE_RETRY_LIMITS |
+				       IEEE80211_CONF_CHANGE_IDLE);
 
 	ieee80211_configure_filter(local);
 
@@ -3251,14 +3251,24 @@ int ieee80211_put_srates_elem(struct sk_buff *skb,
 	return 0;
 }
 
-int ieee80211_ave_rssi(struct ieee80211_vif *vif)
+int ieee80211_ave_rssi(struct ieee80211_vif *vif, int link_id)
 {
 	struct ieee80211_sub_if_data *sdata = vif_to_sdata(vif);
+	struct ieee80211_link_data *link_data;
 
 	if (WARN_ON_ONCE(sdata->vif.type != NL80211_IFTYPE_STATION))
 		return 0;
 
-	return -ewma_beacon_signal_read(&sdata->deflink.u.mgd.ave_beacon_signal);
+	if (link_id < 0)
+		link_data = &sdata->deflink;
+	else
+		link_data = wiphy_dereference(sdata->local->hw.wiphy,
+					      sdata->link[link_id]);
+
+	if (WARN_ON_ONCE(!link_data))
+		return -99;
+
+	return -ewma_beacon_signal_read(&link_data->u.mgd.ave_beacon_signal);
 }
 EXPORT_SYMBOL_GPL(ieee80211_ave_rssi);
 
@@ -3865,12 +3875,10 @@ int ieee80211_parse_p2p_noa(const struct ieee80211_p2p_noa_attr *attr,
 }
 EXPORT_SYMBOL(ieee80211_parse_p2p_noa);
 
-void ieee80211_recalc_dtim(struct ieee80211_local *local,
-			   struct ieee80211_sub_if_data *sdata)
+void ieee80211_recalc_dtim(struct ieee80211_sub_if_data *sdata, u64 tsf)
 {
-	u64 tsf = drv_get_tsf(local, sdata);
 	u64 dtim_count = 0;
-	u16 beacon_int = sdata->vif.bss_conf.beacon_int * 1024;
+	u32 beacon_int = sdata->vif.bss_conf.beacon_int * 1024;
 	u8 dtim_period = sdata->vif.bss_conf.dtim_period;
 	struct ps_data *ps;
 	u8 bcns_from_dtim;
@@ -3906,6 +3914,33 @@ void ieee80211_recalc_dtim(struct ieee80211_local *local,
 	ps->dtim_count = dtim_count;
 }
 
+/*
+ * Given a long beacon period, calculate the current index into
+ * that period to determine the number of TSBTTs until the next TBTT.
+ * It is completely valid to have a short beacon period that differs
+ * from the dtim period (i.e a TBTT thats not a DTIM).
+ */
+void ieee80211_recalc_sb_count(struct ieee80211_sub_if_data *sdata, u64 tsf)
+{
+	u32 sb_idx;
+	struct ps_data *ps = &sdata->bss->ps;
+	u8 lb_period = sdata->vif.bss_conf.s1g_long_beacon_period;
+	u32 beacon_int = sdata->vif.bss_conf.beacon_int * 1024;
+
+	/* No mesh / IBSS support for short beaconing */
+	if (tsf == -1ULL || !lb_period ||
+	    (sdata->vif.type != NL80211_IFTYPE_AP &&
+	     sdata->vif.type != NL80211_IFTYPE_AP_VLAN))
+		return;
+
+	/* find the current TSBTT index in our lb_period */
+	do_div(tsf, beacon_int);
+	sb_idx = do_div(tsf, lb_period);
+
+	/* num TSBTTs until the next TBTT */
+	ps->sb_count = sb_idx ? lb_period - sb_idx : 0;
+}
+
 static u8 ieee80211_chanctx_radar_detect(struct ieee80211_local *local,
 					 struct ieee80211_chanctx *ctx)
 {
@@ -3937,6 +3972,33 @@ static u8 ieee80211_chanctx_radar_detect(struct ieee80211_local *local,
 	}
 
 	return radar_detect;
+}
+
+bool ieee80211_is_radio_idx_in_scan_req(struct wiphy *wiphy,
+					struct cfg80211_scan_request *scan_req,
+					int radio_idx)
+{
+	struct ieee80211_channel *chan;
+	int i, chan_radio_idx;
+
+	for (i = 0; i < scan_req->n_channels; i++) {
+		chan = scan_req->channels[i];
+		chan_radio_idx = 0;
+		/*
+		 * The chan_radio_idx should be valid since it's taken from a
+		 * valid scan request.
+		 * However, if chan_radio_idx is unexpectedly invalid (negative),
+		 * we take a conservative approach and assume the scan request
+		 * might use the specified radio_idx. Hence, return true.
+		 */
+		if (WARN_ON(chan_radio_idx < 0))
+			return true;
+
+		if (chan_radio_idx == radio_idx)
+			return true;
+	}
+
+	return false;
 }
 
 static u32

@@ -190,7 +190,8 @@ static u32 ieee80211_calc_hw_conf_chan(struct ieee80211_local *local,
 	return changed;
 }
 
-int ieee80211_hw_config(struct ieee80211_local *local, u32 changed)
+int ieee80211_hw_config(struct ieee80211_local *local, int radio_idx,
+			u32 changed)
 {
 	int ret = 0;
 
@@ -201,7 +202,7 @@ int ieee80211_hw_config(struct ieee80211_local *local, u32 changed)
 			   IEEE80211_CONF_CHANGE_SMPS));
 
 	if (changed && local->open_count) {
-		ret = drv_config(local, changed);
+		ret = drv_config(local, radio_idx, changed);
 		/*
 		 * Goal:
 		 * HW reconfiguration should never fail, the driver has told
@@ -235,7 +236,7 @@ static int _ieee80211_hw_conf_chan(struct ieee80211_local *local,
 	if (!changed)
 		return 0;
 
-	return drv_config(local, changed);
+	return drv_config(local, -1, changed);
 }
 
 int ieee80211_hw_conf_chan(struct ieee80211_local *local)
@@ -269,7 +270,7 @@ void ieee80211_hw_conf_init(struct ieee80211_local *local)
 						       ctx ? &ctx->conf : NULL);
 	}
 
-	WARN_ON(drv_config(local, changed));
+	WARN_ON(drv_config(local, -1, changed));
 }
 
 int ieee80211_emulate_add_chanctx(struct ieee80211_hw *hw,
@@ -407,8 +408,19 @@ void ieee80211_link_info_change_notify(struct ieee80211_sub_if_data *sdata,
 
 	WARN_ON_ONCE(changed & BSS_CHANGED_VIF_CFG_FLAGS);
 
-	if (!changed || sdata->vif.type == NL80211_IFTYPE_AP_VLAN)
+	if (!changed)
 		return;
+
+	switch (sdata->vif.type) {
+	case NL80211_IFTYPE_AP_VLAN:
+		return;
+	case NL80211_IFTYPE_MONITOR:
+		if (!ieee80211_hw_check(&local->hw, WANT_MONITOR_VIF))
+			return;
+		break;
+	default:
+		break;
+	}
 
 	if (!check_sdata_in_driver(sdata))
 		return;
@@ -1343,7 +1355,6 @@ int ieee80211_register_hw(struct ieee80211_hw *hw)
 				      GFP_KERNEL);
 	if (!local->int_scan_req)
 		return -ENOMEM;
-	local->int_scan_req->n_channels = channels;
 
 	eth_broadcast_addr(local->int_scan_req->bssid);
 

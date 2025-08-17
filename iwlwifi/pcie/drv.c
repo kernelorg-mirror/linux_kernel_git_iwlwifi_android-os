@@ -733,7 +733,7 @@ EXPORT_SYMBOL_IF_IWLWIFI_KUNIT(iwl_pci_find_dev_info);
 static int iwl_pci_probe(struct pci_dev *pdev, const struct pci_device_id *ent)
 {
 	const struct iwl_mac_cfg *mac_cfg = (void *)ent->driver_data;
-	u8 __iomem* hw_base;
+	u8 __iomem *hw_base;
 	u32 bar0, hw_rev;
 	int ret;
 

@@ -71,8 +71,10 @@ static int __init iwl_mvm_init(void)
 	}
 
 	ret = iwl_opmode_register("iwlmvm", &iwl_mvm_ops);
-	if (ret)
+	if (ret) {
 		pr_err("Unable to register MVM op_mode: %d\n", ret);
+		iwl_mvm_rate_control_unregister();
+	}
 
 #ifdef CPTCFG_IWL_VENDOR_CMDS
 	iwl_mvm_vendor_cmd_init();

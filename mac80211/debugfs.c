@@ -3,7 +3,7 @@
  * mac80211 debugfs for wireless PHYs
  *
  * Copyright 2007	Johannes Berg <johannes@sipsolutions.net>
- * Copyright 2013-2015  Intel Mobile Communications GmbH
+ * Copyright 2013-2014  Intel Mobile Communications GmbH
  * Copyright (C) 2018 - 2019, 2021-2025 Intel Corporation
  */
 

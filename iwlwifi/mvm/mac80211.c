@@ -340,7 +340,8 @@ static const struct wiphy_iftype_ext_capab add_iftypes_ext_capa_with_twt[] = {
 };
 #endif
 
-int iwl_mvm_op_get_antenna(struct ieee80211_hw *hw, u32 *tx_ant, u32 *rx_ant)
+int iwl_mvm_op_get_antenna(struct ieee80211_hw *hw, int radio_idx,
+	u32 *tx_ant, u32 *rx_ant)
 {
 	struct iwl_mvm *mvm = IWL_MAC80211_GET_MVM(hw);
 	*tx_ant = iwl_mvm_get_valid_tx_ant(mvm);
@@ -348,7 +349,8 @@ int iwl_mvm_op_get_antenna(struct ieee80211_hw *hw, u32 *tx_ant, u32 *rx_ant)
 	return 0;
 }
 
-int iwl_mvm_op_set_antenna(struct ieee80211_hw *hw, u32 tx_ant, u32 rx_ant)
+int iwl_mvm_op_set_antenna(struct ieee80211_hw *hw, int radio_idx, u32 tx_ant,
+			   u32 rx_ant)
 {
 	struct iwl_mvm *mvm = IWL_MAC80211_GET_MVM(hw);
 
@@ -3429,7 +3431,7 @@ void iwl_mvm_mac_cancel_hw_scan(struct ieee80211_hw *hw,
 	 * us to stop a hw_scan when it's already stopped.  This can
 	 * happen, for instance, if we stopped the scan ourselves,
 	 * called ieee80211_scan_completed() and the userspace called
-	 * cancel scan scan before ieee80211_scan_work() could run.
+	 * cancel scan before ieee80211_scan_work() could run.
 	 * To handle that, simply return if the scan is not running.
 	*/
 	if (mvm->scan_status & IWL_MVM_SCAN_REGULAR)
@@ -4268,7 +4270,8 @@ int iwl_mvm_mac_sta_state_common(struct ieee80211_hw *hw,
 	return ret;
 }
 
-int iwl_mvm_mac_set_rts_threshold(struct ieee80211_hw *hw, u32 value)
+int iwl_mvm_mac_set_rts_threshold(struct ieee80211_hw *hw, int radio_idx,
+				  u32 value)
 {
 	struct iwl_mvm *mvm = IWL_MAC80211_GET_MVM(hw);
 
@@ -4369,7 +4372,7 @@ int iwl_mvm_mac_sched_scan_stop(struct ieee80211_hw *hw,
 	 * us to stop a sched_scan when it's already stopped.  This
 	 * can happen, for instance, if we stopped the scan ourselves,
 	 * called ieee80211_sched_scan_stopped() and the userspace called
-	 * stop sched scan scan before ieee80211_sched_scan_stopped_work()
+	 * stop sched scan before ieee80211_sched_scan_stopped_work()
 	 * could run.  To handle this, simply return if the scan is
 	 * not running.
 	*/

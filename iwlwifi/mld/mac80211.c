@@ -747,7 +747,8 @@ void iwl_mld_mac80211_stop(struct ieee80211_hw *hw, bool suspend)
 }
 
 static
-int iwl_mld_mac80211_config(struct ieee80211_hw *hw, u32 changed)
+int iwl_mld_mac80211_config(struct ieee80211_hw *hw, int radio_idx,
+			    u32 changed)
 {
 	return 0;
 }
@@ -1281,7 +1282,8 @@ void iwl_mld_unassign_vif_chanctx(struct ieee80211_hw *hw,
 }
 
 static
-int iwl_mld_mac80211_set_rts_threshold(struct ieee80211_hw *hw, u32 value)
+int iwl_mld_mac80211_set_rts_threshold(struct ieee80211_hw *hw, int radio_idx,
+				       u32 value)
 {
 	return 0;
 }

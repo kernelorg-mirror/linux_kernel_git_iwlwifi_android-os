@@ -2514,6 +2514,21 @@ static void ieee80211_csa_switch_work(struct wiphy *wiphy,
 		}
 	}
 
+	/*
+	 * It is not necessary to reset these timers if any link does not
+	 * have an active CSA and that link still receives the beacons
+	 * when other links have active CSA.
+	 */
+	for_each_link_data(sdata, link) {
+		if (!link->conf->csa_active)
+			return;
+	}
+
+	/*
+	 * Reset the beacon monitor and connection monitor timers when CSA
+	 * is active for all links in MLO when channel switch occurs in all
+	 * the links.
+	 */
 	ieee80211_sta_reset_beacon_monitor(sdata);
 	ieee80211_sta_reset_conn_monitor(sdata);
 }
@@ -3257,7 +3272,7 @@ static void ieee80211_enable_ps(struct ieee80211_local *local,
 			return;
 
 		conf->flags |= IEEE80211_CONF_PS;
-		ieee80211_hw_config(local, IEEE80211_CONF_CHANGE_PS);
+		ieee80211_hw_config(local, -1, IEEE80211_CONF_CHANGE_PS);
 	}
 }
 
@@ -3269,7 +3284,7 @@ static void ieee80211_change_ps(struct ieee80211_local *local)
 		ieee80211_enable_ps(local, local->ps_sdata);
 	} else if (conf->flags & IEEE80211_CONF_PS) {
 		conf->flags &= ~IEEE80211_CONF_PS;
-		ieee80211_hw_config(local, IEEE80211_CONF_CHANGE_PS);
+		ieee80211_hw_config(local, -1, IEEE80211_CONF_CHANGE_PS);
 		timer_delete_sync(&local->dynamic_ps_timer);
 		wiphy_work_cancel(local->hw.wiphy,
 				  &local->dynamic_ps_enable_work);
@@ -3378,7 +3393,7 @@ void ieee80211_dynamic_ps_disable_work(struct wiphy *wiphy,
 
 	if (local->hw.conf.flags & IEEE80211_CONF_PS) {
 		local->hw.conf.flags &= ~IEEE80211_CONF_PS;
-		ieee80211_hw_config(local, IEEE80211_CONF_CHANGE_PS);
+		ieee80211_hw_config(local, -1, IEEE80211_CONF_CHANGE_PS);
 	}
 
 	ieee80211_wake_queues_by_reason(&local->hw,
@@ -3453,7 +3468,7 @@ void ieee80211_dynamic_ps_enable_work(struct wiphy *wiphy,
 	    (ifmgd->flags & IEEE80211_STA_NULLFUNC_ACKED)) {
 		ifmgd->flags &= ~IEEE80211_STA_NULLFUNC_ACKED;
 		local->hw.conf.flags |= IEEE80211_CONF_PS;
-		ieee80211_hw_config(local, IEEE80211_CONF_CHANGE_PS);
+		ieee80211_hw_config(local, -1, IEEE80211_CONF_CHANGE_PS);
 	}
 }
 
@@ -3980,6 +3995,9 @@ static void ieee80211_set_disassoc(struct ieee80211_sub_if_data *sdata,
 
 	lockdep_assert_wiphy(local->hw.wiphy);
 
+	if (frame_buf)
+		memset(frame_buf, 0, IEEE80211_DEAUTH_FRAME_LEN);
+
 	if (WARN_ON(!ap_sta))
 		return;
 
@@ -4032,7 +4050,7 @@ static void ieee80211_set_disassoc(struct ieee80211_sub_if_data *sdata,
 	 */
 	if (local->hw.conf.flags & IEEE80211_CONF_PS) {
 		local->hw.conf.flags &= ~IEEE80211_CONF_PS;
-		ieee80211_hw_config(local, IEEE80211_CONF_CHANGE_PS);
+		ieee80211_hw_config(local, -1, IEEE80211_CONF_CHANGE_PS);
 	}
 	local->ps_sdata = NULL;
 
@@ -4322,9 +4340,6 @@ static void ieee80211_mgd_probe_ap_send(struct ieee80211_sub_if_data *sdata)
 
 	lockdep_assert_wiphy(sdata->local->hw.wiphy);
 
-	if (WARN_ON(ieee80211_vif_is_mld(&sdata->vif)))
-		return;
-
 	/*
 	 * Try sending broadcast probe requests for the last three
 	 * probe requests after the first ones failed since some
@@ -4369,9 +4384,6 @@ static void ieee80211_mgd_probe_ap(struct ieee80211_sub_if_data *sdata,
 	bool already = false;
 
 	lockdep_assert_wiphy(sdata->local->hw.wiphy);
-
-	if (WARN_ON_ONCE(ieee80211_vif_is_mld(&sdata->vif)))
-		return;
 
 	if (!ieee80211_sdata_running(sdata))
 		return;
@@ -5447,6 +5459,12 @@ static bool ieee80211_assoc_config_link(struct ieee80211_link_data *link,
 		bss_conf->eht_support = false;
 		bss_conf->epcs_support = false;
 	}
+
+	if (elems->s1g_oper &&
+	    link->u.mgd.conn.mode == IEEE80211_CONN_MODE_S1G &&
+	    elems->s1g_capab)
+		ieee80211_s1g_cap_to_sta_s1g_cap(sdata, elems->s1g_capab,
+						 link_sta);
 
 	bss_conf->twt_broadcast =
 		ieee80211_twt_bcast_support(sdata, bss_conf, sband, link_sta);
@@ -7245,6 +7263,7 @@ static void ieee80211_rx_mgmt_beacon(struct ieee80211_link_data *link,
 	struct ieee80211_bss_conf *bss_conf = link->conf;
 	struct ieee80211_vif_cfg *vif_cfg = &sdata->vif.cfg;
 	struct ieee80211_mgmt *mgmt = (void *) hdr;
+	struct ieee80211_ext *ext = NULL;
 	size_t baselen;
 	struct ieee802_11_elems *elems;
 	struct ieee80211_local *local = sdata->local;
@@ -7270,7 +7289,7 @@ static void ieee80211_rx_mgmt_beacon(struct ieee80211_link_data *link,
 	/* Process beacon from the current BSS */
 	bssid = ieee80211_get_bssid(hdr, len, sdata->vif.type);
 	if (ieee80211_is_s1g_beacon(mgmt->frame_control)) {
-		struct ieee80211_ext *ext = (void *) mgmt;
+		ext = (void *)mgmt;
 		variable = ext->u.s1g_beacon.variable +
 			   ieee80211_s1g_optional_len(ext->frame_control);
 	}
@@ -7391,7 +7410,7 @@ static void ieee80211_rx_mgmt_beacon(struct ieee80211_link_data *link,
 		if (local->hw.conf.dynamic_ps_timeout > 0) {
 			if (local->hw.conf.flags & IEEE80211_CONF_PS) {
 				local->hw.conf.flags &= ~IEEE80211_CONF_PS;
-				ieee80211_hw_config(local,
+				ieee80211_hw_config(local, -1,
 						    IEEE80211_CONF_CHANGE_PS);
 			}
 			ieee80211_send_nullfunc(local, sdata, false);
@@ -7458,7 +7477,9 @@ static void ieee80211_rx_mgmt_beacon(struct ieee80211_link_data *link,
 	}
 
 	if ((ncrc == link->u.mgd.beacon_crc && link->u.mgd.beacon_crc_valid) ||
-	    ieee80211_is_s1g_short_beacon(mgmt->frame_control))
+	    (ext && ieee80211_is_s1g_short_beacon(ext->frame_control,
+						  parse_params.start,
+						  parse_params.len)))
 		goto free;
 	link->u.mgd.beacon_crc = ncrc;
 	link->u.mgd.beacon_crc_valid = true;
@@ -8435,16 +8456,32 @@ void ieee80211_sta_work(struct ieee80211_sub_if_data *sdata)
 	}
 }
 
+static bool
+ieee80211_is_csa_in_progress(struct ieee80211_sub_if_data *sdata)
+{
+	/*
+	 * In MLO, check the CSA flags 'active' and 'waiting_bcn' for all
+	 * the links.
+	 */
+	struct ieee80211_link_data *link;
+
+	guard(rcu)();
+
+	for_each_link_data_rcu(sdata, link) {
+		if (!(link->conf->csa_active &&
+		      !link->u.mgd.csa.waiting_bcn))
+			return false;
+	}
+
+	return true;
+}
+
 static void ieee80211_sta_bcn_mon_timer(struct timer_list *t)
 {
 	struct ieee80211_sub_if_data *sdata =
 		timer_container_of(sdata, t, u.mgd.bcn_mon_timer);
 
-	if (WARN_ON(ieee80211_vif_is_mld(&sdata->vif)))
-		return;
-
-	if (sdata->vif.bss_conf.csa_active &&
-	    !sdata->deflink.u.mgd.csa.waiting_bcn)
+	if (ieee80211_is_csa_in_progress(sdata))
 		return;
 
 	if (sdata->vif.driver_flags & IEEE80211_VIF_BEACON_FILTER)
@@ -8455,36 +8492,69 @@ static void ieee80211_sta_bcn_mon_timer(struct timer_list *t)
 			 &sdata->u.mgd.beacon_connection_loss_work);
 }
 
+static unsigned long
+ieee80211_latest_active_link_conn_timeout(struct ieee80211_sub_if_data *sdata)
+{
+	unsigned long latest_timeout = jiffies;
+	unsigned int link_id;
+	struct sta_info *sta;
+
+	guard(rcu)();
+
+	sta = sta_info_get(sdata, sdata->vif.cfg.ap_addr);
+	if (!sta)
+		return 0;
+
+	for (link_id = 0; link_id < ARRAY_SIZE(sta->link);
+	     link_id++) {
+		struct link_sta_info *link_sta;
+		unsigned long timeout;
+
+		link_sta = rcu_dereference(sta->link[link_id]);
+		if (!link_sta)
+			continue;
+
+		timeout = link_sta->status_stats.last_ack;
+		if (time_before(timeout, link_sta->rx_stats.last_rx))
+			timeout = link_sta->rx_stats.last_rx;
+
+		timeout += IEEE80211_CONNECTION_IDLE_TIME;
+
+		/*
+		 * latest_timeout holds the timeout of the link
+		 * that will expire last among all links in an
+		 * non-AP MLD STA. This ensures that the connection
+		 * monitor timer is only reset if at least one link
+		 * is still active, and it is scheduled to fire at
+		 * the latest possible timeout.
+		 */
+		if (time_after(timeout, latest_timeout))
+			latest_timeout = timeout;
+	}
+
+	return latest_timeout;
+}
+
 static void ieee80211_sta_conn_mon_timer(struct timer_list *t)
 {
 	struct ieee80211_sub_if_data *sdata =
 		timer_container_of(sdata, t, u.mgd.conn_mon_timer);
 	struct ieee80211_if_managed *ifmgd = &sdata->u.mgd;
 	struct ieee80211_local *local = sdata->local;
-	struct sta_info *sta;
-	unsigned long timeout;
+	unsigned long latest_timeout;
 
-	if (WARN_ON(ieee80211_vif_is_mld(&sdata->vif)))
+	if (ieee80211_is_csa_in_progress(sdata))
 		return;
 
-	if (sdata->vif.bss_conf.csa_active &&
-	    !sdata->deflink.u.mgd.csa.waiting_bcn)
-		return;
+	latest_timeout = ieee80211_latest_active_link_conn_timeout(sdata);
 
-	sta = sta_info_get(sdata, sdata->vif.cfg.ap_addr);
-	if (!sta)
-		return;
-
-	timeout = sta->deflink.status_stats.last_ack;
-	if (time_before(sta->deflink.status_stats.last_ack, sta->deflink.rx_stats.last_rx))
-		timeout = sta->deflink.rx_stats.last_rx;
-	timeout += IEEE80211_CONNECTION_IDLE_TIME;
-
-	/* If timeout is after now, then update timer to fire at
+	/*
+	 * If latest timeout is after now, then update timer to fire at
 	 * the later date, but do not actually probe at this time.
 	 */
-	if (time_is_after_jiffies(timeout)) {
-		mod_timer(&ifmgd->conn_mon_timer, round_jiffies_up(timeout));
+	if (time_is_after_jiffies(latest_timeout)) {
+		mod_timer(&ifmgd->conn_mon_timer,
+			  round_jiffies_up(latest_timeout));
 		return;
 	}
 

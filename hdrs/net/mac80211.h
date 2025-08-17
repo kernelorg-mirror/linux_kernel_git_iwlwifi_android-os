@@ -758,6 +758,8 @@ struct ieee80211_parsed_tpe {
  *	be updated to 1, even if bss_param_ch_cnt didn't change. This allows
  *	the link to know that it heard the latest value from its own beacon
  *	(as opposed to hearing its value from another link's beacon).
+ * @s1g_long_beacon_period: number of beacon intervals between each long
+ *	beacon transmission.
  */
 struct ieee80211_bss_conf {
 	struct ieee80211_vif *vif;
@@ -857,6 +859,8 @@ struct ieee80211_bss_conf {
 
 	u8 bss_param_ch_cnt;
 	u8 bss_param_ch_cnt_link_id;
+
+	u8 s1g_long_beacon_period;
 };
 
 /**
@@ -2433,6 +2437,7 @@ struct ieee80211_sta_aggregates {
  * @he_cap: HE capabilities of this STA
  * @he_6ghz_capa: on 6 GHz, holds the HE 6 GHz band capabilities
  * @eht_cap: EHT capabilities of this STA
+ * @s1g_cap: S1G capabilities of this STA
  * @agg: per-link data for multi-link aggregation
  * @bandwidth: current bandwidth the station can receive with
  * @rx_nss: in HT/VHT, the maximum number of spatial streams the
@@ -2455,6 +2460,7 @@ struct ieee80211_link_sta {
 	struct ieee80211_sta_he_cap he_cap;
 	struct ieee80211_he_6ghz_capa he_6ghz_capa;
 	struct ieee80211_sta_eht_cap eht_cap;
+	struct ieee80211_sta_s1g_cap s1g_cap;
 
 	struct ieee80211_sta_aggregates agg;
 
@@ -4135,6 +4141,15 @@ struct ieee80211_prep_tx_info {
  *	Statistics that the driver doesn't fill will be filled by mac80211.
  *	The callback can sleep.
  *
+ * @link_sta_statistics: Get link statistics for this station. For example with
+ *	beacon filtering, the statistics kept by mac80211 might not be
+ *	accurate, so let the driver pre-fill the statistics. The driver can
+ *	fill most of the values (indicating which by setting the filled
+ *	bitmap), but not all of them make sense - see the source for which
+ *	ones are possible.
+ *	Statistics that the driver doesn't fill will be filled by mac80211.
+ *	The callback can sleep.
+ *
  * @conf_tx: Configure TX queue parameters (EDCF (aifs, cw_min, cw_max),
  *	bursting) for a hardware TX queue.
  *	Returns a negative error code on failure.
@@ -4508,7 +4523,7 @@ struct ieee80211_ops {
 				enum nl80211_iftype new_type, bool p2p);
 	void (*remove_interface)(struct ieee80211_hw *hw,
 				 struct ieee80211_vif *vif);
-	int (*config)(struct ieee80211_hw *hw, u32 changed);
+	int (*config)(struct ieee80211_hw *hw, int radio_idx, u32 changed);
 	void (*bss_info_changed)(struct ieee80211_hw *hw,
 				 struct ieee80211_vif *vif,
 				 struct ieee80211_bss_conf *info,
@@ -4571,8 +4586,10 @@ struct ieee80211_ops {
 	void (*get_key_seq)(struct ieee80211_hw *hw,
 			    struct ieee80211_key_conf *key,
 			    struct ieee80211_key_seq *seq);
-	int (*set_frag_threshold)(struct ieee80211_hw *hw, u32 value);
-	int (*set_rts_threshold)(struct ieee80211_hw *hw, u32 value);
+	int (*set_frag_threshold)(struct ieee80211_hw *hw, int radio_idx,
+				  u32 value);
+	int (*set_rts_threshold)(struct ieee80211_hw *hw, int radio_idx,
+				 u32 value);
 	int (*sta_add)(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
 		       struct ieee80211_sta *sta);
 	int (*sta_remove)(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
@@ -4665,7 +4682,8 @@ struct ieee80211_ops {
 	int (*get_survey)(struct ieee80211_hw *hw, int idx,
 		struct survey_info *survey);
 	void (*rfkill_poll)(struct ieee80211_hw *hw);
-	void (*set_coverage_class)(struct ieee80211_hw *hw, s16 coverage_class);
+	void (*set_coverage_class)(struct ieee80211_hw *hw, int radio_idx,
+				   s16 coverage_class);
 	void (*flush)(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
 		      u32 queues, bool drop);
 	void (*flush_sta)(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
@@ -4673,8 +4691,10 @@ struct ieee80211_ops {
 	void (*channel_switch)(struct ieee80211_hw *hw,
 			       struct ieee80211_vif *vif,
 			       struct ieee80211_channel_switch *ch_switch);
-	int (*set_antenna)(struct ieee80211_hw *hw, u32 tx_ant, u32 rx_ant);
-	int (*get_antenna)(struct ieee80211_hw *hw, u32 *tx_ant, u32 *rx_ant);
+	int (*set_antenna)(struct ieee80211_hw *hw, int radio_idx,
+			   u32 tx_ant, u32 rx_ant);
+	int (*get_antenna)(struct ieee80211_hw *hw, int radio_idx,
+			   u32 *tx_ant, u32 *rx_ant);
 
 	int (*remain_on_channel)(struct ieee80211_hw *hw,
 				 struct ieee80211_vif *vif,
@@ -5998,8 +6018,8 @@ void ieee80211_set_key_rx_seq(struct ieee80211_key_conf *keyconf,
  * ieee80211_gtk_rekey_add - add a GTK key from rekeying during WoWLAN
  * @vif: the virtual interface to add the key on
  * @idx: the keyidx of the key
- * @key: the key data
- * @key_len: the key data. might be bigger than the actual key length,
+ * @key_data: the key data
+ * @key_len: the key data. Might be bigger than the actual key length,
  *	but not smaller (for the driver convinence)
  * @link_id: the link id of the key or -1 for non-MLO
  *
@@ -7218,13 +7238,14 @@ void ieee80211_disable_rssi_reports(struct ieee80211_vif *vif);
  * ieee80211_ave_rssi - report the average RSSI for the specified interface
  *
  * @vif: the specified virtual interface
+ * @link_id: the link ID for MLO, or -1 for non-MLO
  *
  * Note: This function assumes that the given vif is valid.
  *
  * Return: The average RSSI value for the requested interface, or 0 if not
  * applicable.
  */
-int ieee80211_ave_rssi(struct ieee80211_vif *vif);
+int ieee80211_ave_rssi(struct ieee80211_vif *vif, int link_id);
 
 /**
  * ieee80211_report_wowlan_wakeup - report WoWLAN wakeup
