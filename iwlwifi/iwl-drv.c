@@ -179,6 +179,9 @@ static bool iwl_drv_xvt_mode_supported(enum iwl_fw_type fw_type, int mode_idx)
 	switch (mode_idx) {
 	case XVT_OP_MODE:
 	case MVM_OP_MODE:
+#if IS_ENABLED(CPTCFG_IWLMLD)
+	case MLD_OP_MODE:
+#endif
 		return true;
 	default:
 		return false;
