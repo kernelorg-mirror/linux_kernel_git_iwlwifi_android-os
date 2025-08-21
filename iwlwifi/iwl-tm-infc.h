@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0 OR BSD-3-Clause */
 /*
- * Copyright (C) 2010-2014, 2018-2024 Intel Corporation
+ * Copyright (C) 2010-2014, 2018-2025 Intel Corporation
  * Copyright (C) 2013-2015 Intel Mobile Communications GmbH
  * Copyright (C) 2015-2017 Intel Deutschland GmbH
  */
@@ -71,6 +71,13 @@ enum {
 	IWL_TM_USER_CMD_GET_RFID,
 	IWL_TM_USER_CMD_RESERVED,
 	IWL_TM_USER_CMD_GET_RFID_V2,
+	IWL_TM_USER_CMD_GET_FW_ASSERT_INFO,
+	IWL_TM_USER_CMD_GET_OTP_UNLOCK_INFO,
+	IWL_TM_USER_CMD_SET_OTP_UNLOCK_DATA,
+	IWL_TM_USER_CMD_SET_SKU_ID,
+	IWL_TM_USER_CMD_TXRX_CONFIG_BAND_CHANNEL,
+	IWL_TM_USER_CMD_ENABLE_SMART_FIFO,
+	IWL_TM_USER_CMD_SELECT_OP_MODE,
 
 	IWL_TM_USER_CMD_NOTIF_UCODE_RX_PKT = TM_CMD_NOTIF_BASE,
 	IWL_TM_USER_CMD_NOTIF_DRIVER,
@@ -301,6 +308,19 @@ struct iwl_tm_thrshld_md {
  */
 struct iwl_switch_op_mode {
 	__u8 new_op_mode[MAX_OP_MODE_LENGTH];
+} __packed __aligned(4);
+
+enum iwl_select_op_mode_val {
+	IWL_SELECT_WIFI_OP_MODE,
+	IWL_SELECT_XVT_OP_MODE,
+};
+
+/**
+ * struct iwl_select_op_mode - select op_mode
+ * @op_mode: one of enum iwl_select_op_mode_val
+ */
+struct iwl_select_op_mode {
+	__u32 op_mode;
 } __packed __aligned(4);
 
 /**

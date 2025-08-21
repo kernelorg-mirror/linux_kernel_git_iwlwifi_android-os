@@ -263,6 +263,35 @@ static int iwl_tm_switch_op_mode(struct iwl_tm_gnl_dev *dev,
 
 	return ret;
 }
+
+static int iwl_tm_select_op_mode(struct iwl_tm_gnl_dev *dev,
+				 struct iwl_tm_data *data_in)
+{
+	struct iwl_select_op_mode *select_cmd = data_in->data;
+	struct iwl_drv *drv;
+	bool xvt;
+	int ret;
+
+	if (data_in->len < sizeof(*select_cmd))
+		return -EINVAL;
+
+	drv = iwl_drv_get_dev_container(dev->trans->dev);
+	if (!drv) {
+		IWL_ERR(dev->trans, "Couldn't retrieve device information\n");
+		return -ENODEV;
+	}
+
+	xvt = select_cmd->op_mode == IWL_SELECT_XVT_OP_MODE;
+
+	/* Executing select command */
+	ret = iwl_drv_select_op_mode(drv, xvt);
+
+	if (ret < 0)
+		IWL_ERR(dev->trans, "Failed to select op mode to %d (err:%d)\n",
+			select_cmd->op_mode, ret);
+
+	return ret;
+}
 #endif
 
 static int iwl_tm_gnl_get_sil_step(struct iwl_trans *trans,
@@ -630,6 +659,10 @@ static int iwl_tm_gnl_cmd_execute(struct iwl_tm_gnl_cmd *cmd_data)
 #if IS_ENABLED(CPTCFG_IWLXVT)
 	case IWL_TM_USER_CMD_SWITCH_OP_MODE:
 		ret = iwl_tm_switch_op_mode(dev, &cmd_data->data_in);
+		common_op = true;
+		break;
+	case IWL_TM_USER_CMD_SELECT_OP_MODE:
+		ret = iwl_tm_select_op_mode(dev, &cmd_data->data_in);
 		common_op = true;
 		break;
 #endif

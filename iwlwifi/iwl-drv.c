@@ -250,6 +250,57 @@ int iwl_drv_switch_op_mode(struct iwl_drv *drv, const char *new_op_name)
 	return ret;
 }
 
+int iwl_drv_select_op_mode(struct iwl_drv *drv, bool xvt)
+{
+	struct iwlwifi_opmode_table *new_op = NULL;
+	int idx, ret;
+
+	if (drv->fw.type != IWL_FW_MVM)
+		return -EOPNOTSUPP;
+
+	if (xvt) {
+		idx = XVT_OP_MODE;
+	} else {
+		idx = MVM_OP_MODE;
+
+#if IS_ENABLED(CPTCFG_IWLMLD)
+		if (iwl_drv_is_wifi7_supported(drv->trans))
+			idx = MLD_OP_MODE;
+#endif
+	}
+
+	/*
+	 * If the desired op mode is already the
+	 * device's current op mode, do nothing
+	 */
+	if (idx == iwl_drv_get_op_mode_idx(drv))
+		return 0;
+
+	new_op = &iwlwifi_opmode_table[idx];
+
+	/* Recording new op mode state */
+	drv->xvt_mode_on = xvt;
+
+	mutex_lock(&iwlwifi_opmode_table_mtx);
+	_iwl_op_mode_stop(drv);
+	list_move_tail(&drv->list, &new_op->drv);
+
+	if (new_op->ops) {
+		drv->op_mode = _iwl_op_mode_start(drv, new_op);
+		if (!drv->op_mode) {
+			IWL_ERR(drv, "Error switching op modes\n");
+			ret = -EINVAL;
+		} else {
+			ret = 0;
+		}
+	} else {
+		ret = request_module("%s", new_op->name);
+	}
+	mutex_unlock(&iwlwifi_opmode_table_mtx);
+
+	return ret;
+}
+
 /*
  * iwl_drv_sysfs_show - Returns device information to user
  */
@@ -395,7 +446,7 @@ static inline char iwl_drv_get_step(int step)
 	return 'a' + step;
 }
 
-static bool iwl_drv_is_wifi7_supported(struct iwl_trans *trans)
+bool iwl_drv_is_wifi7_supported(struct iwl_trans *trans)
 {
 	return CSR_HW_RFID_TYPE(trans->info.hw_rf_id) >= IWL_CFG_RF_TYPE_FM;
 }

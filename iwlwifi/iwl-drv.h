@@ -89,8 +89,24 @@ struct iwl_drv *iwl_drv_get_dev_container(struct device *dev);
  * Checks if the desired operation mode is valid, if it
  * is supported by the device. Stops the current op mode
  * and starts the desired mode.
+ * Will be deprecated soon. iwl_drv_select_op_mode will be
+ * used instead.
  */
 int iwl_drv_switch_op_mode(struct iwl_drv *drv, const char *new_op_name);
+
+/*
+ * iwl_drv_select_op_mode - Switch between operation modes
+ * Stops the current op mode and starts the mode (xvt or wifi).
+ * iwl_drv_switch_op_mode that will be deprecated and this is
+ * the replacement for it.
+ */
+int iwl_drv_select_op_mode(struct iwl_drv *drv, bool xvt);
+
+/*
+ * iwl_drv_is_wifi7_supported - returns if wifi7 is supported
+ * If yes, iwlmld needs to be used to drive the device.
+ */
+bool iwl_drv_is_wifi7_supported(struct iwl_trans *trans);
 
 /*
  * exported symbol management
