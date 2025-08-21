@@ -2357,18 +2357,14 @@ static void iwl_mld_no_data_rx(struct iwl_mld *mld,
 		rx_status->zero_length_psdu_type =
 			IEEE80211_RADIOTAP_ZERO_LEN_PSDU_NOT_CAPTURED;
 		break;
-	case IWL_SNIF_STAT_PLCP_RX_LSIG_ERR:
-	case IWL_SNIF_STAT_PLCP_RX_SIGA_ERR:
-	case IWL_SNIF_STAT_PLCP_RX_SIGB_ERR:
-	case IWL_SNIF_STAT_UNKNOWN_ERROR:
 	default:
+		/*
+		 * Either PLCP error or the frame could not be decoded. Set it
+		 * as PLCP_CRC error as the FW does not report the exact error.
+		 */
 		rx_status->flag |= RX_FLAG_FAILED_PLCP_CRC;
-		fallthrough;
-	case IWL_SNIF_STAT_UNEXPECTED_TB:
-	case IWL_SNIF_STAT_UNSUPPORTED_RATE:
 		rx_status->zero_length_psdu_type =
 			IEEE80211_RADIOTAP_ZERO_LEN_PSDU_VENDOR;
-		/* we could include the real reason in a vendor TLV */
 	}
 
 	if (format == RATE_MCS_MOD_TYPE_CCK &&
