@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0 OR BSD-3-Clause */
 /*
- * Copyright (C) 2012-2014, 2018-2025 Intel Corporation
+ * Copyright (C) 2012-2014, 2018-2026 Intel Corporation
  * Copyright (C) 2013-2015 Intel Mobile Communications GmbH
  * Copyright (C) 2015-2017 Intel Deutschland GmbH
  */
@@ -1364,12 +1364,6 @@ union iwl_sigs {
 enum iwl_sniffer_status {
 	IWL_SNIF_STAT_PLCP_RX_OK	= 0,
 	IWL_SNIF_STAT_AID_NOT_FOR_US	= 1,
-	IWL_SNIF_STAT_PLCP_RX_LSIG_ERR	= 2,
-	IWL_SNIF_STAT_PLCP_RX_SIGA_ERR	= 3,
-	IWL_SNIF_STAT_PLCP_RX_SIGB_ERR	= 4,
-	IWL_SNIF_STAT_UNEXPECTED_TB	= 5,
-	IWL_SNIF_STAT_UNSUPPORTED_RATE	= 6,
-	IWL_SNIF_STAT_UNKNOWN_ERROR	= 7,
 }; /* AIR_SNIFFER_STATUS_E_VER_1 */
 
 enum iwl_sniffer_flags {
