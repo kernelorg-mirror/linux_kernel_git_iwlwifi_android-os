@@ -47,7 +47,7 @@ static bool iwl_alive_fn(struct iwl_notif_wait_data *notif_wait,
 	struct iwl_xvt_alive_data *alive_data = data;
 	struct xvt_alive_resp_ver2 *palive2;
 	struct iwl_alive_ntf_v3 *palive3;
-	struct iwl_alive_ntf_v6 *palive6;
+	struct iwl_alive_ntf_v7 *palive7;
 	struct iwl_alive_ntf *palive8;
 	struct iwl_lmac_alive *lmac1, *lmac2;
 	struct iwl_umac_alive *umac;
@@ -93,20 +93,20 @@ static bool iwl_alive_fn(struct iwl_notif_wait_data *notif_wait,
 			/* v5-7 are compatible (only IMR/flags addition) */
 			__le32 lmac2_err_ptr;
 
-			palive6 = (void *)pkt->data;
-			status = le16_to_cpu(palive6->status);
-			flags = le16_to_cpu(palive6->flags);
-			lmac1 = &palive6->lmac_data[0];
-			lmac2 = &palive6->lmac_data[1];
-			umac = &palive6->umac_data;
+			palive7 = (void *)pkt->data;
+			status = le16_to_cpu(palive7->status);
+			flags = le16_to_cpu(palive7->flags);
+			lmac1 = &palive7->lmac_data[0];
+			lmac2 = &palive7->lmac_data[1];
+			umac = &palive7->umac_data;
 			lmac2_err_ptr = lmac2->dbg_ptrs.error_event_table_ptr;
 			xvt->trans->dbg.lmac_error_event_table[1] =
 				le32_to_cpu(lmac2_err_ptr);
 
 			BUILD_BUG_ON(sizeof(alive_data->sku_id) !=
-				     sizeof(palive6->sku_id.data));
-			memcpy(alive_data->sku_id, palive6->sku_id.data,
-			       sizeof(palive6->sku_id.data));
+				     sizeof(palive7->sku_id.data));
+			memcpy(alive_data->sku_id, palive7->sku_id.data,
+			       sizeof(palive7->sku_id.data));
 
 			IWL_DEBUG_FW(xvt,
 				     "Alive VER%d - Got sku_id: 0x0%x 0x0%x 0x0%x\n",
