@@ -1128,31 +1128,17 @@ iwl_mvm_mld_change_sta_links(struct ieee80211_hw *hw,
 	return iwl_mvm_mld_update_sta_links(mvm, vif, sta, old_links, new_links);
 }
 
-bool iwl_mvm_vif_has_esr_cap(struct iwl_mvm *mvm, struct ieee80211_vif *vif)
-{
-	return false;
-
-}
-
 static bool iwl_mvm_mld_can_activate_links(struct ieee80211_hw *hw,
 					   struct ieee80211_vif *vif,
 					   u16 desired_links)
 {
-	struct iwl_mvm *mvm = IWL_MAC80211_GET_MVM(hw);
 	int n_links = hweight16(desired_links);
 
 	if (n_links <= 1)
 		return true;
 
-	guard(mvm)(mvm);
-
-	/* Check if HW supports the wanted number of links */
-	if (n_links > iwl_mvm_max_active_links(mvm, vif))
-		return false;
-
-	/* If it is an eSR device, check that we can enter eSR */
-	return iwl_mvm_is_esr_supported(mvm->fwrt.trans) &&
-	       iwl_mvm_vif_has_esr_cap(mvm, vif);
+	WARN_ON(1);
+	return false;
 }
 
 static enum ieee80211_neg_ttlm_res
