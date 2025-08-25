@@ -1230,6 +1230,9 @@ int iwl_mld_assign_vif_chanctx(struct ieee80211_hw *hw,
 			iwl_mld_chandef_get_primary_80(&vif->bss_conf.chanreq.oper);
 	}
 
+#ifdef CPTCFG_IWL_VENDOR_CMDS
+	iwl_mld_send_link_info_changed(mld, vif);
+#endif
 	return 0;
 
 deactivate_link:
@@ -1283,6 +1286,9 @@ void iwl_mld_unassign_vif_chanctx(struct ieee80211_hw *hw,
 		iwl_mld_remove_link(mld, link);
 		iwl_mld_add_link(mld, link);
 	}
+#ifdef CPTCFG_IWL_VENDOR_CMDS
+	iwl_mld_send_link_info_changed(mld, vif);
+#endif
 }
 
 static

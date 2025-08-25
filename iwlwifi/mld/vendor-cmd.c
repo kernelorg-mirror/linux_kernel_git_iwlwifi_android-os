@@ -1139,8 +1139,36 @@ static const struct wiphy_vendor_command iwl_mld_vendor_commands[] = {
 	},
 };
 
+enum iwl_mvm_vendor_events_idx {
+	IWL_MLD_VENDOR_EVENT_IDX_LINK_INFO_CHANGED,
+	NUM_IWL_MLD_VENDOR_EVENT_IDX,
+};
+
+static const struct nl80211_vendor_cmd_info
+iwl_mld_vendor_events[NUM_IWL_MLD_VENDOR_EVENT_IDX] = {
+	[IWL_MLD_VENDOR_EVENT_IDX_LINK_INFO_CHANGED] = {
+		.vendor_id = INTEL_OUI,
+		.subcmd = IWL_MVM_VENDOR_CMD_LINK_INFO_CHANGED_EVENT,
+	},
+};
+
+void iwl_mld_send_link_info_changed(struct iwl_mld *mld,
+				    struct ieee80211_vif *vif)
+{
+	int event_idx = IWL_MLD_VENDOR_EVENT_IDX_LINK_INFO_CHANGED;
+	struct sk_buff *msg;
+
+	msg = cfg80211_vendor_event_alloc(mld->hw->wiphy,
+					  ieee80211_vif_to_wdev(vif), 0,
+					  event_idx, GFP_ATOMIC);
+	if (msg)
+		cfg80211_vendor_event(msg, GFP_ATOMIC);
+}
+
 void iwl_mld_vendor_cmds_register(struct iwl_mld *mld)
 {
 	mld->hw->wiphy->vendor_commands = iwl_mld_vendor_commands;
 	mld->hw->wiphy->n_vendor_commands = ARRAY_SIZE(iwl_mld_vendor_commands);
+	mld->hw->wiphy->vendor_events = iwl_mld_vendor_events;
+	mld->hw->wiphy->n_vendor_events = ARRAY_SIZE(iwl_mld_vendor_events);
 }
