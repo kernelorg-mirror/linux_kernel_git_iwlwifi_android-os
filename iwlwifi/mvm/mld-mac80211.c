@@ -60,19 +60,12 @@ static int iwl_mvm_mld_mac_add_interface(struct ieee80211_hw *hw,
 				     IEEE80211_VIF_SUPPORTS_CQM_RSSI;
 	}
 
-	/* We want link[0] to point to the default link, unless we have MLO and
-	 * in this case this will be modified later by .change_vif_links()
-	 * If we are in the restart flow with an MLD connection, we will wait
-	 * to .change_vif_links() to setup the links.
-	 */
-	if (!test_bit(IWL_MVM_STATUS_IN_HW_RESTART, &mvm->status) ||
-	    !ieee80211_vif_is_mld(vif)) {
-		mvmvif->link[0] = &mvmvif->deflink;
+	/* We want link[0] to point to the default link. */
+	mvmvif->link[0] = &mvmvif->deflink;
 
-		ret = iwl_mvm_add_link(mvm, vif, &vif->bss_conf);
-		if (ret)
-			goto out_free_bf;
-	}
+	ret = iwl_mvm_add_link(mvm, vif, &vif->bss_conf);
+	if (ret)
+		goto out_free_bf;
 
 	/* Save a pointer to p2p device vif, so it can later be used to
 	 * update the p2p device MAC when a GO is started/stopped
@@ -453,9 +446,8 @@ static void iwl_mvm_mld_unassign_vif_chanctx(struct ieee80211_hw *hw,
 
 	mutex_lock(&mvm->mutex);
 	__iwl_mvm_mld_unassign_vif_chanctx(mvm, vif, link_conf, ctx, false);
-	/* in the non-MLD case, remove/re-add the link to clean up FW state */
-	if (!ieee80211_vif_is_mld(vif) && !mvmvif->ap_sta &&
-	    !WARN_ON_ONCE(vif->cfg.assoc)) {
+	/* Remove/re-add the link to clean up FW state */
+	if (!mvmvif->ap_sta && !WARN_ON_ONCE(vif->cfg.assoc)) {
 		iwl_mvm_remove_link(mvm, vif, link_conf);
 		iwl_mvm_add_link(mvm, vif, link_conf);
 	}
@@ -1138,21 +1130,8 @@ iwl_mvm_mld_change_sta_links(struct ieee80211_hw *hw,
 
 bool iwl_mvm_vif_has_esr_cap(struct iwl_mvm *mvm, struct ieee80211_vif *vif)
 {
-	const struct wiphy_iftype_ext_capab *ext_capa;
+	return false;
 
-	lockdep_assert_held(&mvm->mutex);
-
-	if (!ieee80211_vif_is_mld(vif) || !vif->cfg.assoc ||
-	    hweight16(ieee80211_vif_usable_links(vif)) == 1)
-		return false;
-
-	if (!(vif->cfg.eml_cap & IEEE80211_EML_CAP_EMLSR_SUPP))
-		return false;
-
-	ext_capa = cfg80211_get_iftype_ext_capa(mvm->hw->wiphy,
-						ieee80211_vif_type_p2p(vif));
-	return (ext_capa &&
-		(ext_capa->eml_capabilities & IEEE80211_EML_CAP_EMLSR_SUPP));
 }
 
 static bool iwl_mvm_mld_can_activate_links(struct ieee80211_hw *hw,

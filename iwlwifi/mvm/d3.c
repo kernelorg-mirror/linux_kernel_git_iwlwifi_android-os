@@ -726,8 +726,7 @@ static int iwl_mvm_d3_reprogram(struct iwl_mvm *mvm, struct ieee80211_vif *vif,
 	struct iwl_time_quota_data *quota;
 	u32 status;
 
-	if (WARN_ON_ONCE(iwl_mvm_is_cdb_supported(mvm) ||
-			 ieee80211_vif_is_mld(vif)))
+	if (WARN_ON_ONCE(iwl_mvm_is_cdb_supported(mvm)))
 		return -EINVAL;
 
 	/* add back the PHY */
@@ -2755,9 +2754,6 @@ iwl_mvm_choose_query_wakeup_reasons(struct iwl_mvm *mvm,
 		struct iwl_mvm_vif *mvmvif = iwl_mvm_vif_from_mac80211(vif);
 		u8 sta_id = mvm->net_detect ? IWL_INVALID_STA :
 					      mvmvif->deflink.ap_sta_id;
-
-		/* bug - FW with MLO has status notification */
-		WARN_ON(ieee80211_vif_is_mld(vif));
 
 		d3_data->status = iwl_mvm_send_wowlan_get_status(mvm, sta_id);
 	}
