@@ -570,11 +570,8 @@ iwl_mvm_fill_vendor_link_type(struct ieee80211_vif *vif, struct sk_buff *skb,
 	lockdep_assert_held(&ieee80211_vif_to_wdev(vif)->wiphy->mtx);
 
 	if (ieee80211_vif_type_p2p(vif) == NL80211_IFTYPE_STATION) {
-		if (link_id == iwl_mvm_get_primary_link(vif))
-			return nla_put_u8(skb, IWL_MVM_VENDOR_ATTR_LINK_TYPE,
-					  IWL_VENDOR_PRIMARY_LINK);
 		return nla_put_u8(skb, IWL_MVM_VENDOR_ATTR_LINK_TYPE,
-				  IWL_VENDOR_SECONDARY_LINK);
+				  IWL_VENDOR_PRIMARY_LINK);
 	}
 	return 0;
 }

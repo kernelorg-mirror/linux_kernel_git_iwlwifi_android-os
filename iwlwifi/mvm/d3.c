@@ -1247,7 +1247,6 @@ static int __iwl_mvm_suspend(struct ieee80211_hw *hw,
 	struct ieee80211_vif *vif = NULL;
 	struct iwl_mvm_vif *mvmvif = NULL;
 	struct ieee80211_sta *ap_sta = NULL;
-	struct iwl_mvm_vif_link_info *mvm_link;
 	struct iwl_d3_manager_config d3_cfg_cmd = {
 		/*
 		 * Program the minimum sleep time to 10 seconds, as many
@@ -1279,13 +1278,7 @@ static int __iwl_mvm_suspend(struct ieee80211_hw *hw,
 
 	mvmvif = iwl_mvm_vif_from_mac80211(vif);
 
-	mvm_link = mvmvif->link[iwl_mvm_get_primary_link(vif)];
-	if (WARN_ON_ONCE(!mvm_link)) {
-		ret = -EINVAL;
-		goto out_noreset;
-	}
-
-	if (mvm_link->ap_sta_id == IWL_INVALID_STA) {
+	if (mvmvif->deflink.ap_sta_id == IWL_INVALID_STA) {
 		/* if we're not associated, this must be netdetect */
 		if (!wowlan->nd_config) {
 			ret = 1;
@@ -1303,10 +1296,10 @@ static int __iwl_mvm_suspend(struct ieee80211_hw *hw,
 			.offloading_tid = 0,
 		};
 
-		wowlan_config_cmd.sta_id = mvm_link->ap_sta_id;
+		wowlan_config_cmd.sta_id = mvmvif->deflink.ap_sta_id;
 
 		ap_sta = rcu_dereference_protected(
-			mvm->fw_id_to_mac_id[mvm_link->ap_sta_id],
+			mvm->fw_id_to_mac_id[mvmvif->deflink.ap_sta_id],
 			lockdep_is_held(&mvm->mutex));
 		if (IS_ERR_OR_NULL(ap_sta)) {
 			ret = -EINVAL;
@@ -1323,7 +1316,8 @@ static int __iwl_mvm_suspend(struct ieee80211_hw *hw,
 		if (ret)
 			goto out_noreset;
 		ret = iwl_mvm_wowlan_config(mvm, wowlan, &wowlan_config_cmd,
-					    vif, mvmvif, mvm_link, ap_sta);
+					    vif, mvmvif, &mvmvif->deflink,
+					    ap_sta);
 		if (ret)
 			goto out;
 

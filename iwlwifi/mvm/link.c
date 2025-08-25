@@ -285,11 +285,6 @@ int iwl_mvm_disable_link(struct iwl_mvm *mvm, struct ieee80211_vif *vif,
 	return ret;
 }
 
-u8 iwl_mvm_get_primary_link(struct ieee80211_vif *vif)
-{
-	return 0;
-}
-
 void iwl_mvm_init_link(struct iwl_mvm_vif_link_info *link)
 {
 	link->bcast_sta.sta_id = IWL_INVALID_STA;

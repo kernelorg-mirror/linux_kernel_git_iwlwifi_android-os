@@ -2077,8 +2077,6 @@ int iwl_mvm_remove_link(struct iwl_mvm *mvm, struct ieee80211_vif *vif,
 int iwl_mvm_disable_link(struct iwl_mvm *mvm, struct ieee80211_vif *vif,
 			 struct ieee80211_bss_conf *link_conf);
 
-u8 iwl_mvm_get_primary_link(struct ieee80211_vif *vif);
-
 struct iwl_mvm_link_sel_data {
 	u8 link_id;
 	const struct cfg80211_chan_def *chandef;
