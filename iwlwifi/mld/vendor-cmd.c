@@ -263,6 +263,7 @@ enum iwl_mld_rfi_capabilites {
 	IWL_MLD_RFI_DDR_CAPA_ASSOC		= BIT(4),
 	IWL_MLD_RFI_DDR_CAPA_TPT		= BIT(5),
 	IWL_MLD_RFI_GET_LINKS_INFO_CAPA		= BIT(7),
+	IWL_MLD_RFI_LINK_INFO_CHANGE_CAPA	= BIT(8),
 	IWL_MLD_RFI_DLVR_CAPA			= BIT(9),
 	IWL_MLD_RFI_DDR_DESENSE_CAPA		= BIT(12),
 };
@@ -276,9 +277,10 @@ static int iwl_mld_vendor_rfim_get_capa(struct wiphy *wiphy,
 					struct wireless_dev *wdev,
 					const void *data, int data_len)
 {
+	u16 capa = IWL_MLD_RFI_GET_LINKS_INFO_CAPA |
+		   IWL_MLD_RFI_LINK_INFO_CHANGE_CAPA;
 	struct ieee80211_hw *hw = wiphy_to_ieee80211_hw(wiphy);
 	struct iwl_mld *mld = IWL_MAC80211_GET_MLD(hw);
-	u16 capa = IWL_MLD_RFI_GET_LINKS_INFO_CAPA;
 	struct sk_buff *skb;
 
 	skb = cfg80211_vendor_cmd_alloc_reply_skb(wiphy, 4);
