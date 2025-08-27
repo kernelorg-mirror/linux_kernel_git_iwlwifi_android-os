@@ -670,7 +670,6 @@ struct iwl_firmware_pieces {
 	size_t dbg_trigger_tlv_len[FW_DBG_TRIGGER_MAX];
 	struct iwl_fw_dbg_mem_seg_tlv *dbg_mem_tlv;
 	size_t n_mem_tlv;
-	u32 major;
 #ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
 	struct {
 		u32 major, minor;
@@ -1353,19 +1352,19 @@ fw_dbg_conf:
 			break;
 		case IWL_UCODE_TLV_FW_VERSION: {
 			const __le32 *ptr = (const void *)tlv_data;
-			u32 minor;
+			u32 major, minor;
 			u8 local_comp;
 
 			if (tlv_len != sizeof(u32) * 3)
 				goto invalid_tlv_len;
 
-			pieces->major = le32_to_cpup(ptr++);
+			major = le32_to_cpup(ptr++);
 			minor = le32_to_cpup(ptr++);
 			local_comp = le32_to_cpup(ptr);
 
 			snprintf(drv->fw.fw_version,
 				 sizeof(drv->fw.fw_version),
-				 "%u.%08x.%u %s", pieces->major, minor,
+				 "%u.%08x.%u %s", major, minor,
 				 local_comp, iwl_reduced_fw_name(drv));
 			break;
 			}
@@ -2029,8 +2028,6 @@ static int iwl_drv_load_fseq_image(struct iwl_trans *trans, struct iwl_fw *fw,
 }
 #endif
 
-#define IWL_MLD_SUPPORTED_FW_VERSION 97
-
 /*
  * iwl_req_fw_callback - callback when firmware was loaded
  *
@@ -2331,12 +2328,10 @@ static void iwl_req_fw_callback(const struct firmware *ucode_raw, void *context)
 	}
 
 #if IS_ENABLED(CPTCFG_IWLMLD)
-	if (pieces->major >= IWL_MLD_SUPPORTED_FW_VERSION &&
-	    iwl_drv_is_wifi7_supported(drv->trans))
+	if (iwl_drv_is_wifi7_supported(drv->trans))
 		op = &iwlwifi_opmode_table[MLD_OP_MODE];
 #else
-	if (pieces->major >= IWL_MLD_SUPPORTED_FW_VERSION &&
-	    iwl_drv_is_wifi7_supported(drv->trans)) {
+	if (iwl_drv_is_wifi7_supported(drv->trans)) {
 		IWL_ERR(drv,
 			"IWLMLD needs to be compiled to support this firmware\n");
 		mutex_unlock(&iwlwifi_opmode_table_mtx);
