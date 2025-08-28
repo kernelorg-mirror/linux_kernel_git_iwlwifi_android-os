@@ -56,11 +56,6 @@
 	{							\
 		.max = 1,					\
 		.types = BIT(NL80211_IFTYPE_P2P_DEVICE),	\
-	},                                                      \
-	/* must be last - removed in non-NAN case */		\
-	{							\
-		.max = 1,					\
-		.types = BIT(NL80211_IFTYPE_NAN),		\
 	},
 
 static const struct ieee80211_iface_limit iwl_mld_limits[] = {
@@ -71,20 +66,49 @@ static const struct ieee80211_iface_limit iwl_mld_limits_ap[] = {
 	IWL_MLD_LIMITS(BIT(NL80211_IFTYPE_AP))
 };
 
+static const struct ieee80211_iface_limit iwl_mld_limits_nan[] = {
+	{
+		.max = 2,
+		.types = BIT(NL80211_IFTYPE_STATION),
+	},
+	{
+		.max = 1,
+		.types = BIT(NL80211_IFTYPE_NAN),
+	},
+	/* Removed when two channels are permitted */
+	{
+		.max = 1,
+		.types = BIT(NL80211_IFTYPE_AP),
+	},
+};
+
 static const struct ieee80211_iface_combination
 iwl_mld_iface_combinations[] = {
 	{
 		.num_different_channels = 2,
 		.max_interfaces = 4,
 		.limits = iwl_mld_limits,
-		.n_limits = ARRAY_SIZE(iwl_mld_limits) - 1,
+		.n_limits = ARRAY_SIZE(iwl_mld_limits),
 	},
 	{
 		.num_different_channels = 1,
 		.max_interfaces = 4,
 		.limits = iwl_mld_limits_ap,
-		.n_limits = ARRAY_SIZE(iwl_mld_limits_ap) - 1,
+		.n_limits = ARRAY_SIZE(iwl_mld_limits_ap),
 	},
+	/* NAN combinations follow, these exclude P2P */
+	{
+		.num_different_channels = 2,
+		.max_interfaces = 3,
+		.limits = iwl_mld_limits_nan,
+		.n_limits = ARRAY_SIZE(iwl_mld_limits_nan) - 1,
+	},
+	{
+		.num_different_channels = 1,
+		.max_interfaces = 4,
+		.limits = iwl_mld_limits_nan,
+		.n_limits = ARRAY_SIZE(iwl_mld_limits_nan),
+	}
 };
 
 static const u8 if_types_ext_capa_sta[] = {
@@ -396,8 +420,9 @@ static void iwl_mac_hw_set_wiphy(struct iwl_mld *mld)
 	wiphy->hw_timestamp_max_peers = 1;
 
 	wiphy->iface_combinations = iwl_mld_iface_combinations;
+		/* Do not include NAN combinations */
 	wiphy->n_iface_combinations =
-		ARRAY_SIZE(iwl_mld_iface_combinations);
+		ARRAY_SIZE(iwl_mld_iface_combinations) - 2;
 
 	wiphy_ext_feature_set(wiphy, NL80211_EXT_FEATURE_VHT_IBSS);
 	wiphy_ext_feature_set(wiphy, NL80211_EXT_FEATURE_DFS_CONCURRENT);
