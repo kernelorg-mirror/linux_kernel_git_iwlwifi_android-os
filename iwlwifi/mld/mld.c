@@ -523,6 +523,9 @@ iwl_op_mode_mld_start(struct iwl_trans *trans, const struct iwl_rf_cfg *cfg,
 	iwl_mld_ftm_initiator_init(mld);
 	iwl_mld_ftm_responder_init(mld);
 
+#ifdef CPTCFG_IWLWIFI_DEVICE_TESTMODE
+	iwl_tm_init(trans, fw, &mld->wiphy->mtx, mld);
+#endif
 	return op_mode;
 
 low_latency_free:
