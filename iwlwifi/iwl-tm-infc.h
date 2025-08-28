@@ -239,7 +239,7 @@ struct iwl_tm_trace_request {
 } __packed __aligned(4);
 
 /**
- * struct iwl_tm_sram_write_request
+ * struct iwl_tm_sram_write_request - SRAM write request
  * @offset:	Address offset
  * @len:	input data length
  * @buffer:	input data
@@ -251,7 +251,7 @@ struct iwl_tm_sram_write_request {
 } __packed __aligned(4);
 
 /**
- * struct iwl_tm_sram_read_request
+ * struct iwl_tm_sram_read_request - SRAM read request
  * @offset:	Address offset
  * @length:	data length
  */

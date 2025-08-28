@@ -620,7 +620,7 @@ struct iwl_sar_offset_mapping_cmd {
 } __packed; /*SAR_OFFSET_MAPPING_TABLE_CMD_API_S*/
 
 /**
- * struct iwl_beacon_filter_cmd
+ * struct iwl_beacon_filter_cmd - beacon filter command
  * REPLY_BEACON_FILTERING_CMD = 0xd2 (command)
  * @bf_energy_delta: Used for RSSI filtering, if in 'normal' state. Send beacon
  *      to driver if delta in Energy values calculated for this and last
@@ -762,7 +762,7 @@ enum iwl_6ghz_ap_type {
 }; /* PHY_AP_TYPE_API_E_VER_1 */
 
 /**
- * struct iwl_txpower_constraints_cmd
+ * struct iwl_txpower_constraints_cmd - TX power constraints command
  * AP_TX_POWER_CONSTRAINTS_CMD
  * Used for VLP/LPI/AFC Access Point power constraints for 6GHz channels
  * @link_id: linkId
@@ -788,7 +788,7 @@ struct iwl_txpower_constraints_cmd {
 } __packed; /* PHY_AP_TX_POWER_CONSTRAINTS_CMD_API_S_VER_1 */
 
 /**
- * enum iwl_tx_power_valid_bitmap
+ * enum iwl_tx_power_valid_bitmap - TX power validity flags
  * validity of fields of &struct iwl_tx_power_driver_limits
  * @IWL_TX_POWER_DRIVER_LIMIT_DEVICE_POWER: &dev_24, &dev_52_low and
  *	&dev_52_high are valid.

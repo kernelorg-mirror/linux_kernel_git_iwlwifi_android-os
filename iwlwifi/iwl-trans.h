@@ -131,7 +131,7 @@ enum CMD_MODE {
 #define DEF_CMD_PAYLOAD_SIZE 320
 
 /**
- * struct iwl_device_cmd
+ * struct iwl_device_cmd - device command structure
  *
  * For allocation of the command and tx queues, this establishes the overall
  * size of the largest command we send to uCode, except for commands that
@@ -547,7 +547,7 @@ enum iwl_trans_state {
  */
 
 /**
- * enum iwl_ini_cfg_state
+ * enum iwl_ini_cfg_state - debug config state
  * @IWL_INI_CFG_STATE_NOT_LOADED: no debug cfg was given
  * @IWL_INI_CFG_STATE_LOADED: debug cfg was found and loaded
  * @IWL_INI_CFG_STATE_CORRUPTED: debug cfg was found and some of the TLVs
@@ -563,7 +563,7 @@ enum iwl_ini_cfg_state {
 #define IWL_TRANS_NMI_TIMEOUT (HZ / 4 * CPTCFG_IWL_TIMEOUT_FACTOR)
 
 /**
- * struct iwl_dram_data
+ * struct iwl_dram_data - DRAM data descriptor
  * @physical: page phy pointer
  * @block: pointer to the allocated block/page
  * @size: size of the block/page
