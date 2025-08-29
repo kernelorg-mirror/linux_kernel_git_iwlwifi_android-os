@@ -96,6 +96,7 @@ enum ieee80211_radiotap_presence {
 	IEEE80211_RADIOTAP_EHT_USIG = 33,
 	IEEE80211_RADIOTAP_EHT = 34,
 	IEEE80211_RADIOTAP_OBSERVED_ENERGY = 35,
+	IEEE80211_RADIOTAP_SERVICE_FIELD = 36,
 	IEEE80211_RADIOTAP_UHR_ELR = 37,
 	IEEE80211_RADIOTAP_UHR = 38,
 };
@@ -622,6 +623,47 @@ enum ieee80211_radiotap_observed_energy_known {
 struct ieee80211_radiotap_observed_energy {
 	__le16 known;
 	__le16 bw;
+} __packed;
+
+enum ieee80211_radiotap_service_field_known {
+	IEEE80211_RADIOTAP_SERVICE_FIELD_KNOWN_SERVICE_FIELD	= 0x01,
+	IEEE80211_RADIOTAP_SERVICE_FIELD_KNOWN_SCRAMBLER_INIT	= 0x02,
+	IEEE80211_RADIOTAP_SERVICE_FIELD_KNOWN_DYN_BW_IN_NON_HT	= 0x04,
+	IEEE80211_RADIOTAP_SERVICE_FIELD_KNOWN_CH_BW_IN_NON_HT	= 0x08,
+};
+
+enum ieee80211_radiotap_service_field_flags {
+	IEEE80211_RADIOTAP_SERVICE_FIELD_FLAG_DYN_BW_IN_NON_HT	= 0x01,
+	IEEE80211_RADIOTAP_SERVICE_FIELD_FLAG_SCRAMBLER_INIT_11	= 0x02,
+};
+
+/**
+ * struct ieee80211_radiotap_service_field - SERVICE field information (type 36)
+ * see www.radiotap.org/fields/SERVICE%20field.html for details.
+ *
+ * For certain frames, information may be encoded early in the SERVICE field of
+ * the PHY header. This information may be reported here.
+ *
+ * The DYN_BANDWIDTH_IN_NON_HT and CH_BANDWIDTH_IN_NON_HT may be reported
+ * separately if the other bits cannot be reported. These fields are only valid
+ * for certain frames when bandwidth signalling is in use.
+ *
+ * @known: Bitmap indicating which information is present
+ * @flags: Bitmap of flags
+ * @service_field: SERVICE field, the lower bits are used to store the
+ *	scrambler initialization as the SERVICE field must be all zero there.
+ *	The scrambler initialization may be 7 or 11 bit long depending on the
+ *	PHY type of the frame. If it is 11 bit, then
+ *	%IEEE80211_RADIOTAP_SERVICE_FIELD_FLAG_SCRAMBLER_INIT_11 is set.
+ * @ch_bw_in_non_ht: Value of CH_BANDWIDTH_IN_NON_HT as defined in
+ *	IEEE802.11REVmf-D1.0, Table 17-8 - TXVECTOR parameter
+ *	CH_BANDWIDTH_IN_NON_HT values.
+ */
+struct ieee80211_radiotap_service_field {
+	u8 known;
+	u8 flags;
+	__le16 service_field;
+	u8 ch_bw_in_non_ht;
 } __packed;
 
 /*
