@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017		Intel Deutschland GmbH
- * Copyright (c) 2018-2019, 2021-2022, 2025 Intel Corporation
+ * Copyright (c) 2018-2019, 2021-2022, 2025-2026 Intel Corporation
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -95,6 +95,7 @@ enum ieee80211_radiotap_presence {
 	IEEE80211_RADIOTAP_EXT = 31,
 	IEEE80211_RADIOTAP_EHT_USIG = 33,
 	IEEE80211_RADIOTAP_EHT = 34,
+	IEEE80211_RADIOTAP_OBSERVED_ENERGY = 35,
 	IEEE80211_RADIOTAP_UHR_ELR = 37,
 	IEEE80211_RADIOTAP_UHR = 38,
 };
@@ -603,6 +604,25 @@ enum ieee80211_radiotap_eht_usig_tb {
 	IEEE80211_RADIOTAP_EHT_USIG2_TB_B16_B19_CRC		= 0x03c00000,
 	IEEE80211_RADIOTAP_EHT_USIG2_TB_B20_B25_TAIL		= 0xfc000000,
 };
+
+/* for IEEE80211_RADIOTAP_OBSERVED_ENERGY */
+enum ieee80211_radiotap_observed_energy_known {
+	IEEE80211_RADIOTAP_OBSERVED_ENERGY_KNOWN_BW		= 0x0001,
+};
+
+/**
+ * struct ieee80211_radiotap_observed_energy - Observed Energy (type 35)
+ * see www.radiotap.org/fields/observed%20energy.html for details.
+ *
+ * @known: Bitmap indicating which information is present
+ * @bw: The bandwidth in MHz sufficient to contain all subchannels where energy
+ *	likely belonging to the same transmission was observed. This may
+ *	indicate that the transmission was duplicated on multiple channels.
+ */
+struct ieee80211_radiotap_observed_energy {
+	__le16 known;
+	__le16 bw;
+} __packed;
 
 /*
  * ieee80211_radiotap_uhr_elr - content of UHR-ELR TLV (type 35)
