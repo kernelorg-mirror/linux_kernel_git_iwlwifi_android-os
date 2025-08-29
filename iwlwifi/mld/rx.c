@@ -1521,8 +1521,8 @@ static void iwl_mld_rx_fill_status(struct iwl_mld *mld, int link_id,
 	if (format == RATE_MCS_MOD_TYPE_EHT)
 		iwl_mld_rx_eht(mld, skb, phy_data);
 
-#ifdef CPTCFG_IWLWIFI_DEBUGFS
 	if (unlikely(mld->monitor.on)) {
+#ifdef CPTCFG_IWLWIFI_DEBUGFS
 		iwl_mld_add_rtap_sniffer_config(mld, skb);
 
 		if (mld->monitor.ptp_time) {
@@ -1535,8 +1535,38 @@ static void iwl_mld_rx_fill_status(struct iwl_mld *mld, int link_id,
 			rx_status->flag |= RX_FLAG_MACTIME_IS_RTAP_TS64;
 			rx_status->flag &= ~RX_FLAG_MACTIME;
 		}
-	}
 #endif
+
+		if (format < RATE_MCS_MOD_TYPE_HT) {
+			struct ieee80211_radiotap_observed_energy *observed_energy =
+				iwl_mld_radiotap_put_tlv(skb,
+							 IEEE80211_RADIOTAP_OBSERVED_ENERGY,
+							 sizeof(*observed_energy));
+
+			observed_energy->known =
+				cpu_to_le16(IEEE80211_RADIOTAP_OBSERVED_ENERGY_KNOWN_BW);
+			switch (rate_n_flags & RATE_MCS_CHAN_WIDTH_MSK) {
+			case RATE_MCS_CHAN_WIDTH_20:
+				observed_energy->bw = cpu_to_le16(20);
+				break;
+			case RATE_MCS_CHAN_WIDTH_40:
+				observed_energy->bw = cpu_to_le16(40);
+				break;
+			case RATE_MCS_CHAN_WIDTH_80:
+				observed_energy->bw = cpu_to_le16(80);
+				break;
+			case RATE_MCS_CHAN_WIDTH_160:
+				observed_energy->bw = cpu_to_le16(160);
+				break;
+			case RATE_MCS_CHAN_WIDTH_320:
+				observed_energy->bw = cpu_to_le16(320);
+				break;
+			default:
+				observed_energy->known = 0;
+				break;
+			}
+		}
+	}
 
 	if (phy_data->ntfy)
 		iwl_mld_add_rtap_sniffer_phy_data(mld, skb, phy_data->ntfy);
