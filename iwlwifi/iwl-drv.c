@@ -448,7 +448,8 @@ static inline char iwl_drv_get_step(int step)
 
 bool iwl_drv_is_wifi7_supported(struct iwl_trans *trans)
 {
-	return CSR_HW_RFID_TYPE(trans->info.hw_rf_id) >= IWL_CFG_RF_TYPE_FM;
+	return trans->mac_cfg->device_family >= IWL_DEVICE_FAMILY_BZ &&
+	       CSR_HW_RFID_TYPE(trans->info.hw_rf_id) >= IWL_CFG_RF_TYPE_FM;
 }
 
 const char *iwl_drv_get_fwname_pre(struct iwl_trans *trans, char *buf)
