@@ -36,6 +36,11 @@ hrtimer_setup(struct hrtimer *timer,
 	timer->function = function;
 }
 
+static inline ktime_t us_to_ktime(u64 us)
+{
+    return us * NSEC_PER_USEC;
+}
+
 
 static inline void
 cfg80211_epcs_changed(struct net_device *netdev, bool enabled)
