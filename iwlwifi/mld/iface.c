@@ -392,20 +392,15 @@ static void iwl_mld_mlo_scan_start_wk(struct wiphy *wiphy,
 IWL_MLD_ALLOC_FN(vif, vif)
 
 /* Constructor function for struct iwl_mld_vif */
-static int
+static void
 iwl_mld_init_vif(struct iwl_mld *mld, struct ieee80211_vif *vif)
 {
 	struct iwl_mld_vif *mld_vif = iwl_mld_vif_from_mac80211(vif);
-	int ret;
 
 	lockdep_assert_wiphy(mld->wiphy);
 
 	mld_vif->mld = mld;
 	mld_vif->roc_activity = ROC_NUM_ACTIVITIES;
-
-	ret = iwl_mld_allocate_vif_fw_id(mld, &mld_vif->fw_id, vif);
-	if (ret)
-		return ret;
 
 	if (!mld->fw_status.in_hw_restart) {
 		wiphy_work_init(&mld_vif->emlsr.unblock_tpt_wk,
@@ -420,8 +415,6 @@ iwl_mld_init_vif(struct iwl_mld *mld, struct ieee80211_vif *vif)
 					iwl_mld_mlo_scan_start_wk);
 	}
 	iwl_mld_init_internal_sta(&mld_vif->aux_sta);
-
-	return 0;
 }
 
 int iwl_mld_add_vif(struct iwl_mld *mld, struct ieee80211_vif *vif)
@@ -431,7 +424,13 @@ int iwl_mld_add_vif(struct iwl_mld *mld, struct ieee80211_vif *vif)
 
 	lockdep_assert_wiphy(mld->wiphy);
 
-	ret = iwl_mld_init_vif(mld, vif);
+	iwl_mld_init_vif(mld, vif);
+
+	/* NAN interface type is not known to FW */
+	if (vif->type == NL80211_IFTYPE_NAN)
+		return 0;
+
+	ret = iwl_mld_allocate_vif_fw_id(mld, &mld_vif->fw_id, vif);
 	if (ret)
 		return ret;
 
