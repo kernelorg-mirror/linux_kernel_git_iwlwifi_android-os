@@ -54,7 +54,7 @@ ddk_module(
         "-include",
         "hdrs/iwl-chrome.h",
     ],
-    kernel_build = "//common:kernel_x86_64",
+    kernel_build = "//private/devices/google/common:desktop_kernel_build",
     local_defines = DRIVER_CONFIG,
     deps = [
         ":mac80211_hdrs",
@@ -90,7 +90,7 @@ ddk_module(
         "-include",
         "hdrs/iwl-chrome.h",
     ],
-    kernel_build = "//common:kernel_x86_64",
+    kernel_build = "//private/devices/google/common:desktop_kernel_build",
     local_defines = DRIVER_CONFIG,
     deps = [
         ":iwlwifi_hdrs",
@@ -108,7 +108,7 @@ ddk_module(
         "-include",
         "hdrs/iwl-chrome.h",
     ],
-    kernel_build = "//common:kernel_x86_64",
+    kernel_build = "//private/devices/google/common:desktop_kernel_build",
     local_defines = DRIVER_CONFIG,
     deps = [
         ":iwl7000_mac80211",
@@ -128,7 +128,7 @@ ddk_module(
         "-include",
         "hdrs/iwl-chrome.h",
     ],
-    kernel_build = "//common:kernel_x86_64",
+    kernel_build = "//private/devices/google/common:desktop_kernel_build",
     local_defines = DRIVER_CONFIG,
     deps = [
         ":iwl7000_mac80211",
@@ -148,7 +148,7 @@ ddk_module(
         "-include",
         "hdrs/iwl-chrome.h",
     ],
-    kernel_build = "//common:kernel_x86_64",
+    kernel_build = "//private/devices/google/common:desktop_kernel_build",
     local_defines = DRIVER_CONFIG,
     deps = [
         ":iwl7000_mac80211",
