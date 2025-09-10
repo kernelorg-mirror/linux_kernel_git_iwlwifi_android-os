@@ -174,62 +174,6 @@ static void iwl_mvm_mld_mac_remove_interface(struct ieee80211_hw *hw,
 	}
 }
 
-static unsigned int iwl_mvm_mld_count_active_links(struct iwl_mvm_vif *mvmvif)
-{
-	unsigned int n_active = 0;
-	int i;
-
-	for (i = 0; i < IEEE80211_MLD_MAX_NUM_LINKS; i++) {
-		if (mvmvif->link[i] && mvmvif->link[i]->phy_ctxt)
-			n_active++;
-	}
-
-	return n_active;
-}
-
-static int iwl_mvm_esr_mode_active(struct iwl_mvm *mvm,
-				   struct ieee80211_vif *vif)
-{
-	struct iwl_mvm_vif *mvmvif = iwl_mvm_vif_from_mac80211(vif);
-	int link_id, ret = 0;
-
-	mvmvif->esr_active = true;
-
-	/* Indicate to mac80211 that EML is enabled */
-	vif->driver_flags |= IEEE80211_VIF_EML_ACTIVE;
-#ifdef CPTCFG_IWLWIFI_DEBUGFS
-	/* Disable RLC overriding by user */
-	mvm->dbgfs_rx_phyinfo = 0;
-#endif
-
-	iwl_mvm_update_smps_on_active_links(mvm, vif, IWL_MVM_SMPS_REQ_FW,
-					    IEEE80211_SMPS_OFF);
-
-	for_each_mvm_vif_valid_link(mvmvif, link_id) {
-		struct iwl_mvm_vif_link_info *link = mvmvif->link[link_id];
-
-		if (!link->phy_ctxt)
-			continue;
-
-		ret = iwl_mvm_phy_send_rlc(mvm, link->phy_ctxt, 2, 2);
-		if (ret)
-			break;
-
-		link->phy_ctxt->rlc_disabled = true;
-	}
-
-	if (vif->active_links == mvmvif->link_selection_res &&
-	    !WARN_ON(!(vif->active_links & BIT(mvmvif->link_selection_primary))))
-		mvmvif->primary_link = mvmvif->link_selection_primary;
-	else
-		mvmvif->primary_link = __ffs(vif->active_links);
-
-	iwl_dbg_tlv_time_point(&mvm->fwrt, IWL_FW_INI_TIME_ESR_LINK_UP,
-			       NULL);
-
-	return ret;
-}
-
 static int
 __iwl_mvm_mld_assign_vif_chanctx(struct iwl_mvm *mvm,
 				 struct ieee80211_vif *vif,
@@ -240,16 +184,11 @@ __iwl_mvm_mld_assign_vif_chanctx(struct iwl_mvm *mvm,
 	u16 *phy_ctxt_id = (u16 *)ctx->drv_priv;
 	struct iwl_mvm_phy_ctxt *phy_ctxt = &mvm->phy_ctxts[*phy_ctxt_id];
 	struct iwl_mvm_vif *mvmvif = iwl_mvm_vif_from_mac80211(vif);
-	unsigned int n_active = iwl_mvm_mld_count_active_links(mvmvif);
 	unsigned int link_id = link_conf->link_id;
 	int ret;
 
 	if (WARN_ON_ONCE(!mvmvif->link[link_id]))
 		return -EINVAL;
-
-	/* if the assigned one was not counted yet, count it now */
-	if (!mvmvif->link[link_id]->phy_ctxt)
-		n_active++;
 
 	/* mac parameters such as HE support can change at this stage
 	 * For sta, need first to configure correct state from drv_sta_state
@@ -264,15 +203,6 @@ __iwl_mvm_mld_assign_vif_chanctx(struct iwl_mvm *mvm,
 	}
 
 	mvmvif->link[link_id]->phy_ctxt = phy_ctxt;
-
-	if (iwl_mvm_is_esr_supported(mvm->fwrt.trans) && n_active > 1) {
-		mvmvif->link[link_id]->listen_lmac = true;
-		ret = iwl_mvm_esr_mode_active(mvm, vif);
-		if (ret) {
-			IWL_ERR(mvm, "failed to activate ESR mode (%d)\n", ret);
-			goto out;
-		}
-	}
 
 	if (switching_chanctx) {
 		/* reactivate if we turned this off during channel switch */
@@ -339,55 +269,6 @@ static int iwl_mvm_mld_assign_vif_chanctx(struct ieee80211_hw *hw,
 	return __iwl_mvm_mld_assign_vif_chanctx(mvm, vif, link_conf, ctx, false);
 }
 
-static int iwl_mvm_esr_mode_inactive(struct iwl_mvm *mvm,
-				     struct ieee80211_vif *vif)
-{
-	struct iwl_mvm_vif *mvmvif = iwl_mvm_vif_from_mac80211(vif);
-	struct ieee80211_bss_conf *link_conf;
-	int link_id, ret = 0;
-
-	mvmvif->esr_active = false;
-
-	vif->driver_flags &= ~IEEE80211_VIF_EML_ACTIVE;
-
-	iwl_mvm_update_smps_on_active_links(mvm, vif, IWL_MVM_SMPS_REQ_FW,
-					    IEEE80211_SMPS_AUTOMATIC);
-
-	for_each_vif_active_link(vif, link_conf, link_id) {
-		struct ieee80211_chanctx_conf *chanctx_conf;
-		struct iwl_mvm_phy_ctxt *phy_ctxt;
-		u8 static_chains, dynamic_chains;
-
-		mvmvif->link[link_id]->listen_lmac = false;
-
-		rcu_read_lock();
-
-		chanctx_conf = rcu_dereference(link_conf->chanctx_conf);
-		phy_ctxt = mvmvif->link[link_id]->phy_ctxt;
-
-		if (!chanctx_conf || !phy_ctxt) {
-			rcu_read_unlock();
-			continue;
-		}
-
-		phy_ctxt->rlc_disabled = false;
-		static_chains = chanctx_conf->rx_chains_static;
-		dynamic_chains = chanctx_conf->rx_chains_dynamic;
-
-		rcu_read_unlock();
-
-		ret = iwl_mvm_phy_send_rlc(mvm, phy_ctxt, static_chains,
-					   dynamic_chains);
-		if (ret)
-			break;
-	}
-
-	iwl_dbg_tlv_time_point(&mvm->fwrt, IWL_FW_INI_TIME_ESR_LINK_DOWN,
-			       NULL);
-
-	return ret;
-}
-
 static void
 __iwl_mvm_mld_unassign_vif_chanctx(struct iwl_mvm *mvm,
 				   struct ieee80211_vif *vif,
@@ -396,7 +277,6 @@ __iwl_mvm_mld_unassign_vif_chanctx(struct iwl_mvm *mvm,
 				   bool switching_chanctx)
 {
 	struct iwl_mvm_vif *mvmvif = iwl_mvm_vif_from_mac80211(vif);
-	unsigned int n_active = iwl_mvm_mld_count_active_links(mvmvif);
 	unsigned int link_id = link_conf->link_id;
 
 	/* shouldn't happen, but verify link_id is valid before accessing */
@@ -417,14 +297,6 @@ __iwl_mvm_mld_unassign_vif_chanctx(struct iwl_mvm *mvm,
 
 	iwl_mvm_link_changed(mvm, vif, link_conf,
 			     LINK_CONTEXT_MODIFY_ACTIVE, false);
-
-	if (iwl_mvm_is_esr_supported(mvm->fwrt.trans) && n_active > 1) {
-		int ret = iwl_mvm_esr_mode_inactive(mvm, vif);
-
-		if (ret)
-			IWL_ERR(mvm, "failed to deactivate ESR mode (%d)\n",
-				ret);
-	}
 
 	if (vif->type == NL80211_IFTYPE_MONITOR)
 		iwl_mvm_mld_rm_snif_sta(mvm, vif);

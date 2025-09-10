@@ -1686,36 +1686,11 @@ static inline bool iwl_mvm_is_ctdp_supported(struct iwl_mvm *mvm)
 			   IWL_UCODE_TLV_CAPA_CTDP_SUPPORT);
 }
 
-static inline bool iwl_mvm_is_esr_supported(struct iwl_trans *trans)
-{
-	if (CSR_HW_RFID_IS_CDB(trans->info.hw_rf_id))
-		return false;
-
-	switch (CSR_HW_RFID_TYPE(trans->info.hw_rf_id)) {
-	case IWL_CFG_RF_TYPE_FM:
-		/* Step A doesn't support eSR */
-		return CSR_HW_RFID_STEP(trans->info.hw_rf_id);
-	case IWL_CFG_RF_TYPE_WH:
-	case IWL_CFG_RF_TYPE_PE:
-		return true;
-	default:
-		return false;
-	}
-}
-
 static inline int iwl_mvm_max_active_links(struct iwl_mvm *mvm,
 					   struct ieee80211_vif *vif)
 {
-	struct iwl_trans *trans = mvm->fwrt.trans;
-
 	if (vif->type == NL80211_IFTYPE_AP)
 		return mvm->fw->ucode_capa.num_beacons;
-
-	/* Check if HW supports eSR or STR */
-	if (iwl_mvm_is_esr_supported(trans) ||
-	    (CSR_HW_RFID_TYPE(trans->info.hw_rf_id) == IWL_CFG_RF_TYPE_FM &&
-	     CSR_HW_RFID_IS_CDB(trans->info.hw_rf_id)))
-		return IWL_FW_MAX_ACTIVE_LINKS_NUM;
 
 	return 1;
 }
