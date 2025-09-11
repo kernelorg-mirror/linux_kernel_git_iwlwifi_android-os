@@ -100,15 +100,6 @@ void iwl_xvt_get_umac_error_log(struct iwl_xvt *xvt,
 	struct iwl_trans *trans = xvt->trans;
 	u32 base = xvt->trans->dbg.umac_error_event_table;
 
-	if (base < trans->mac_cfg->base->min_umac_error_event_table) {
-		IWL_ERR(xvt,
-			"Not valid error log pointer 0x%08X for %s uCode\n",
-			base,
-			(xvt->fwrt.cur_fw_img == IWL_UCODE_INIT)
-			? "Init" : "RT");
-		return;
-	}
-
 	iwl_trans_read_mem_bytes(trans, base, table, sizeof(*table));
 }
 
