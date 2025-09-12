@@ -240,6 +240,15 @@ int iwl_pci_gen3_probe(struct pci_dev *pdev,
 		goto free;
 	}
 
+#if !IS_ENABLED(CPTCFG_IWLMLD)
+	if (iwl_drv_is_wifi7_supported(trans)) {
+		IWL_ERR(trans,
+			"IWLMLD needs to be compiled to support this device\n");
+		ret = -EOPNOTSUPP;
+		goto free;
+	}
+#endif
+
 	dev_info = iwl_pci_find_dev_info(pdev->device, pdev->subsystem_device,
 					 CSR_HW_RFID_TYPE(info.hw_rf_id),
 					 CSR_HW_RFID_IS_CDB(info.hw_rf_id),
