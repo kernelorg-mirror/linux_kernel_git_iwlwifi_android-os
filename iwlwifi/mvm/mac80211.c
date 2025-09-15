@@ -1242,39 +1242,6 @@ static void iwl_mvm_cleanup_iterator(void *data, u8 *mac,
 	RCU_INIT_POINTER(mvmvif->deflink.probe_resp_data, NULL);
 }
 
-static void iwl_mvm_cleanup_sta_iterator(void *data, struct ieee80211_sta *sta)
-{
-	struct iwl_mvm *mvm = data;
-	struct iwl_mvm_sta *mvm_sta;
-	struct ieee80211_vif *vif;
-	int link_id;
-
-	mvm_sta = iwl_mvm_sta_from_mac80211(sta);
-	vif = mvm_sta->vif;
-
-	if (!sta->valid_links)
-		return;
-
-	for (link_id = 0; link_id < ARRAY_SIZE((sta)->link); link_id++) {
-		struct iwl_mvm_link_sta *mvm_link_sta;
-
-		mvm_link_sta =
-			rcu_dereference_check(mvm_sta->link[link_id],
-					      lockdep_is_held(&mvm->mutex));
-		if (mvm_link_sta && !(vif->active_links & BIT(link_id))) {
-			/*
-			 * We have a link STA but the link is inactive in
-			 * mac80211. This will happen if we failed to
-			 * deactivate the link but mac80211 roll back the
-			 * deactivation of the link.
-			 * Delete the stale data to avoid issues later on.
-			 */
-			iwl_mvm_mld_free_sta_link(mvm, mvm_sta, mvm_link_sta,
-						  link_id);
-		}
-	}
-}
-
 static void iwl_mvm_restart_cleanup(struct iwl_mvm *mvm)
 {
 	iwl_mvm_stop_device(mvm);
@@ -1296,10 +1263,6 @@ static void iwl_mvm_restart_cleanup(struct iwl_mvm *mvm)
 	 * gone down during the HW restart
 	 */
 	ieee80211_iterate_interfaces(mvm->hw, 0, iwl_mvm_cleanup_iterator, mvm);
-
-	/* cleanup stations as links may be gone after restart */
-	ieee80211_iterate_stations_atomic(mvm->hw,
-					  iwl_mvm_cleanup_sta_iterator, mvm);
 
 	mvm->p2p_device_vif = NULL;
 
@@ -5702,8 +5665,7 @@ static int iwl_mvm_pre_channel_switch(struct iwl_mvm *mvm,
 		if (!vif->cfg.assoc || !vif->bss_conf.dtim_period)
 			return -EBUSY;
 
-		if (chsw->delay > IWL_MAX_CSA_BLOCK_TX &&
-		    hweight16(vif->valid_links) <= 1)
+		if (chsw->delay > IWL_MAX_CSA_BLOCK_TX)
 			schedule_delayed_work(&mvmvif->csa_work, 0);
 
 		if (chsw->block_tx) {

@@ -896,33 +896,9 @@ unsigned int iwl_mvm_max_amsdu_size(struct iwl_mvm *mvm,
 	 */
 	val = mvmsta->max_amsdu_len;
 
-	if (hweight16(sta->valid_links) <= 1) {
-		if (sta->valid_links) {
-			struct ieee80211_bss_conf *link_conf;
-			unsigned int link = ffs(sta->valid_links) - 1;
+	band = mvmsta->vif->bss_conf.chanreq.oper.chan->band;
 
-			rcu_read_lock();
-			link_conf = rcu_dereference(mvmsta->vif->link_conf[link]);
-			if (WARN_ON(!link_conf))
-				band = NL80211_BAND_2GHZ;
-			else
-				band = link_conf->chanreq.oper.chan->band;
-			rcu_read_unlock();
-		} else {
-			band = mvmsta->vif->bss_conf.chanreq.oper.chan->band;
-		}
-
-		lmac = iwl_mvm_get_lmac_id(mvm, band);
-	} else if (fw_has_capa(&mvm->fw->ucode_capa,
-			       IWL_UCODE_TLV_CAPA_CDB_SUPPORT)) {
-		/* for real MLO restrict to both LMACs if they exist */
-		lmac = IWL_LMAC_5G_INDEX;
-		val = min_t(unsigned int, val,
-			    mvm->fwrt.smem_cfg.lmac[lmac].txfifo_size[txf] - 256);
-		lmac = IWL_LMAC_24G_INDEX;
-	} else {
-		lmac = IWL_LMAC_24G_INDEX;
-	}
+	lmac = iwl_mvm_get_lmac_id(mvm, band);
 
 	return min_t(unsigned int, val,
 		     mvm->fwrt.smem_cfg.lmac[lmac].txfifo_size[txf] - 256);
