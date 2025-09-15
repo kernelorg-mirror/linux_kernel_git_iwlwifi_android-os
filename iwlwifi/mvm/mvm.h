@@ -388,8 +388,6 @@ struct iwl_mvm_vif_link_info {
  * @link: link data for each link in MLO
  * @esr_active: indicates eSR mode is active
  * @pm_enabled: indicates powersave is enabled
- * @primary_link: primary link in eSR. Valid only for an associated MLD vif,
- *	and in eSR mode. Valid only for a STA.
  * @roc_activity: currently running ROC activity for this vif (or
  *	ROC_NUM_ACTIVITIES if no activity is running).
  * @session_prot_connection_loss: the connection was lost due to session
@@ -516,8 +514,6 @@ struct iwl_mvm_vif {
 	} bcn_prot;
 
 	u16 max_tx_op;
-
-	u8 primary_link;
 
 	struct iwl_mvm_vif_link_info deflink;
 	struct iwl_mvm_vif_link_info *link[IEEE80211_MLD_MAX_NUM_LINKS];

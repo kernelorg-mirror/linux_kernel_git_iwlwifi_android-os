@@ -962,14 +962,6 @@ iwl_mvm_mld_change_vif_links(struct ieee80211_hw *hw,
 	if (new_links == 0) {
 		mvmvif->link[0] = &mvmvif->deflink;
 		err = iwl_mvm_add_link(mvm, vif, &vif->bss_conf);
-		if (err == 0)
-			mvmvif->primary_link = 0;
-	} else if (!(new_links & BIT(mvmvif->primary_link))) {
-		/*
-		 * Ensure we always have a valid primary_link, the real
-		 * decision happens later when PHY is activated.
-		 */
-		mvmvif->primary_link = __ffs(new_links);
 	}
 
 out_err:
