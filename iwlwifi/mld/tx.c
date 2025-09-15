@@ -750,16 +750,16 @@ static int iwl_mld_tx_mpdu(struct iwl_mld *mld, struct sk_buff *skb,
 	if (unlikely(ieee80211_is_any_nullfunc(hdr->frame_control)))
 		return -1;
 
-	dev_tx_cmd = iwl_trans_alloc_tx_cmd(mld->trans);
-	if (unlikely(!dev_tx_cmd))
-		return -1;
-
 	if (unlikely(ieee80211_is_probe_resp(hdr->frame_control))) {
 		if (IWL_MLD_NON_TRANSMITTING_AP)
 			return -1;
 
 		iwl_mld_probe_resp_set_noa(mld, skb);
 	}
+
+	dev_tx_cmd = iwl_trans_alloc_tx_cmd(mld->trans);
+	if (unlikely(!dev_tx_cmd))
+		return -1;
 
 	iwl_mld_fill_tx_cmd(mld, skb, dev_tx_cmd, sta);
 
