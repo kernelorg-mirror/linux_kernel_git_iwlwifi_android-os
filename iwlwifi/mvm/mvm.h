@@ -388,10 +388,6 @@ struct iwl_mvm_vif_link_info {
  * @link: link data for each link in MLO
  * @esr_active: indicates eSR mode is active
  * @pm_enabled: indicates powersave is enabled
- * @link_selection_res: bitmap of active links as it was decided in the last
- *	link selection. Valid only for a MLO vif after assoc. 0 if there wasn't
- *	any link selection yet.
- * @link_selection_primary: primary link selected by link selection
  * @primary_link: primary link in eSR. Valid only for an associated MLD vif,
  *	and in eSR mode. Valid only for a STA.
  * @roc_activity: currently running ROC activity for this vif (or
@@ -521,8 +517,6 @@ struct iwl_mvm_vif {
 
 	u16 max_tx_op;
 
-	u16 link_selection_res;
-	u8 link_selection_primary;
 	u8 primary_link;
 
 	struct iwl_mvm_vif_link_info deflink;
@@ -2051,13 +2045,6 @@ int iwl_mvm_remove_link(struct iwl_mvm *mvm, struct ieee80211_vif *vif,
 			struct ieee80211_bss_conf *link_conf);
 int iwl_mvm_disable_link(struct iwl_mvm *mvm, struct ieee80211_vif *vif,
 			 struct ieee80211_bss_conf *link_conf);
-
-struct iwl_mvm_link_sel_data {
-	u8 link_id;
-	const struct cfg80211_chan_def *chandef;
-	s32 signal;
-	u16 grade;
-};
 
 /* AP and IBSS */
 bool iwl_mvm_start_ap_ibss_common(struct ieee80211_hw *hw,
