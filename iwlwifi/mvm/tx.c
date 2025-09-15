@@ -818,28 +818,15 @@ int iwl_mvm_tx_skb_non_sta(struct iwl_mvm *mvm, struct sk_buff *skb)
 			   NL80211_IFTYPE_P2P_DEVICE ||
 			   info.control.vif->type == NL80211_IFTYPE_AP ||
 			   info.control.vif->type == NL80211_IFTYPE_ADHOC) {
-			u32 link_id = u32_get_bits(info.control.flags,
-						   IEEE80211_TX_CTRL_MLO_LINK);
-			struct iwl_mvm_vif_link_info *link;
-
-			if (link_id == IEEE80211_LINK_UNSPECIFIED) {
-				if (info.control.vif->active_links)
-					link_id = ffs(info.control.vif->active_links) - 1;
-				else
-					link_id = 0;
-			}
-
-			link = mvmvif->link[link_id];
-			if (WARN_ON(!link))
-				return -1;
 
 			if (!ieee80211_is_data(hdr->frame_control))
-				sta_id = link->bcast_sta.sta_id;
+				sta_id = mvmvif->deflink.bcast_sta.sta_id;
 			else
-				sta_id = link->mcast_sta.sta_id;
+				sta_id = mvmvif->deflink.mcast_sta.sta_id;
 
-			queue = iwl_mvm_get_ctrl_vif_queue(mvm, link, &info,
-							   skb);
+			queue = iwl_mvm_get_ctrl_vif_queue(mvm,
+							   &mvmvif->deflink,
+							   &info, skb);
 		} else if (info.control.vif->type == NL80211_IFTYPE_MONITOR) {
 			queue = mvm->snif_queue;
 			sta_id = mvm->snif_sta.sta_id;

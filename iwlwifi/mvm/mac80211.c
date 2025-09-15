@@ -4015,9 +4015,8 @@ iwl_mvm_sta_state_assoc_to_authorized(struct iwl_mvm *mvm,
 		mvmvif->authorized = 1;
 
 		if (!test_bit(IWL_MVM_STATUS_IN_HW_RESTART, &mvm->status)) {
-			mvmvif->link_selection_res = vif->active_links;
-			mvmvif->link_selection_primary =
-				vif->active_links ? __ffs(vif->active_links) : 0;
+			mvmvif->link_selection_res = 0;
+			mvmvif->link_selection_primary = 0;
 		}
 
 		callbacks->mac_ctxt_changed(mvm, vif, false);
@@ -5829,15 +5828,8 @@ void iwl_mvm_mac_flush(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
 		return;
 	}
 
-	if (!drop && hweight16(vif->active_links) <= 1) {
-		int link_id = vif->active_links ? __ffs(vif->active_links) : 0;
-		struct ieee80211_bss_conf *link_conf;
-
-		link_conf = wiphy_dereference(hw->wiphy,
-					      vif->link_conf[link_id]);
-		if (WARN_ON(!link_conf))
-			return;
-		if (link_conf->csa_active && mvmvif->csa_blocks_tx)
+	if (!drop) {
+		if (vif->bss_conf.csa_active && mvmvif->csa_blocks_tx)
 			drop = true;
 	}
 

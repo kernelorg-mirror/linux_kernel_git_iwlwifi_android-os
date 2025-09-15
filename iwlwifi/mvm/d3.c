@@ -1812,10 +1812,6 @@ static void iwl_mvm_d3_update_keys(struct ieee80211_hw *hw,
 	struct iwl_mvm_d3_gtk_iter_data *data = _data;
 	struct iwl_wowlan_status_data *status = data->status;
 	s8 keyidx;
-	int link_id = vif->active_links ? __ffs(vif->active_links) : -1;
-
-	if (link_id >= 0 && key->link_id >= 0 && link_id != key->link_id)
-		return;
 
 	switch (key->cipher) {
 	case WLAN_CIPHER_SUITE_WEP40:
@@ -1869,7 +1865,6 @@ static bool iwl_mvm_gtk_rekey(struct iwl_wowlan_status_data *status,
 {
 	int i, j;
 	struct ieee80211_key_conf *key;
-	int link_id = vif->active_links ? __ffs(vif->active_links) : -1;
 
 	for (i = 0; i < ARRAY_SIZE(status->gtk); i++) {
 		if (!status->gtk[i].len)
@@ -1881,8 +1876,7 @@ static bool iwl_mvm_gtk_rekey(struct iwl_wowlan_status_data *status,
 
 		key = ieee80211_gtk_rekey_add(vif, status->gtk[i].id,
 					      status->gtk[i].key,
-					      sizeof(status->gtk[i].key),
-					      link_id);
+					      sizeof(status->gtk[i].key), -1);
 		if (IS_ERR(key)) {
 			/* FW may send also the old keys */
 			if (PTR_ERR(key) == -EALREADY)
@@ -1911,14 +1905,13 @@ iwl_mvm_d3_igtk_bigtk_rekey_add(struct iwl_wowlan_status_data *status,
 	struct iwl_mvm_vif *mvmvif = iwl_mvm_vif_from_mac80211(vif);
 	struct ieee80211_key_conf *key_config;
 	struct ieee80211_key_seq seq;
-	int link_id = vif->active_links ? __ffs(vif->active_links) : -1;
 	s8 keyidx = key_data->id;
 
 	if (!key_data->len)
 		return true;
 
 	key_config = ieee80211_gtk_rekey_add(vif, keyidx, key_data->key,
-					     sizeof(key_data->key), link_id);
+					     sizeof(key_data->key), -1);
 	if (IS_ERR(key_config)) {
 		/* FW may send also the old keys */
 		return PTR_ERR(key_config) == -EALREADY;
@@ -1928,13 +1921,9 @@ iwl_mvm_d3_igtk_bigtk_rekey_add(struct iwl_wowlan_status_data *status,
 	ieee80211_set_key_rx_seq(key_config, 0, &seq);
 
 	if (keyidx == 4 || keyidx == 5) {
-		struct iwl_mvm_vif_link_info *mvm_link;
-
-		link_id = link_id < 0 ? 0 : link_id;
-		mvm_link = mvmvif->link[link_id];
-		if (mvm_link->igtk)
-			mvm_link->igtk->hw_key_idx = STA_KEY_IDX_INVALID;
-		mvm_link->igtk = key_config;
+		if (mvmvif->deflink.igtk)
+			mvmvif->deflink.igtk->hw_key_idx = STA_KEY_IDX_INVALID;
+		mvmvif->deflink.igtk = key_config;
 	}
 
 	if (vif->type == NL80211_IFTYPE_STATION && (keyidx == 6 || keyidx == 7))
@@ -2389,15 +2378,10 @@ static bool iwl_mvm_query_wakeup_reasons(struct iwl_mvm *mvm,
 	bool keep = false;
 	struct iwl_mvm_sta *mvm_ap_sta;
 	struct iwl_mvm_vif *mvmvif = iwl_mvm_vif_from_mac80211(vif);
-	int link_id = vif->active_links ? __ffs(vif->active_links) : 0;
-	struct iwl_mvm_vif_link_info *mvm_link = mvmvif->link[link_id];
 	int wowlan_info_ver = iwl_fw_lookup_notif_ver(mvm->fw,
 						      PROT_OFFLOAD_GROUP,
 						      WOWLAN_INFO_NOTIFICATION,
 						      IWL_FW_CMD_VER_UNKNOWN);
-
-	if (WARN_ON(!mvm_link))
-		goto out_unlock;
 
 	if (!status)
 		goto out_unlock;
@@ -2405,7 +2389,8 @@ static bool iwl_mvm_query_wakeup_reasons(struct iwl_mvm *mvm,
 	IWL_DEBUG_WOWLAN(mvm, "wakeup reason 0x%x\n",
 			 status->wakeup_reasons);
 
-	mvm_ap_sta = iwl_mvm_sta_from_staid_protected(mvm, mvm_link->ap_sta_id);
+	mvm_ap_sta = iwl_mvm_sta_from_staid_protected(mvm,
+						      mvmvif->deflink.ap_sta_id);
 	if (!mvm_ap_sta)
 		goto out_unlock;
 
