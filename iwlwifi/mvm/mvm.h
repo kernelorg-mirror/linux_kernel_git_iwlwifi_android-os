@@ -386,7 +386,6 @@ struct iwl_mvm_vif_link_info {
  * @bcn_prot: beacon protection data (keys; FIXME: needs to be per link)
  * @deflink: default link data for use in non-MLO
  * @link: link data for each link in MLO
- * @esr_active: indicates eSR mode is active
  * @pm_enabled: indicates powersave is enabled
  * @roc_activity: currently running ROC activity for this vif (or
  *	ROC_NUM_ACTIVITIES if no activity is running).
@@ -434,7 +433,6 @@ struct iwl_mvm_vif {
 	bool ap_ibss_active;
 	bool pm_enabled;
 	bool monitor_active;
-	bool esr_active;
 	bool session_prot_connection_loss;
 
 	u8 low_latency: 6;

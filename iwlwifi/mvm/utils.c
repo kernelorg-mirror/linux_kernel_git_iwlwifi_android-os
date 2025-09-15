@@ -314,10 +314,6 @@ void iwl_mvm_update_smps(struct iwl_mvm *mvm, struct ieee80211_vif *vif,
 		smps_mode = mvmvif->link[link_id]->smps_requests[IWL_MVM_SMPS_REQ_DBG];
 #endif
 
-	/* SMPS is disabled in eSR */
-	if (mvmvif->esr_active)
-		smps_mode = IEEE80211_SMPS_OFF;
-
 	ieee80211_request_smps(vif, link_id, smps_mode);
 }
 
