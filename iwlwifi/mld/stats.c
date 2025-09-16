@@ -13,6 +13,10 @@
 #include "phy.h"
 #include "fw/api/stats.h"
 
+#ifdef CPTCFG_IWL_VENDOR_CMDS
+#include "vendor-cmd.h"
+#endif
+
 static int iwl_mld_send_fw_stats_cmd(struct iwl_mld *mld, u32 cfg_mask,
 				     u32 cfg_time, u32 type_mask)
 {
@@ -369,6 +373,10 @@ out:
 static void iwl_mld_update_link_sig(struct ieee80211_vif *vif, int sig,
 				    struct ieee80211_bss_conf *bss_conf)
 {
+#ifdef CPTCFG_IWL_VENDOR_CMDS
+	struct iwl_mld_link *link = iwl_mld_link_from_mac80211(bss_conf);
+	int last_event;
+#endif
 	struct iwl_mld *mld = iwl_mld_vif_from_mac80211(vif)->mld;
 	int exit_emlsr_thresh;
 
@@ -378,6 +386,24 @@ static void iwl_mld_update_link_sig(struct ieee80211_vif *vif, int sig,
 	}
 
 	/* TODO: task=statistics handle CQM notifications */
+
+#ifdef CPTCFG_IWL_VENDOR_CMDS
+	if (WARN_ON(!link))
+		return;
+
+	/* Vendor Notification */
+	last_event = link->last_vendor_event;
+	if ((sig < IWL_MLD_VENDOR_RSSI_THRESHOLD_MIN &&
+	     (last_event > IWL_MLD_VENDOR_RSSI_THRESHOLD_MAX ||
+	      last_event == 0)) ||
+	    (sig > IWL_MLD_VENDOR_RSSI_THRESHOLD_MAX &&
+	     (last_event < IWL_MLD_VENDOR_RSSI_THRESHOLD_MIN ||
+	      last_event == 0))) {
+		link->last_vendor_event = sig;
+		if (last_event != 0)
+			iwl_mld_send_link_info_changed(mld, vif);
+	}
+#endif
 
 	if (!iwl_mld_emlsr_active(vif)) {
 		/* We're not in EMLSR and our signal is bad,
