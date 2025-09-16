@@ -41,14 +41,13 @@ DRIVER_CONFIG = [
     "CONFIG_IWL7000_XVT_MODULE=1",
     "CONFIG_IWL7000_VENDOR_CMDS=1",
     "CONFIG_IWL7000_MLD_MODULE=1",
+    "CONFIG_IWL7000_DEBUGFS=1",
 ]
 
 ddk_module(
     name = "iwl7000_mac80211",
     srcs = glob([
         "mac80211/*.c"
-    ], exclude=[
-        "mac80211/debugfs*.c"
     ]),
     out = "iwl7000_mac80211.ko",
     copts = [
@@ -85,8 +84,6 @@ ddk_module(
         "iwlwifi/fw/*.c",
         "iwlwifi/pcie/*.c",
         "iwlwifi/pcie/*/*.c",
-    ], exclude=[
-        "iwlwifi/fw/debugfs.c",
     ]),
     out = "iwlwifi.ko",
     copts = [
@@ -105,8 +102,6 @@ ddk_module(
     name = "iwlmvm",
     srcs = glob([
         "iwlwifi/mvm/*.c",
-    ], exclude=[
-        "iwlwifi/mvm/debugfs*.c",
     ]),
     out = "iwlmvm.ko",
     copts = [
@@ -127,8 +122,6 @@ ddk_module(
     name = "iwlmld",
     srcs = glob([
         "iwlwifi/mld/*.c",
-    ], exclude=[
-        "iwlwifi/mld/debugfs.c",
     ]),
     out = "iwlmld.ko",
     copts = [
