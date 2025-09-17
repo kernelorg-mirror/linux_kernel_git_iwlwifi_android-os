@@ -1276,11 +1276,11 @@ struct iwl_uhr_sigs {
 };
 
 struct iwl_uhr_tb_sigs {
-	__le32 usig_a1, usig_a1_uhr, usig_a2_uhr, tb_rx0, tb_rx1;
+	__le32 usig_a1, usig_a2_uhr, tb_rx0, tb_rx1;
 };
 
 struct iwl_uhr_elr_sigs {
-	__le32 usig_a1, usig_a1_uhr, usig_a2_uhr;
+	__le32 usig_a1, usig_a2_uhr;
 	__le32 uhr_sig_elr1, uhr_sig_elr2;
 };
 
