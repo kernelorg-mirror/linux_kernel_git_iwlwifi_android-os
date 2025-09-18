@@ -2162,7 +2162,7 @@ void iwl_mld_rx_mpdu(struct iwl_mld *mld, struct napi_struct *napi,
 		rx_status->flag |= RX_FLAG_FAILED_FCS_CRC;
 	}
 
-	if (likely(!(phy_data.phy_info & IWL_RX_MPDU_PHY_TSF_OVERLOAD))) {
+	if (likely(!mld->monitor.on)) {
 		rx_status->mactime =
 			le64_to_cpu(mpdu_desc.v3.tsf_on_air_rise);
 
