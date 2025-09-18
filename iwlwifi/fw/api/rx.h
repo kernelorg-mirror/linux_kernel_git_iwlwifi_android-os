@@ -268,6 +268,10 @@ enum iwl_rx_mpdu_phy_info {
 	IWL_RX_MPDU_PHY_SHORT_PREAMBLE	= BIT(7),
 	/* short preamble is only for CCK, for non-CCK overridden by this */
 	IWL_RX_MPDU_PHY_NCCK_ADDTL_NTFY	= BIT(7),
+	/*
+	 * Reserved if the FW supports PHY_AIR_SNIFFER_NOTIF,
+	 * otherwise always set in monitor mode and never in non-monitor mode.
+	 */
 	IWL_RX_MPDU_PHY_TSF_OVERLOAD	= BIT(8),
 };
 
@@ -612,8 +616,9 @@ struct iwl_rx_mpdu_desc_v3 {
 	union {
 		/**
 		 * @tsf_on_air_rise:
-		 * TSF value on air rise (INA), only valid if
-		 * %IWL_RX_MPDU_PHY_TSF_OVERLOAD isn't set
+		 * TSF value on air rise (INA), valid when not in monitor mode.
+		 * Some FW versions will set %IWL_RX_MPDU_PHY_TSF_OVERLOAD when
+		 * it is not valid.
 		 */
 		__le64 tsf_on_air_rise;
 
@@ -623,18 +628,19 @@ struct iwl_rx_mpdu_desc_v3 {
 			 */
 			__le32 phy_data0;
 			/**
-			 * @phy_data1: valid only if
-			 * %IWL_RX_MPDU_PHY_TSF_OVERLOAD is set,
-			 * see &enum iwl_rx_phy_data1.
+			 * @phy_data1: valid only if in sniffer mode, and
+			 * @tsf_on_air_rise is not reported,
+			 * see &enum iwl_rx_phy_common_data1 or
+			 *     &enum iwl_rx_phy_he_data1 or
+			 *     &enum iwl_rx_phy_eht_data1.
 			 */
 			__le32 phy_data1;
 		};
 	};
 	/* DW16 */
 	/**
-	 * @phy_data5: valid only if
-	 * %IWL_RX_MPDU_PHY_TSF_OVERLOAD is set,
-	 * see &enum iwl_rx_phy_data5.
+	 * @phy_data5: valid only if in sniffer mode, and @tsf_on_air_rise is
+	 * not reported, see &enum iwl_rx_phy_data5.
 	 */
 	__le32 phy_data5;
 	/* DW17 */
