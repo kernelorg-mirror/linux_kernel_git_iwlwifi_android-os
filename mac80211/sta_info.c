@@ -2554,6 +2554,9 @@ static void sta_stats_decode_rate(struct ieee80211_local *local, u32 rate,
 		rinfo->eht_gi = STA_STATS_GET(EHT_GI, rate);
 		rinfo->eht_ru_alloc = STA_STATS_GET(EHT_RU, rate);
 		break;
+	case STA_STATS_RATE_TYPE_UHR:
+		WARN_ONCE(1, "UHR not supported on this kernel version\n");
+		break;
 	}
 }
 

@@ -1981,6 +1981,7 @@ static int sta_link_apply_parameters(struct ieee80211_local *local,
 		       params->vht_capa ||
 		       params->he_capa ||
 		       params->eht_capa ||
+		       false/* no UHR */ ||
 		       NULL ||
 		       params->opmode_notif_used;
 
