@@ -704,11 +704,7 @@ static void iwl_mld_probe_resp_set_noa(struct iwl_mld *mld,
 	if (!resp_data)
 		goto out;
 
-	if (!resp_data->notif.noa_active ||
-	    IWL_FW_CHECK(mld, resp_data->noa_len <=
-			 sizeof(struct ieee80211_vendor_ie),
-			 "Invalid resp_data->noa_len (%d)\n",
-			 resp_data->noa_len))
+	if (!resp_data->notif.noa_active)
 		goto out;
 
 	if (skb_tailroom(skb) < resp_data->noa_len) {
