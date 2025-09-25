@@ -36,7 +36,8 @@ iwl_mld_get_tlc_cmd_flags(struct iwl_mld *mld,
 			  struct ieee80211_vif *vif,
 			  struct ieee80211_link_sta *link_sta,
 			  const struct ieee80211_sta_he_cap *own_he_cap,
-			  const struct ieee80211_sta_eht_cap *own_eht_cap)
+			  const struct ieee80211_sta_eht_cap *own_eht_cap,
+			  const struct ieee80211_sta_uhr_cap *own_uhr_cap)
 {
 	struct ieee80211_sta_ht_cap *ht_cap = &link_sta->ht_cap;
 	struct ieee80211_sta_vht_cap *vht_cap = &link_sta->vht_cap;
@@ -406,6 +407,7 @@ iwl_mld_fill_supp_rates(struct iwl_mld *mld, struct ieee80211_vif *vif,
 			struct ieee80211_supported_band *sband,
 			const struct ieee80211_sta_he_cap *own_he_cap,
 			const struct ieee80211_sta_eht_cap *own_eht_cap,
+			const struct ieee80211_sta_uhr_cap *own_uhr_cap,
 			struct iwl_tlc_config_cmd *cmd)
 {
 	int i;
@@ -423,7 +425,16 @@ iwl_mld_fill_supp_rates(struct iwl_mld *mld, struct ieee80211_vif *vif,
 	cmd->non_ht_rates = cpu_to_le16(non_ht_rates);
 	cmd->mode = IWL_TLC_MNG_MODE_NON_HT;
 
-	if (link_sta->eht_cap.has_eht && own_he_cap && own_eht_cap) {
+	if (false/* no UHR */ && own_uhr_cap) {
+		cmd->mode = IWL_TLC_MNG_MODE_UHR;
+		/*
+		 * FIXME: spec currently inherits from EHT but has no
+		 * finer MCS bits. Once that's there, need to add them
+		 * to the bitmaps (and maybe copy this to UHR, or so.)
+		 */
+		iwl_mld_fill_eht_rates(vif, link_sta, own_he_cap,
+				       own_eht_cap, cmd);
+	} else if (link_sta->eht_cap.has_eht && own_he_cap && own_eht_cap) {
 		cmd->mode = IWL_TLC_MNG_MODE_EHT;
 		iwl_mld_fill_eht_rates(vif, link_sta, own_he_cap,
 				       own_eht_cap, cmd);
@@ -530,13 +541,16 @@ static void iwl_mld_send_tlc_cmd(struct iwl_mld *mld,
 		ieee80211_get_he_iftype_cap_vif(sband, vif);
 	const struct ieee80211_sta_eht_cap *own_eht_cap =
 		ieee80211_get_eht_iftype_cap_vif(sband, vif);
+	const struct ieee80211_sta_uhr_cap *own_uhr_cap =
+		ieee80211_get_uhr_iftype_cap_vif(sband, vif);
 	struct iwl_tlc_config_cmd cmd = {
 		/* For AP mode, use 20 MHz until the STA is authorized */
 		.max_ch_width = mld_sta->sta_state > IEEE80211_STA_ASSOC ?
 			iwl_mld_fw_bw_from_sta_bw(link_sta) :
 			IWL_TLC_MNG_CH_WIDTH_20MHZ,
 		.flags = iwl_mld_get_tlc_cmd_flags(mld, vif, link_sta,
-						   own_he_cap, own_eht_cap),
+						   own_he_cap, own_eht_cap,
+						   own_uhr_cap),
 		.chains = iwl_mld_get_fw_chains(mld),
 		.sgi_ch_width_supp = iwl_mld_get_fw_sgi(link_sta),
 		.max_mpdu_len = cpu_to_le16(link_sta->agg.max_amsdu_len),
@@ -572,7 +586,7 @@ static void iwl_mld_send_tlc_cmd(struct iwl_mld *mld,
 
 	iwl_mld_fill_supp_rates(mld, vif, link_sta, sband,
 				own_he_cap, own_eht_cap,
-				&cmd);
+				own_uhr_cap, &cmd);
 
 	if (cmd_ver == 6) {
 		cmd_ptr = &cmd;
