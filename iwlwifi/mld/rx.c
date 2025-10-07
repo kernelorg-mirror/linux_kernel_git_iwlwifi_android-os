@@ -212,6 +212,8 @@ iwl_mld_decode_vht_phy_data(struct iwl_mld_rx_phy_data *phy_data,
 			    struct ieee80211_radiotap_vht *vht,
 			    struct ieee80211_rx_status *rx_status)
 {
+	bool stbc;
+
 	vht->known = cpu_to_le16(IEEE80211_RADIOTAP_VHT_KNOWN_BANDWIDTH |
 				 IEEE80211_RADIOTAP_VHT_KNOWN_GROUP_ID |
 				 IEEE80211_RADIOTAP_VHT_KNOWN_STBC |
@@ -239,8 +241,9 @@ iwl_mld_decode_vht_phy_data(struct iwl_mld_rx_phy_data *phy_data,
 	vht->group_id = le32_get_bits(phy_data->ntfy->sigs.vht.a1,
 				      OFDM_RX_FRAME_VHT_GRP_ID);
 
-	if (le32_get_bits(phy_data->ntfy->sigs.vht.a1,
-			  OFDM_RX_FRAME_VHT_STBC))
+	stbc = le32_get_bits(phy_data->ntfy->sigs.vht.a1,
+			     OFDM_RX_FRAME_VHT_STBC);
+	if (stbc)
 		vht->flags |= IEEE80211_RADIOTAP_VHT_FLAG_STBC;
 
 	if (le32_get_bits(phy_data->ntfy->sigs.vht.a2,
@@ -259,23 +262,27 @@ iwl_mld_decode_vht_phy_data(struct iwl_mld_rx_phy_data *phy_data,
 		/* MU frame */
 		int user = le32_get_bits(phy_data->ntfy->sigs.vht.a1,
 					 OFDM_RX_FRAME_VHT_MU_MIMO_USER_POSITION);
+		int nsts;
 
 		/* Always beamformed */
 		vht->flags |= IEEE80211_RADIOTAP_VHT_FLAG_BEAMFORMED;
 
 		/* No MCS information in the a1/a2 data for MU frames */
-		vht->mcs_nss[0] =
-			le32_get_bits(phy_data->ntfy->sigs.vht.a1,
-				      OFDM_RX_FRAME_VHT_STS_USER0) | 0xf0;
-		vht->mcs_nss[1] =
-			le32_get_bits(phy_data->ntfy->sigs.vht.a1,
-				      OFDM_RX_FRAME_VHT_MU_STS_USER1) | 0xf0;
-		vht->mcs_nss[2] =
-			le32_get_bits(phy_data->ntfy->sigs.vht.a1,
-				      OFDM_RX_FRAME_VHT_MU_STS_USER2) | 0xf0;
-		vht->mcs_nss[3] =
-			le32_get_bits(phy_data->ntfy->sigs.vht.a1,
-				      OFDM_RX_FRAME_VHT_MU_STS_USER3) | 0xf0;
+		nsts = le32_get_bits(phy_data->ntfy->sigs.vht.a1,
+				      OFDM_RX_FRAME_VHT_STS_USER0);
+		vht->mcs_nss[0] = (stbc ? nsts / 2 : nsts) | 0xf0;
+
+		nsts = le32_get_bits(phy_data->ntfy->sigs.vht.a1,
+				      OFDM_RX_FRAME_VHT_MU_STS_USER1);
+		vht->mcs_nss[1] = (stbc ? nsts / 2 : nsts) | 0xf0;
+
+		nsts = le32_get_bits(phy_data->ntfy->sigs.vht.a1,
+				      OFDM_RX_FRAME_VHT_MU_STS_USER2);
+		vht->mcs_nss[2] = (stbc ? nsts / 2 : nsts) | 0xf0;
+
+		nsts = le32_get_bits(phy_data->ntfy->sigs.vht.a1,
+				      OFDM_RX_FRAME_VHT_MU_STS_USER3);
+		vht->mcs_nss[3] = (stbc ? nsts / 2 : nsts) | 0xf0;
 
 		/* Report current user MCS from rate_n_flags via rx_status */
 		vht->mcs_nss[user] &= 0x0f;
@@ -285,6 +292,8 @@ iwl_mld_decode_vht_phy_data(struct iwl_mld_rx_phy_data *phy_data,
 		if (rx_status->enc_flags & RX_ENC_FLAG_LDPC)
 			vht->coding = 0x1 << user;
 	} else {
+		int nsts;
+
 		/* SU frame */
 		vht->known |= cpu_to_le16(IEEE80211_RADIOTAP_VHT_KNOWN_PARTIAL_AID);
 
@@ -295,9 +304,11 @@ iwl_mld_decode_vht_phy_data(struct iwl_mld_rx_phy_data *phy_data,
 		vht->partial_aid =
 			cpu_to_le16(le32_get_bits(phy_data->ntfy->sigs.vht.a1,
 						  OFDM_RX_FRAME_VHT_PARTIAL_AID_OR_MU_STS));
+
+		nsts = le32_get_bits(phy_data->ntfy->sigs.vht.a1,
+				      OFDM_RX_FRAME_VHT_STS) + 1;
 		vht->mcs_nss[0] =
-			(le32_get_bits(phy_data->ntfy->sigs.vht.a1,
-				      OFDM_RX_FRAME_VHT_STS) + 1) |
+			(stbc ? nsts / 2 : nsts) |
 			le32_get_bits(phy_data->ntfy->sigs.vht.a2,
 				      OFDM_RX_FRAME_VHT_MCS_OR_MU_CODING) << 4;
 		vht->mcs_nss[1] = 0;
