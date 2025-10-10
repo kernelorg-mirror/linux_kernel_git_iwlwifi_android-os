@@ -573,6 +573,9 @@ iwl_mld_decode_he_phy_data(struct iwl_mld_rx_phy_data *phy_data,
 		return;
 	case RATE_MCS_HE_TYPE_MU:
 		iwl_mld_decode_he_mu(phy_data, he, he_mu, rx_status);
+
+		nsts = le32_get_bits(phy_data->ntfy->sigs.he.b,
+				     OFDM_RX_FRAME_HE_SIGB_NSTS) + 1;
 		break;
 	case RATE_MCS_HE_TYPE_SU:
 	case RATE_MCS_HE_TYPE_EXT_SU:
@@ -580,11 +583,12 @@ iwl_mld_decode_he_phy_data(struct iwl_mld_rx_phy_data *phy_data,
 		he->data3 |= RTAP_ENC_HE(phy_data->ntfy->sigs.he.a1,
 					 OFDM_RX_FRAME_HE_BEAM_CHANGE,
 					 IEEE80211_RADIOTAP_HE_DATA3_BEAM_CHANGE);
+
+		nsts = le32_get_bits(phy_data->ntfy->sigs.he.a1,
+				     OFDM_RX_FRAME_HE_NSTS) + 1;
 		break;
 	}
 
-	nsts = le32_get_bits(phy_data->ntfy->sigs.he.a1,
-			     OFDM_RX_FRAME_HE_NSTS) + 1;
 	rx_status->nss = nsts >> !!(rate_n_flags & RATE_MCS_STBC_MSK);
 
 	he->data1 |= cpu_to_le16(IEEE80211_RADIOTAP_HE_DATA1_LDPC_XSYMSEG_KNOWN |
