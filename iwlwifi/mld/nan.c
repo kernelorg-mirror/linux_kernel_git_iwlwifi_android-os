@@ -5,6 +5,7 @@
 
 #include "mld.h"
 #include "iface.h"
+#include "mlo.h"
 #include "fw/api/mac-cfg.h"
 
 #define IWL_NAN_DISOVERY_BEACON_INTERNVAL_TU 512
