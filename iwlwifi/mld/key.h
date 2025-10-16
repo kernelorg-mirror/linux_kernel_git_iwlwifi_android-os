@@ -50,4 +50,5 @@ void iwl_mld_track_bigtk(struct iwl_mld *mld,
 
 bool iwl_mld_beacon_protection_enabled(struct iwl_mld *mld,
 				       struct ieee80211_bss_conf *link);
+
 #endif /* __iwl_mld_key_h__ */

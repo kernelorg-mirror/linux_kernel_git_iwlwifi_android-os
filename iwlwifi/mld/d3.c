@@ -481,8 +481,9 @@ iwl_mld_convert_mlo_keys(struct iwl_mld *mld,
 	}
 }
 
-static void iwl_mld_convert_wowlan_notif_v5(const struct iwl_wowlan_info_notif_v5 *notif_v5,
-					    struct iwl_wowlan_info_notif *notif)
+static void
+iwl_mld_convert_wowlan_notif_v5(const struct iwl_wowlan_info_notif_v5 *notif_v5,
+				struct iwl_wowlan_info_notif *notif)
 {
 	/* Convert GTK from v3 to the new format */
 	BUILD_BUG_ON(ARRAY_SIZE(notif->gtk) != ARRAY_SIZE(notif_v5->gtk));
@@ -513,7 +514,8 @@ static void iwl_mld_convert_wowlan_notif_v5(const struct iwl_wowlan_info_notif_v
 	}
 
 	/* Convert IGTK from v1 to the new format, only one IGTK is passed by FW */
-	BUILD_BUG_ON(offsetof(struct iwl_wowlan_igtk_status, key_status) != sizeof(struct iwl_wowlan_igtk_status_v1));
+	BUILD_BUG_ON(offsetof(struct iwl_wowlan_igtk_status, key_status) !=
+		     sizeof(struct iwl_wowlan_igtk_status_v1));
 
 	memcpy(&notif->igtk[0], &notif_v5->igtk[0],
 	       offsetof(struct iwl_wowlan_igtk_status, key_status));
@@ -612,7 +614,8 @@ iwl_mld_handle_wowlan_info_notif(struct iwl_mld *mld,
 						      notif_v5->num_mlo_link_keys),
 					  GFP_ATOMIC);
 		if (!converted_notif) {
-			IWL_ERR(mld, "Failed to allocate memory for converted wowlan_info_notif\n");
+			IWL_ERR(mld,
+				"Failed to allocate memory for converted wowlan_info_notif\n");
 			return true;
 		}
 
