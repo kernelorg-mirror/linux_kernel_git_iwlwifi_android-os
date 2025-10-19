@@ -1389,6 +1389,15 @@ static int iwl_xvt_fill_ppag_table(struct iwl_fw_runtime *fwrt,
 		cmd->v7.ppag_config_info.hdr.table_revision =
 			fwrt->ppag_bios_rev;
 		cmd->v7.ppag_config_info.value = cpu_to_le32(fwrt->ppag_flags);
+	} else if (cmd_ver == 8) {
+		num_sub_bands = IWL_NUM_SUB_BANDS_V3;
+		gain = cmd->v8.gain[0];
+		*cmd_size = sizeof(cmd->v8);
+		cmd->v8.ppag_config_info.hdr.table_source =
+			fwrt->ppag_bios_source;
+		cmd->v8.ppag_config_info.hdr.table_revision =
+			fwrt->ppag_bios_rev;
+		cmd->v8.ppag_config_info.value = cpu_to_le32(fwrt->ppag_flags);
 	} else {
 		IWL_DEBUG_RADIO(fwrt, "Unsupported PPAG command version\n");
 		return -EINVAL;

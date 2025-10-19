@@ -978,7 +978,7 @@ read_table:
 		}
 	}
 
-	iwl_bios_print_ppag(fwrt);
+	iwl_bios_print_ppag(fwrt, num_sub_bands);
 	fwrt->ppag_bios_source = BIOS_SOURCE_ACPI;
 	ret = 0;
 
