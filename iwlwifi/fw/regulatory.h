@@ -22,6 +22,7 @@
 #define BIOS_SAR_MAX_CHAINS_PER_PROFILE 4
 #define BIOS_SAR_NUM_CHAINS             2
 #define BIOS_SAR_MAX_SUB_BANDS_NUM      11
+#define BIOS_PPAG_MAX_SUB_BANDS_NUM     12
 
 #define BIOS_GEO_NUM_CHAINS		2
 #define BIOS_GEO_MAX_NUM_BANDS		3
@@ -100,7 +101,7 @@ struct iwl_geo_profile {
 
 /* Same thing as with SAR, all revisions fit in revision 2 */
 struct iwl_ppag_chain {
-	s8 subbands[BIOS_SAR_MAX_SUB_BANDS_NUM];
+	s8 subbands[BIOS_PPAG_MAX_SUB_BANDS_NUM];
 };
 
 struct iwl_tas_data {
@@ -182,7 +183,7 @@ enum iwl_dsm_values_regulatory_config {
 struct iwl_fw_runtime;
 
 /* Print the PPAG table as read from BIOS */
-void iwl_bios_print_ppag(struct iwl_fw_runtime *fwrt);
+void iwl_bios_print_ppag(struct iwl_fw_runtime *fwrt, int n_subbands);
 
 bool iwl_sar_geo_support(struct iwl_fw_runtime *fwrt);
 
