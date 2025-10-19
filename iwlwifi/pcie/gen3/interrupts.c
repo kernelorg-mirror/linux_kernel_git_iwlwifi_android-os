@@ -95,7 +95,8 @@ iwl_pcie_gen3_irq_set_affinity(struct iwl_trans *trans,
 {
 #if defined(CONFIG_SMP)
 	struct iwl_pcie_gen3 *trans_pcie = IWL_GET_PCIE_GEN3(trans);
-	unsigned int cpu, cpu_iter = 0;
+	unsigned int cpu;
+	int cpu_index = 0;
 	int ret;
 
 	/* Iterate over rxqs' irqs (exclude default rxq unless it's irq is
@@ -113,8 +114,10 @@ iwl_pcie_gen3_irq_set_affinity(struct iwl_trans *trans,
 		      IWL_GEN3_SHARED_IRQ_NON_RX))
 			break;
 
-		/* Get the cpu prior to the place to search, start with -1 */
-		cpu = cpumask_next(cpu_iter - 1, cpu_online_mask);
+		/* cpumask_next receives the cpu prior to the place to search,
+		 * start with -1
+		 */
+		cpu = cpumask_next(cpu_index - 1, cpu_online_mask);
 		cpumask_set_cpu(cpu,
 				&trans_pcie->msix.affinity_mask[irq_iter]);
 		ret = irq_set_affinity_hint(trans_pcie->msix.entries[irq_iter].vector,
@@ -123,7 +126,7 @@ iwl_pcie_gen3_irq_set_affinity(struct iwl_trans *trans,
 			IWL_ERR(trans,
 				"Failed to set affinity mask for IRQ %d\n",
 				trans_pcie->msix.entries[irq_iter].vector);
-		cpu_iter++;
+		cpu_index++;
 	}
 #endif
 }
