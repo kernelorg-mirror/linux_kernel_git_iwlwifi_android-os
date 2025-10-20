@@ -1175,10 +1175,10 @@ void iwl_xvt_lari_cfg(struct iwl_xvt *xvt)
 int iwl_xvt_sar_select_profile(struct iwl_xvt *xvt, int prof_a, int prof_b)
 {
 	u32 cmd_id = REDUCE_TX_POWER_CMD;
-	struct iwl_dev_tx_power_cmd_v3_v8 cmd = {
+	struct iwl_dev_tx_power_cmd_v3_v8 old_cmd = {
 		.common.set_mode = cpu_to_le32(IWL_TX_POWER_MODE_SET_CHAINS),
 	};
-	struct iwl_dev_tx_power_cmd cmd_v9_v10 = {
+	struct iwl_dev_tx_power_cmd cmd = {
 		.common.set_mode = cpu_to_le32(IWL_TX_POWER_MODE_SET_CHAINS),
 	};
 
@@ -1186,43 +1186,47 @@ int iwl_xvt_sar_select_profile(struct iwl_xvt *xvt, int prof_a, int prof_b)
 	u16 len = 0;
 	u32 n_subbands;
 	u8 cmd_ver = iwl_fw_lookup_cmd_ver(xvt->fw, cmd_id, 3);
-	void *cmd_data = &cmd;
+	void *cmd_data = &old_cmd;
 
-	if (cmd_ver == 10) {
-		len = sizeof(cmd_v9_v10.v10);
+	if (cmd_ver == 11) {
+		len = sizeof(cmd.v11);
+		n_subbands = IWL_NUM_SUB_BANDS_V3;
+		per_chain = &cmd.v11.per_chain[0][0][0];
+	} else if (cmd_ver == 10) {
+		len = sizeof(cmd.v10);
 		n_subbands = IWL_NUM_SUB_BANDS_V2;
-		per_chain = &cmd_v9_v10.v10.per_chain[0][0][0];
+		per_chain = &cmd.v10.per_chain[0][0][0];
 	} else if (cmd_ver == 9) {
-		len = sizeof(cmd_v9_v10.v9);
+		len = sizeof(cmd.v9);
 		n_subbands = IWL_NUM_SUB_BANDS_V1;
-		per_chain = &cmd_v9_v10.v9.per_chain[0][0];
+		per_chain = &cmd.v9.per_chain[0][0];
 	} else if (cmd_ver == 8) {
-		len = sizeof(cmd.v8);
+		len = sizeof(old_cmd.v8);
 		n_subbands = IWL_NUM_SUB_BANDS_V2;
-		per_chain = cmd.v8.per_chain[0][0];
+		per_chain = old_cmd.v8.per_chain[0][0];
 	} else if (fw_has_api(&xvt->fw->ucode_capa,
 			      IWL_UCODE_TLV_API_REDUCE_TX_POWER)) {
-		len = sizeof(cmd.v5);
+		len = sizeof(old_cmd.v5);
 		n_subbands = IWL_NUM_SUB_BANDS_V1;
-		per_chain = cmd.v5.per_chain[0][0];
+		per_chain = old_cmd.v5.per_chain[0][0];
 	} else if (fw_has_capa(&xvt->fw->ucode_capa,
 			       IWL_UCODE_TLV_CAPA_TX_POWER_ACK)) {
-		len = sizeof(cmd.v4);
+		len = sizeof(old_cmd.v4);
 		n_subbands = IWL_NUM_SUB_BANDS_V1;
-		per_chain = cmd.v4.per_chain[0][0];
+		per_chain = old_cmd.v4.per_chain[0][0];
 	} else {
-		len = sizeof(cmd.v3);
+		len = sizeof(old_cmd.v3);
 		n_subbands = IWL_NUM_SUB_BANDS_V1;
-		per_chain = cmd.v3.per_chain[0][0];
+		per_chain = old_cmd.v3.per_chain[0][0];
 	}
 
 	/* all structs have the same common part, add its length */
-	len += sizeof(cmd.common);
+	len += sizeof(old_cmd.common);
 
 	if (cmd_ver < 9)
-		len += sizeof(cmd.per_band);
+		len += sizeof(old_cmd.per_band);
 	else
-		cmd_data = &cmd_v9_v10;
+		cmd_data = &cmd;
 
 	if (iwl_sar_fill_profile(&xvt->fwrt, per_chain, IWL_NUM_CHAIN_TABLES,
 				 n_subbands, prof_a, prof_b))
