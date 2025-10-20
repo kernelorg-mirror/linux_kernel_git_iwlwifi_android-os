@@ -347,6 +347,7 @@ struct iwl_incorrect_object *__iwl_fw_check_incorrect_object(void);
 		 struct iwl_mld *: (_obj),				\
 		 struct iwl_xvt *: (_obj),				\
 		 struct iwl_prod *: (_obj),				\
+		 struct iwl_fw_runtime *: (_obj),			\
 		 default: __iwl_fw_check_incorrect_object())
 
 #define __GET_TRANS_HOLDER(_obj)					\
