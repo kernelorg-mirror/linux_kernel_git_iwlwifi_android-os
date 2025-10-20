@@ -124,7 +124,7 @@ static int iwl_mld_set_country(struct wiphy *wiphy,
 			       const void *data, int data_len)
 {
 	struct ieee80211_regdomain *regd;
-	struct nlattr **tb;
+	struct nlattr **tb __free(kfree) = NULL;
 	struct ieee80211_hw *hw = wiphy_to_ieee80211_hw(wiphy);
 	struct iwl_mld *mld = IWL_MAC80211_GET_MLD(hw);
 	int retval;
@@ -133,24 +133,18 @@ static int iwl_mld_set_country(struct wiphy *wiphy,
 	if (IS_ERR(tb))
 		return PTR_ERR(tb);
 
-	if (!tb[IWL_MVM_VENDOR_ATTR_COUNTRY]) {
-		retval = -EINVAL;
-		goto free;
-	}
+	if (!tb[IWL_MVM_VENDOR_ATTR_COUNTRY])
+		return -EINVAL;
 
 	/* set regdomain information to FW */
 	regd = iwl_mld_get_regdomain(mld,
 				     nla_data(tb[IWL_MVM_VENDOR_ATTR_COUNTRY]),
 				     MCC_SOURCE_MCC_API, NULL);
-	if (IS_ERR_OR_NULL(regd)) {
-		retval = -EIO;
-		goto free;
-	}
+	if (IS_ERR_OR_NULL(regd))
+		return -EIO;
 
 	retval = regulatory_set_wiphy_regd(wiphy, regd);
 	kfree(regd);
-free:
-	kfree(tb);
 	return retval;
 }
 
@@ -161,7 +155,7 @@ static int iwl_mld_vendor_set_dynamic_txp_profile(struct wiphy *wiphy,
 {
 	struct ieee80211_hw *hw = wiphy_to_ieee80211_hw(wiphy);
 	struct iwl_mld *mld = IWL_MAC80211_GET_MLD(hw);
-	struct nlattr **tb;
+	struct nlattr **tb __free(kfree) = NULL;
 	u8 chain_a, chain_b;
 	int err;
 
@@ -170,15 +164,11 @@ static int iwl_mld_vendor_set_dynamic_txp_profile(struct wiphy *wiphy,
 		return PTR_ERR(tb);
 
 	if (!tb[IWL_MVM_VENDOR_ATTR_SAR_CHAIN_A_PROFILE] ||
-	    !tb[IWL_MVM_VENDOR_ATTR_SAR_CHAIN_B_PROFILE]) {
-		kfree(tb);
+	    !tb[IWL_MVM_VENDOR_ATTR_SAR_CHAIN_B_PROFILE])
 		return -EINVAL;
-	}
 
 	chain_a = nla_get_u8(tb[IWL_MVM_VENDOR_ATTR_SAR_CHAIN_A_PROFILE]);
 	chain_b = nla_get_u8(tb[IWL_MVM_VENDOR_ATTR_SAR_CHAIN_B_PROFILE]);
-
-	kfree(tb);
 
 	if (mld->fwrt.sar_chain_a_profile == chain_a &&
 	    mld->fwrt.sar_chain_b_profile == chain_b)
@@ -855,7 +845,7 @@ static int iwl_mld_vendor_remove_pasn_sta(struct wiphy *wiphy,
 					  struct wireless_dev *wdev,
 					  const void *data, int data_len)
 {
-	struct nlattr **tb;
+	struct nlattr **tb __free(kfree) = NULL;
 	struct ieee80211_hw *hw = wiphy_to_ieee80211_hw(wiphy);
 	struct iwl_mld *mld = IWL_MAC80211_GET_MLD(hw);
 	struct ieee80211_vif *vif = wdev_to_ieee80211_vif(wdev);
