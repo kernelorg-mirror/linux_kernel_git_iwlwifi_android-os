@@ -617,7 +617,12 @@ iwl_mld_vendor_exit_emlsr(struct wiphy *wiphy, struct wireless_dev *wdev,
 			  const void *data, int data_len)
 {
 	struct ieee80211_vif *vif = wdev_to_ieee80211_vif(wdev);
-	struct iwl_mld *mld = iwl_mld_vif_from_mac80211(vif)->mld;
+	struct iwl_mld *mld;
+
+	if (!vif)
+		return -ENODEV;
+
+	mld = iwl_mld_vif_from_mac80211(vif)->mld;
 
 	if (mld->rfi.wlan_master)
 		return -EINVAL;
@@ -819,6 +824,9 @@ static int iwl_mld_vendor_add_pasn_sta(struct wiphy *wiphy,
 		hltk_len = 0;
 	}
 
+	if (!vif)
+		return -ENODEV;
+
 	sta = ieee80211_find_sta(vif, addr);
 	if ((!tb[IWL_MVM_VENDOR_ATTR_STA_TK] && (!sta || !sta->mfp)) ||
 	    (tb[IWL_MVM_VENDOR_ATTR_STA_TK] && sta && sta->mfp))
@@ -862,6 +870,9 @@ static int iwl_mld_vendor_remove_pasn_sta(struct wiphy *wiphy,
 		return -EINVAL;
 
 	addr = nla_data(tb[IWL_MVM_VENDOR_ATTR_ADDR]);
+
+	if (!vif)
+		return -ENODEV;
 
 	if (vif->bss_conf.ftm_responder)
 		iwl_mld_ftm_resp_remove_pasn_sta(mld, vif, addr);
