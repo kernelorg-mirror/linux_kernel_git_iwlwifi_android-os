@@ -457,8 +457,8 @@ void iwl_bios_print_ppag(struct iwl_fw_runtime *fwrt)
 	IWL_DEBUG_RADIO(fwrt, "PPAG revision = %d\n", fwrt->ppag_bios_rev);
 	IWL_DEBUG_RADIO(fwrt, "PPAG flags = 0x%x\n", fwrt->ppag_flags);
 
-	for (i = 0; i < IWL_NUM_CHAIN_LIMITS; i++)
-		for (j = 0; j < BIOS_SAR_MAX_SUB_BANDS_NUM; j++)
+	for (i = 0; i < ARRAY_SIZE(fwrt->ppag_chains); i++)
+		for (j = 0; j < ARRAY_SIZE(fwrt->ppag_chains[i].subbands); j++)
 			IWL_DEBUG_RADIO(fwrt,
 					"ppag_chains[%d].subbands[%d] = %d\n",
 					i, j,
