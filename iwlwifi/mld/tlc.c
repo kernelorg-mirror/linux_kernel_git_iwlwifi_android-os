@@ -431,7 +431,14 @@ iwl_mld_fill_supp_rates(struct iwl_mld *mld, struct ieee80211_vif *vif,
 		 * FIXME: spec currently inherits from EHT but has no
 		 * finer MCS bits. Once that's there, need to add them
 		 * to the bitmaps (and maybe copy this to UHR, or so.)
+		 * For now just assume supported.
 		 */
+		for (int nss = 0; nss < IWL_TLC_NSS_MAX; nss++) {
+			for (int bw = 0; bw < IWL_TLC_MCS_PER_BW_NUM_V4; bw++)
+				cmd->ht_rates[nss][bw] |=
+					cpu_to_le32(BIT(17) | BIT(19) |
+						    BIT(20) | BIT(23));
+		}
 		iwl_mld_fill_eht_rates(vif, link_sta, own_he_cap,
 				       own_eht_cap, cmd);
 	} else if (link_sta->eht_cap.has_eht && own_he_cap && own_eht_cap) {
