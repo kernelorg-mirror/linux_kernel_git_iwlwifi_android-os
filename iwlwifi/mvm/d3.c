@@ -2986,7 +2986,7 @@ static int iwl_mvm_resume_firmware(struct iwl_mvm *mvm)
 	return ret;
 }
 
-#define IWL_MVM_D3_NOTIF_TIMEOUT (HZ / 3 * CPTCFG_IWL_TIMEOUT_FACTOR)
+#define IWL_MVM_D3_NOTIF_TIMEOUT (HZ / 3)
 
 static int iwl_mvm_d3_notif_wait(struct iwl_mvm *mvm,
 				 struct iwl_d3_data *d3_data)

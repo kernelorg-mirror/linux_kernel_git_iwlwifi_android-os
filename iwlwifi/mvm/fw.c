@@ -28,8 +28,8 @@
 #endif
 #include "time-sync.h"
 
-#define MVM_UCODE_ALIVE_TIMEOUT	(2 * HZ * CPTCFG_IWL_TIMEOUT_FACTOR)
-#define MVM_UCODE_CALIB_TIMEOUT	(2 * HZ * CPTCFG_IWL_TIMEOUT_FACTOR)
+#define MVM_UCODE_ALIVE_TIMEOUT	(2 * HZ)
+#define MVM_UCODE_CALIB_TIMEOUT	(2 * HZ)
 
 struct iwl_mvm_alive_data {
 	__le32 sku_id[3];
