@@ -6316,7 +6316,7 @@ void iwl_mvm_mac_event_callback(struct ieee80211_hw *hw,
 	}
 }
 
-#define SYNC_RX_QUEUE_TIMEOUT (HZ * CPTCFG_IWL_TIMEOUT_FACTOR)
+#define SYNC_RX_QUEUE_TIMEOUT (HZ)
 void iwl_mvm_sync_rx_queues_internal(struct iwl_mvm *mvm,
 				     enum iwl_mvm_rxq_notif_type type,
 				     bool sync,
