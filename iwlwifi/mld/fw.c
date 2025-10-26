@@ -517,7 +517,7 @@ static int iwl_mld_config_fw(struct iwl_mld *mld)
 		return ret;
 
 	iwl_mld_init_tas(mld);
-	iwl_mld_init_uats(mld);
+	iwl_mld_init_ap_type_tables(mld);
 	iwl_mld_rfi_send_config_cmd(mld);
 
 	return 0;
