@@ -1673,15 +1673,6 @@ static inline bool iwl_mvm_is_ctdp_supported(struct iwl_mvm *mvm)
 			   IWL_UCODE_TLV_CAPA_CTDP_SUPPORT);
 }
 
-static inline int iwl_mvm_max_active_links(struct iwl_mvm *mvm,
-					   struct ieee80211_vif *vif)
-{
-	if (vif->type == NL80211_IFTYPE_AP)
-		return mvm->fw->ucode_capa.num_beacons;
-
-	return 1;
-}
-
 extern const u8 iwl_mvm_ac_to_tx_fifo[];
 extern const u8 iwl_mvm_ac_to_gen2_tx_fifo[];
 extern const u8 iwl_mvm_ac_to_bz_tx_fifo[];
