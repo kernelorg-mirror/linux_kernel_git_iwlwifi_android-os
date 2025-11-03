@@ -847,7 +847,7 @@ void iwl_xvt_txq_disable(struct iwl_xvt *xvt)
 static int iwl_xvt_sar_geo_init(struct iwl_xvt *xvt)
 {
 	u32 cmd_id = WIDE_ID(PHY_OPS_GROUP, PER_CHAIN_LIMIT_OFFSET_CMD);
-	union iwl_geo_tx_power_profiles_cmd cmd;
+	union iwl_geo_tx_power_profiles_cmd cmd = {};
 	u16 len;
 	u32 n_bands;
 	u32 n_profiles;
@@ -863,7 +863,9 @@ static int iwl_xvt_sar_geo_init(struct iwl_xvt *xvt)
 		     offsetof(struct iwl_geo_tx_power_profiles_cmd_v3, ops) !=
 		     offsetof(struct iwl_geo_tx_power_profiles_cmd_v4, ops) ||
 		     offsetof(struct iwl_geo_tx_power_profiles_cmd_v4, ops) !=
-		     offsetof(struct iwl_geo_tx_power_profiles_cmd_v5, ops));
+		     offsetof(struct iwl_geo_tx_power_profiles_cmd_v5, ops) ||
+		     offsetof(struct iwl_geo_tx_power_profiles_cmd_v5, ops) !=
+		     offsetof(struct iwl_geo_tx_power_profiles_cmd_v6, ops));
 	/* the ops field is at the same spot for all versions, so set in v1 */
 	cmd.v1.ops = cpu_to_le32(IWL_PER_CHAIN_OFFSET_SET_TABLES);
 
@@ -877,7 +879,13 @@ static int iwl_xvt_sar_geo_init(struct iwl_xvt *xvt)
 	 * revision number, but whether the South Korea variation
 	 * should be used.
 	 */
-	if (cmd_ver == 5) {
+	if (cmd_ver == 6) {
+		len = sizeof(cmd.v6);
+		n_bands = ARRAY_SIZE(cmd.v6.table[0]);
+		cmd.v6.bios_hdr.table_revision = sk;
+		cmd.v6.bios_hdr.table_source = xvt->fwrt.geo_bios_source;
+		n_profiles = BIOS_GEO_MAX_PROFILE_NUM;
+	} else if (cmd_ver == 5) {
 		len = sizeof(cmd.v5);
 		n_bands = ARRAY_SIZE(cmd.v5.table[0]);
 		cmd.v5.table_revision = cpu_to_le32(sk);
@@ -911,7 +919,9 @@ static int iwl_xvt_sar_geo_init(struct iwl_xvt *xvt)
 		     offsetof(struct iwl_geo_tx_power_profiles_cmd_v3, table) !=
 		     offsetof(struct iwl_geo_tx_power_profiles_cmd_v4, table) ||
 		     offsetof(struct iwl_geo_tx_power_profiles_cmd_v4, table) !=
-		     offsetof(struct iwl_geo_tx_power_profiles_cmd_v5, table));
+		     offsetof(struct iwl_geo_tx_power_profiles_cmd_v5, table) ||
+		     offsetof(struct iwl_geo_tx_power_profiles_cmd_v5, table) !=
+		     offsetof(struct iwl_geo_tx_power_profiles_cmd_v6, table));
 	/* the table is at the same position for all versions, so set use v1 */
 	ret = iwl_sar_geo_fill_table(&xvt->fwrt, &cmd.v1.table[0][0],
 				     n_bands, n_profiles);
