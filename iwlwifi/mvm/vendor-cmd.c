@@ -625,32 +625,23 @@ iwl_mvm_vendor_cmd_fill_links_info(struct wiphy *wiphy,
 	return ret;
 }
 
-/*
- * Calculate the response size based on the maximum number of active links.
- * Each link requires 52 bytes, plus 4 bytes for the attribute header and an
- * additional 20 bytes for potential future use.
- */
-#define links_info_response_size(max_active_links) ((max_active_links) * 52 +\
-						   4 + 20)
-
 static int iwl_mvm_vendor_get_links_info(struct wiphy *wiphy,
 					 struct wireless_dev *wdev,
 					 const void *data, int data_len)
 {
 	struct ieee80211_vif *vif = wdev_to_ieee80211_vif(wdev);
-	struct ieee80211_hw *hw = wiphy_to_ieee80211_hw(wiphy);
-	struct iwl_mvm *mvm = IWL_MAC80211_GET_MVM(hw);
 	struct nlattr *link_info_attr;
 	struct sk_buff *skb = NULL;
-	int resp_size;
 	int ret;
 
 	if (!vif)
 		return -ENODEV;
 
-	resp_size = links_info_response_size(iwl_mvm_max_active_links(mvm,
-								      vif));
-	skb = cfg80211_vendor_cmd_alloc_reply_skb(wiphy, resp_size);
+	/*
+	 * Each link requires 52 bytes, plus 4 bytes for the attribute header
+	 * and an additional 20 bytes for potential future use.
+	 */
+	skb = cfg80211_vendor_cmd_alloc_reply_skb(wiphy, (52 + 4 + 20));
 	if (!skb)
 		return -ENOMEM;
 
