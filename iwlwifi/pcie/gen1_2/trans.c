@@ -2173,6 +2173,16 @@ static void iwl_trans_pcie_call_reset(struct pci_dev *pdev)
 	acpi_status status;
 	int ret = -EINVAL;
 
+#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+	struct iwl_trans *trans = pci_get_drvdata(pdev);
+
+	if (trans->dbg_cfg.disable_product_reset) {
+		IWL_DEBUG_DEV_POWER(&pdev->dev,
+				    "Skipping _PRR method lookup due to override\n");
+		goto out;
+	}
+#endif
+
 	status = acpi_evaluate_object(ACPI_HANDLE(&pdev->dev),
 				      "_PRR", NULL, &buffer);
 	if (ACPI_FAILURE(status)) {

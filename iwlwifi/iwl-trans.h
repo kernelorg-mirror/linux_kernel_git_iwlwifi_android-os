@@ -1322,6 +1322,11 @@ bool iwl_trans_is_ltr_enabled(struct iwl_trans *trans);
 
 static inline bool iwl_trans_is_top_reset_supported(struct iwl_trans *trans)
 {
+#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+	if (trans->dbg_cfg.disable_top_reset)
+		return false;
+#endif
+
 	/* not supported before Sc family */
 	if (trans->mac_cfg->device_family < IWL_DEVICE_FAMILY_SC)
 		return false;
