@@ -890,18 +890,6 @@ static int iwl_mvm_mld_roc(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
 	return iwl_mvm_roc_common(hw, vif, channel, duration, type, &ops);
 }
 
-static int
-iwl_mvm_mld_change_sta_links(struct ieee80211_hw *hw,
-			     struct ieee80211_vif *vif,
-			     struct ieee80211_sta *sta,
-			     u16 old_links, u16 new_links)
-{
-	struct iwl_mvm *mvm = IWL_MAC80211_GET_MVM(hw);
-
-	guard(mvm)(mvm);
-	return iwl_mvm_mld_update_sta_links(mvm, vif, sta, old_links, new_links);
-}
-
 static bool iwl_mvm_mld_can_activate_links(struct ieee80211_hw *hw,
 					   struct ieee80211_vif *vif,
 					   u16 desired_links)
@@ -1023,7 +1011,6 @@ const struct ieee80211_ops iwl_mvm_mld_hw_ops = {
 #endif
 	.set_hw_timestamp = iwl_mvm_set_hw_timestamp,
 
-	.change_sta_links = iwl_mvm_mld_change_sta_links,
 	.can_activate_links = iwl_mvm_mld_can_activate_links,
 	.can_neg_ttlm = iwl_mvm_mld_can_neg_ttlm,
 };
