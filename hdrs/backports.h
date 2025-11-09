@@ -66,3 +66,5 @@ ieee80211_get_uhr_iftype_cap(const struct ieee80211_supported_band *sband,
 {
 	return NULL;
 }
+
+#define CFG80211_NAN_SCHED_NUM_TIME_SLOTS 32
