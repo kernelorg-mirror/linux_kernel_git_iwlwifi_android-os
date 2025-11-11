@@ -115,8 +115,6 @@ backport_cfg80211_rx_unexpected_4addr_frame(struct net_device *dev, const u8 *ad
 #define secs_to_jiffies(_secs) (unsigned long)((_secs) * HZ)
 #endif
 
-#define IEEE80211_CHAN_S1G_NO_PRIMARY	BIT(27)
-
 #include <linux/hrtimer.h>
 
 struct wiphy_hrtimer_work {
@@ -191,6 +189,8 @@ void wiphy_hrtimer_work_flush(struct wiphy *wiphy,
  */
 bool wiphy_hrtimer_work_pending(struct wiphy *wiphy,
 				struct wiphy_hrtimer_work *hrwork);
+
+#define IEEE80211_CHAN_S1G_NO_PRIMARY	BIT(27)
 
 static inline enum ieee80211_ap_reg_power
 cfg80211_6ghz_power_type(u8 control, u32 client_flags)
