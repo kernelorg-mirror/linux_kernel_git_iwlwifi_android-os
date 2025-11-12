@@ -377,16 +377,23 @@ void iwl_mld_init_ap_type_tables(struct iwl_mld *mld)
 		return;
 
 	if (iwl_fw_lookup_cmd_ver(mld->fw, cmd.id, 1) == 1) {
-		struct iwl_mcc_allowed_ap_type_cmd_v1 cmd_v1 = {};
+		struct iwl_mcc_allowed_ap_type_cmd_v1 *cmd_v1 =
+			kzalloc(sizeof(*cmd_v1), GFP_KERNEL);
+
+		if (!cmd_v1)
+			return;
 
 		BUILD_BUG_ON(sizeof(mld->fwrt.ap_type_cmd.mcc_to_ap_type_map) !=
-			     sizeof(cmd_v1.mcc_to_ap_type_map));
+			     sizeof(cmd_v1->mcc_to_ap_type_map));
 
-		memcpy(cmd_v1.mcc_to_ap_type_map,
+		memcpy(cmd_v1->mcc_to_ap_type_map,
 		       mld->fwrt.ap_type_cmd.mcc_to_ap_type_map,
 		       sizeof(mld->fwrt.ap_type_cmd.mcc_to_ap_type_map));
 
-		ret = iwl_mld_send_cmd_pdu(mld, cmd.id, &cmd_v1);
+		cmd.data[0] = cmd_v1;
+		cmd.len[0] = sizeof(*cmd_v1);
+		ret = iwl_mld_send_cmd(mld, &cmd);
+		kfree(cmd_v1);
 	} else {
 		ret = iwl_mld_send_cmd(mld, &cmd);
 	}
