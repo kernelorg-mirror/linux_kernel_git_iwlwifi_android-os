@@ -1090,7 +1090,7 @@ static int iwl_xvt_fill_lari_config(struct iwl_fw_runtime *fwrt,
 
 	ret = iwl_bios_get_dsm(fwrt, DSM_FUNC_ENABLE_11BN, &value);
 	if (!ret)
-		cmd->oem_11be_allow_bitmap = cpu_to_le32(value);
+		cmd->oem_11bn_allow_bitmap = cpu_to_le32(value);
 
 	ret = iwl_bios_get_dsm(fwrt, DSM_FUNC_ENABLE_UNII_9, &value);
 	if (!ret)
