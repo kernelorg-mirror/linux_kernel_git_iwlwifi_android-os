@@ -151,12 +151,14 @@ static void iwl_mld_set_wifi_gen(struct iwl_mld *mld,
 		/* for sniffer, set to HW capabilities */
 		support->he_support = 1;
 		support->eht_support = mld->trans->cfg->eht_supported;
+		support->uhr_support = mld->trans->cfg->uhr_supported;
 		break;
 	case NL80211_IFTYPE_AP:
 		/* for AP set according to the link configs */
 		for_each_vif_active_link(vif, link_conf, link_id) {
 			support->he_ap_support |= link_conf->he_support;
 			support->eht_support |= link_conf->eht_support;
+			support->uhr_support |= link_conf->uhr_support;
 		}
 		break;
 	default:
