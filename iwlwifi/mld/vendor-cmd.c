@@ -204,7 +204,7 @@ static int iwl_mld_vendor_ppag_get_table(struct wiphy *wiphy,
 	struct iwl_mld *mld = IWL_MAC80211_GET_MLD(hw);
 	struct sk_buff *skb = NULL;
 	struct nlattr *nl_table;
-	int ret, per_chain_size, chain;
+	int ret, n_subbands, chain;
 
 	/* if ppag is disabled */
 	if (!mld->fwrt.ppag_flags)
@@ -221,11 +221,27 @@ static int iwl_mld_vendor_ppag_get_table(struct wiphy *wiphy,
 		goto err;
 	}
 
-	per_chain_size = (mld->fwrt.ppag_bios_rev == 0) ?
-		IWL_NUM_SUB_BANDS_V1 : IWL_NUM_SUB_BANDS_V2;
+	switch (mld->fwrt.ppag_bios_rev) {
+	case 0:
+		n_subbands = IWL_NUM_SUB_BANDS_V1;
+		break;
+	case 1 ... 4:
+		n_subbands = IWL_NUM_SUB_BANDS_V2;
+		break;
+	case 5:
+		n_subbands = IWL_NUM_SUB_BANDS_V3;
+		break;
+	default:
+		IWL_ERR(mld, "Unknown BIOS revision: %d\n",
+			mld->fwrt.ppag_bios_rev);
+		ret = -EINVAL;
+		goto err;
+	}
 
 	for (chain = 0; chain < IWL_NUM_CHAIN_LIMITS; chain++) {
-		if (nla_put(skb, chain + 1, per_chain_size,
+		if (nla_put(skb, chain + 1,
+			    n_subbands *
+			    sizeof(mld->fwrt.ppag_chains[chain].subbands[0]),
 			    &mld->fwrt.ppag_chains[chain].subbands[0])) {
 			ret = -ENOBUFS;
 			goto err;
@@ -236,7 +252,7 @@ static int iwl_mld_vendor_ppag_get_table(struct wiphy *wiphy,
 
 	/* put the ppag version */
 	if (nla_put_u32(skb, IWL_MVM_VENDOR_ATTR_PPAG_NUM_SUB_BANDS,
-			per_chain_size)) {
+			n_subbands)) {
 		ret = -ENOBUFS;
 		goto err;
 	}
