@@ -1108,6 +1108,7 @@ static int iwl_xvt_fill_lari_config(struct iwl_fw_runtime *fwrt,
 	    cmd->edt_bitmap ||
 	    cmd->oem_320mhz_allow_bitmap ||
 	    cmd->oem_11be_allow_bitmap ||
+	    cmd->oem_11bn_allow_bitmap ||
 	    cmd->oem_unii9_enable) {
 		IWL_DEBUG_RADIO(fwrt,
 				"sending LARI_CONFIG_CHANGE, config_bitmap=0x%x, oem_11ax_allow_bitmap=0x%x\n",
