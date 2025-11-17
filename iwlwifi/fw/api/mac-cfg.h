@@ -664,13 +664,16 @@ struct iwl_link_config_cmd {
  *	power save state and the DTIM timing
  * @STATION_TYPE_AUX: aux sta. In the FW there is no need for a special type
  *	for the aux sta, so this type is only for driver - internal use.
+ * @STATION_TYPE_NAN_PEER: NAN peer station type. A station of this type can
+ *	have multiple link IDs set in &iwl_sta_cfg_cmd::link_mask.
  */
 enum iwl_fw_sta_type {
 	STATION_TYPE_PEER,
 	STATION_TYPE_BCAST_MGMT,
 	STATION_TYPE_MCAST,
 	STATION_TYPE_AUX,
-}; /* STATION_TYPE_E_VER_1 */
+	STATION_TYPE_NAN_PEER,
+}; /* STATION_TYPE_E_VER_1, _VER_2 */
 
 /**
  * struct iwl_sta_cfg_cmd_v1 - cmd structure to add a peer sta to the uCode's
@@ -735,6 +738,8 @@ struct iwl_sta_cfg_cmd_v1 {
  *
  * @sta_id: index of station in uCode's station table
  * @link_id: the id of the link that is used to communicate with this sta
+ *	(for version 2)
+ * @link_mask: bitmap of link FW IDs used with this STA (since version 3).
  * @peer_mld_address: the peers mld address
  * @reserved_for_peer_mld_address: reserved
  * @peer_link_address: the address of the link that is used to communicate
@@ -771,7 +776,10 @@ struct iwl_sta_cfg_cmd_v1 {
  */
 struct iwl_sta_cfg_cmd {
 	__le32 sta_id;
-	__le32 link_id;
+	union {
+		__le32 link_id; /* _VER_2 */
+		__le32 link_mask; /* _VER_3 */
+	};
 	u8 peer_mld_address[ETH_ALEN];
 	__le16 reserved_for_peer_mld_address;
 	u8 peer_link_address[ETH_ALEN];
@@ -797,7 +805,7 @@ struct iwl_sta_cfg_cmd {
 	u8 mic_prep_pad_delay;
 	u8 mic_compute_pad_delay;
 	u8 reserved[2];
-} __packed; /* STA_CMD_API_S_VER_2 */
+} __packed; /* STA_CMD_API_S_VER_2, STA_CMD_API_S_VER_3 */
 
 /**
  * struct iwl_aux_sta_cmd - command for AUX STA configuration
