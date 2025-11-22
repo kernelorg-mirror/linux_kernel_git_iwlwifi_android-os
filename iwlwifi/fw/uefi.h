@@ -147,7 +147,6 @@ struct uefi_cnv_var_ewrd {
  * @revision: the revision of the table
  * @num_profiles: the number of geo profiles we have in the table.
  *	The first 3 are mandatory, and can have up to 8.
- * @geo_profiles: a per-profile table of the offsets to add to SAR values.
  * @vals: a per-profile table of the offsets to add to SAR values. This is an
  *	array of profiles, each profile is an array of
  *	&struct iwl_geo_profile_band, one for each subband.
