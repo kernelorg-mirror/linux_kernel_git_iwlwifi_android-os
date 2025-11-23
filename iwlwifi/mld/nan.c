@@ -54,9 +54,17 @@ static int iwl_mld_nan_config(struct iwl_mld *mld,
 	ether_addr_copy(cmd.nmi_addr, vif->addr);
 	cmd.master_pref = conf->master_pref;
 
-	if (conf->cluster_id)
+	if (conf->cluster_id) {
 		memcpy(cmd.cluster_id, conf->cluster_id + 4,
 		       sizeof(cmd.cluster_id));
+	} else {
+		/*
+		 * In case user space didn't provide a cluster ID, avoid having
+		 * always zeros
+		 */
+		cmd.cluster_id[4] = get_random_u8();
+		cmd.cluster_id[5] = get_random_u8();
+	}
 
 	cmd.scan_period = conf->scan_period < 255 ? conf->scan_period : 255;
 	cmd.dwell_time =
