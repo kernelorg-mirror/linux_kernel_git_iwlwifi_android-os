@@ -62,8 +62,8 @@ static int iwl_mld_nan_config(struct iwl_mld *mld,
 		 * In case user space didn't provide a cluster ID, avoid having
 		 * always zeros
 		 */
-		cmd.cluster_id[4] = get_random_u8();
-		cmd.cluster_id[5] = get_random_u8();
+		cmd.cluster_id[0] = get_random_u8();
+		cmd.cluster_id[1] = get_random_u8();
 	}
 
 	cmd.scan_period = conf->scan_period < 255 ? conf->scan_period : 255;
