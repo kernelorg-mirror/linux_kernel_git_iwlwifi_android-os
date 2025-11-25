@@ -14,7 +14,7 @@
 #include "fw/api/power.h"
 #include "fw/pnvm.h"
 
-#define XVT_UCODE_ALIVE_TIMEOUT	(HZ * CPTCFG_IWL_TIMEOUT_FACTOR)
+#define XVT_UCODE_ALIVE_TIMEOUT	HZ
 
 struct iwl_xvt_alive_data {
 	__le32 sku_id[3];

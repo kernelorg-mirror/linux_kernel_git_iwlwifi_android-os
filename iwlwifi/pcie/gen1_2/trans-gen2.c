@@ -10,7 +10,7 @@
 #include "internal.h"
 #include "fw/dbg.h"
 
-#define FW_RESET_TIMEOUT (CPTCFG_IWL_TIMEOUT_FACTOR * HZ / 5)
+#define FW_RESET_TIMEOUT (HZ / 5)
 
 /*
  * Start up NIC's basic functionality after it has been reset
@@ -592,7 +592,7 @@ again:
 	if (trans->do_top_reset) {
 		trans->do_top_reset = 0;
 
-#define FW_TOP_RESET_TIMEOUT	(CPTCFG_IWL_TIMEOUT_FACTOR * HZ / 4)
+#define FW_TOP_RESET_TIMEOUT	(HZ / 4)
 		ret = wait_event_timeout(trans_pcie->fw_reset_waitq,
 					 trans_pcie->fw_reset_state != FW_RESET_TOP_REQUESTED,
 					 FW_TOP_RESET_TIMEOUT);

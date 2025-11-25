@@ -9,7 +9,7 @@
 #include "fw/notif-wait.h"
 #include "fw/img.h"
 
-#define MVM_UCODE_PNVM_TIMEOUT	(HZ / 4 * CPTCFG_IWL_TIMEOUT_FACTOR)
+#define MVM_UCODE_PNVM_TIMEOUT	(HZ / 4)
 
 #define MAX_PNVM_NAME  64
 

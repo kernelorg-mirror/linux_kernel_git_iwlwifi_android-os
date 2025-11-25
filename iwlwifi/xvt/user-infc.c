@@ -30,7 +30,7 @@
 #include "fw/img.h"
 #include "fw/pnvm.h"
 
-#define XVT_UCODE_CALIB_TIMEOUT (CPTCFG_IWL_TIMEOUT_FACTOR * HZ)
+#define XVT_UCODE_CALIB_TIMEOUT HZ
 #define XVT_SCU_BASE	(0xe6a00000)
 #define XVT_SCU_SNUM1	(XVT_SCU_BASE + 0x300)
 #define XVT_SCU_SNUM2	(XVT_SCU_SNUM1 + 0x4)
@@ -413,11 +413,6 @@ static int iwl_xvt_send_phy_cfg_cmd(struct iwl_xvt *xvt, u32 ucode_type)
 	IWL_DEBUG_INFO(xvt, "Sending Phy CFG command: 0x%x\n",
 		       calib_cmd_cfg->phy_cfg);
 
-	/* ESL workaround - calibration is not allowed */
-	if (CPTCFG_IWL_TIMEOUT_FACTOR > 20) {
-		calib_cmd_cfg->calib_control.event_trigger = 0;
-		calib_cmd_cfg->calib_control.flow_trigger = 0;
-	}
 	cmd_size = iwl_fw_lookup_cmd_ver(xvt->fw, cmd_id,
 					 IWL_FW_CMD_VER_UNKNOWN) == 3 ?
 					    sizeof(struct iwl_phy_cfg_cmd_v3) :
@@ -1429,7 +1424,7 @@ on_exit:
 		time_remain = wait_event_interruptible_timeout(xvt->tx_done_wq,
 					xvt->num_of_tx_resp == sent_packets ||
 					kthread_should_stop(),
-					5 * HZ * CPTCFG_IWL_TIMEOUT_FACTOR);
+					5 * HZ);
 		if (time_remain <= 0) {
 			iwl_xvt_flush_sta_tids(xvt);
 			IWL_ERR(xvt, "err %d: Not all Tx messages were sent\n",
