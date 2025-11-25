@@ -313,8 +313,7 @@ int iwl_pcie_gen3_sw_reset(struct iwl_trans *trans, bool retake_ownership)
 {
 	/* Reset entire device - do controller reset (results in SHRD_HW_RST) */
 	iwl_set_bit(trans, CSR_GP_CNTRL, CSR_GP_CNTRL_REG_FLAG_SW_RESET);
-	usleep_range(10000 * CPTCFG_IWL_DELAY_FACTOR,
-		     20000 * CPTCFG_IWL_DELAY_FACTOR);
+	usleep_range(10000, 20000);
 
 	if (retake_ownership)
 		return iwl_pcie_gen3_acquire_hw_ownership(trans);
@@ -339,8 +338,7 @@ int iwl_pcie_gen3_activate_nic(struct iwl_trans *trans)
 	 * such as using iwl_write_prph() or accessing the uCode SRAM.
 	 */
 	err = iwl_poll_bits(trans, CSR_GP_CNTRL,
-			    CSR_GP_CNTRL_REG_FLAG_MAC_STATUS,
-			    25000 * CPTCFG_IWL_TIMEOUT_FACTOR);
+			    CSR_GP_CNTRL_REG_FLAG_MAC_STATUS, 25000);
 
 	if (err) {
 		IWL_DEBUG_INFO(trans, "Failed to initialize NIC\n");

@@ -199,8 +199,8 @@ static bool iwl_alive_fn(struct iwl_notif_wait_data *notif_wait,
 	return true;
 }
 
-#define MLD_ALIVE_TIMEOUT		(2 * HZ * CPTCFG_IWL_TIMEOUT_FACTOR)
-#define MLD_INIT_COMPLETE_TIMEOUT	(2 * HZ * CPTCFG_IWL_TIMEOUT_FACTOR)
+#define MLD_ALIVE_TIMEOUT		(2 * HZ)
+#define MLD_INIT_COMPLETE_TIMEOUT	(2 * HZ)
 
 static void iwl_mld_print_alive_notif_timeout(struct iwl_mld *mld)
 {

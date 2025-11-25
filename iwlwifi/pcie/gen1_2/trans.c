@@ -81,13 +81,11 @@ int iwl_trans_pcie_sw_reset(struct iwl_trans *trans, bool retake_ownership)
 	if (trans->mac_cfg->device_family >= IWL_DEVICE_FAMILY_BZ) {
 		iwl_set_bit(trans, CSR_GP_CNTRL,
 			    CSR_GP_CNTRL_REG_FLAG_SW_RESET);
-		usleep_range(10000 * CPTCFG_IWL_DELAY_FACTOR,
-			     20000 * CPTCFG_IWL_DELAY_FACTOR);
+		usleep_range(10000, 20000);
 	} else {
 		iwl_set_bit(trans, CSR_RESET,
 			    CSR_RESET_REG_FLAG_SW_RESET);
-		usleep_range(5000 * CPTCFG_IWL_DELAY_FACTOR,
-			     6000 * CPTCFG_IWL_DELAY_FACTOR);
+		usleep_range(5000, 6000);
 	}
 
 	if (retake_ownership)
@@ -425,8 +423,7 @@ void iwl_pcie_apm_stop_master(struct iwl_trans *trans)
 		ret = iwl_poll_bits(trans, CSR_GP_CNTRL,
 				    CSR_GP_CNTRL_REG_FLAG_BUS_MASTER_DISABLE_STATUS,
 				    100);
-		usleep_range(10000 * CPTCFG_IWL_DELAY_FACTOR,
-			     20000 * CPTCFG_IWL_DELAY_FACTOR);
+		usleep_range(10000, 20000);
 	} else {
 		iwl_set_bit(trans, CSR_RESET, CSR_RESET_REG_FLAG_STOP_MASTER);
 
@@ -561,8 +558,7 @@ int iwl_pcie_prepare_card_hw(struct iwl_trans *trans)
 
 	iwl_set_bit(trans, CSR_DBG_LINK_PWR_MGMT_REG,
 		    CSR_RESET_LINK_PWR_MGMT_DISABLED);
-	usleep_range(1000 * CPTCFG_IWL_DELAY_FACTOR,
-		     2000 * CPTCFG_IWL_DELAY_FACTOR);
+	usleep_range(1000, 2000);
 
 	for (iter = 0; iter < 10; iter++) {
 		int t = 0;
@@ -4414,8 +4410,7 @@ int iwl_pcie_gen1_2_activate_nic(struct iwl_trans *trans)
 	 * device-internal resources is supported, e.g. iwl_write_prph()
 	 * and accesses to uCode SRAM.
 	 */
-	err = iwl_poll_bits(trans, CSR_GP_CNTRL, poll_ready,
-			    25000 * CPTCFG_IWL_TIMEOUT_FACTOR);
+	err = iwl_poll_bits(trans, CSR_GP_CNTRL, poll_ready, 25000);
 	if (err < 0) {
 		IWL_DEBUG_INFO(trans, "Failed to wake NIC\n");
 

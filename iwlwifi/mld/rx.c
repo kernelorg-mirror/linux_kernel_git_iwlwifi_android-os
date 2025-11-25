@@ -2198,7 +2198,8 @@ out:
 	rcu_read_unlock();
 }
 
-#define SYNC_RX_QUEUE_TIMEOUT (HZ * CPTCFG_IWL_TIMEOUT_FACTOR)
+#define SYNC_RX_QUEUE_TIMEOUT HZ
+
 void iwl_mld_sync_rx_queues(struct iwl_mld *mld,
 			    enum iwl_mld_internal_rxq_notif_type type,
 			    const void *notif_payload, u32 notif_payload_size)

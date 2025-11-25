@@ -194,10 +194,6 @@ bool iwl_mld_rfi_supported(struct iwl_mld *mld,
 
 	KUNIT_STATIC_STUB_REDIRECT(iwl_mld_rfi_supported, mld, rfi_feature);
 
-	/* Disable RFI feature for SLE, ESL, FPGA */
-	if (CPTCFG_IWL_TIMEOUT_FACTOR > 1)
-		return false;
-
 	mac_type = CSR_HW_REV_TYPE(mld->trans->info.hw_rev);
 	rf_type = CSR_HW_RFID_TYPE(mld->trans->info.hw_rf_id);
 

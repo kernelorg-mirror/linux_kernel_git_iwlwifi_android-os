@@ -1338,7 +1338,7 @@ static bool iwl_mld_handle_d3_notif(struct iwl_notif_wait_data *notif_wait,
 	return resume_data->notifs_received == resume_data->notifs_expected;
 }
 
-#define IWL_MLD_D3_NOTIF_TIMEOUT (HZ / 3 * CPTCFG_IWL_TIMEOUT_FACTOR)
+#define IWL_MLD_D3_NOTIF_TIMEOUT (HZ / 3)
 
 static int iwl_mld_wait_d3_notif(struct iwl_mld *mld,
 				 struct iwl_mld_resume_data *resume_data,
