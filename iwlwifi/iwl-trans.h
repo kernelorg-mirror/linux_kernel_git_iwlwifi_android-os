@@ -1323,22 +1323,28 @@ bool iwl_trans_is_ltr_enabled(struct iwl_trans *trans);
 
 static inline bool iwl_trans_is_top_reset_supported(struct iwl_trans *trans)
 {
-#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
-	if (trans->dbg_cfg.disable_top_reset)
-		return false;
-#endif
-
 	/* not supported before Sc family */
 	if (trans->mac_cfg->device_family < IWL_DEVICE_FAMILY_SC)
 		return false;
+
+#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+	if (trans->dbg_cfg.disable_top_reset == -1) {
+		/* default, normal logic */
+	} else if (trans->dbg_cfg.disable_top_reset) {
+		return false;
+	} else {
+		/* explicit disable_top_reset=0 overrides logic below */
+		return true;
+	}
+#endif
 
 	/* for Sc family only supported for Sc2/Sc2f */
 	if (trans->mac_cfg->device_family == IWL_DEVICE_FAMILY_SC &&
 	    CSR_HW_REV_TYPE(trans->info.hw_rev) == IWL_CFG_MAC_TYPE_SC)
 		return false;
 
-	/* so far these numbers are increasing - not before Wh */
-	if (CSR_HW_RFID_TYPE(trans->info.hw_rf_id) < IWL_CFG_RF_TYPE_WH)
+	/* so far these numbers are increasing - not before Pe */
+	if (CSR_HW_RFID_TYPE(trans->info.hw_rf_id) < IWL_CFG_RF_TYPE_PE)
 		return false;
 
 	return true;

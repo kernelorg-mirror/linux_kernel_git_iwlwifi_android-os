@@ -312,7 +312,7 @@ struct iwl_dbg_cfg {
 #ifdef CPTCFG_IWLWIFI_DISALLOW_OLDER_FW
 	IWL_DBG_CFG_NODEF(bool, load_old_fw)
 #endif /* CPTCFG_IWLWIFI_DISALLOW_OLDER_FW */
-	IWL_DBG_CFG_NODEF(bool, disable_top_reset)
+	IWL_DBG_CFG_DEF(int, disable_top_reset, -1)
 	IWL_DBG_CFG_NODEF(bool, disable_product_reset)
 #undef IWL_DBG_CFG
 #undef IWL_DBG_CFG_STR
