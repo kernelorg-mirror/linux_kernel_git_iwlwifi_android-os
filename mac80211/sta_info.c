@@ -1297,6 +1297,9 @@ static int __must_check __sta_info_destroy_part1(struct sta_info *sta)
 				continue;
 			sta_info_destroy_addr(sta_iter->sdata, sta_iter->addr);
 		}
+
+		/* Free and clear the local peer schedule */
+		sta->sta.nan_sched = NULL;
 	}
 
 	/*
