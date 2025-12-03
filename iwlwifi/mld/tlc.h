@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0 OR BSD-3-Clause */
 /*
- * Copyright (C) 2024 Intel Corporation
+ * Copyright (C) 2024, 2025 Intel Corporation
  */
 #ifndef __iwl_mld_tlc_h__
 #define __iwl_mld_tlc_h__
@@ -9,7 +9,7 @@
 
 void iwl_mld_config_tlc_link(struct iwl_mld *mld,
 			     struct ieee80211_vif *vif,
-			     struct ieee80211_bss_conf *link_conf,
+			     struct ieee80211_chanctx_conf *chan_ctx,
 			     struct ieee80211_link_sta *link_sta);
 
 void iwl_mld_config_tlc(struct iwl_mld *mld, struct ieee80211_vif *vif,

@@ -2240,11 +2240,15 @@ static void iwl_mld_sta_rc_update(struct ieee80211_hw *hw,
 		       IEEE80211_RC_NSS_CHANGED)) {
 		struct ieee80211_bss_conf *link =
 			link_conf_dereference_check(vif, link_sta->link_id);
+		struct ieee80211_chanctx_conf *chan_ctx;
 
-		if (WARN_ON(!link))
+		if (WARN_ON(!link || !link->chanreq.oper.chan))
 			return;
 
-		iwl_mld_config_tlc_link(mld, vif, link, link_sta);
+		chan_ctx = rcu_dereference_wiphy(mld->wiphy,
+						 link->chanctx_conf);
+
+		iwl_mld_config_tlc_link(mld, vif, chan_ctx, link_sta);
 	}
 }
 

@@ -539,10 +539,10 @@ static int iwl_mld_convert_tlc_cmd_to_v4(struct iwl_tlc_config_cmd *cmd,
 static void iwl_mld_send_tlc_cmd(struct iwl_mld *mld,
 				 struct ieee80211_vif *vif,
 				 struct ieee80211_link_sta *link_sta,
-				 struct ieee80211_bss_conf *link)
+				 struct ieee80211_chanctx_conf *chan_ctx)
 {
 	struct iwl_mld_sta *mld_sta = iwl_mld_sta_from_mac80211(link_sta->sta);
-	enum nl80211_band band = link->chanreq.oper.chan->band;
+	enum nl80211_band band = chan_ctx->def.chan->band;
 	struct ieee80211_supported_band *sband = mld->hw->wiphy->bands[band];
 	const struct ieee80211_sta_he_cap *own_he_cap =
 		ieee80211_get_he_iftype_cap_vif(sband, vif);
@@ -565,7 +565,6 @@ static void iwl_mld_send_tlc_cmd(struct iwl_mld *mld,
 	int fw_sta_id = iwl_mld_fw_sta_id_from_link_sta(mld, link_sta);
 	u32 cmd_id = WIDE_ID(DATA_PATH_GROUP, TLC_MNG_CONFIG_CMD);
 	u8 cmd_ver = iwl_fw_lookup_cmd_ver(mld->fw, cmd_id, 0);
-	struct ieee80211_chanctx_conf *chan_ctx;
 	struct iwl_tlc_config_cmd_v5 cmd_v5 = {};
 	struct iwl_tlc_config_cmd_v4 cmd_v4 = {};
 	void *cmd_ptr;
@@ -577,10 +576,6 @@ static void iwl_mld_send_tlc_cmd(struct iwl_mld *mld,
 		return;
 
 	cmd.sta_mask = cpu_to_le32(BIT(fw_sta_id));
-
-	chan_ctx = rcu_dereference_wiphy(mld->wiphy, link->chanctx_conf);
-	if (WARN_ON(!chan_ctx))
-		return;
 
 	phy_id = iwl_mld_phy_from_mac80211(chan_ctx)->fw_id;
 	cmd.phy_id = cpu_to_le32(phy_id);
@@ -656,12 +651,12 @@ int iwl_mld_send_tlc_dhc(struct iwl_mld *mld, u8 sta_id, u32 type, u32 data)
 
 void iwl_mld_config_tlc_link(struct iwl_mld *mld,
 			     struct ieee80211_vif *vif,
-			     struct ieee80211_bss_conf *link_conf,
+			     struct ieee80211_chanctx_conf *chan_ctx,
 			     struct ieee80211_link_sta *link_sta)
 {
 	struct iwl_mld_sta *mld_sta = iwl_mld_sta_from_mac80211(link_sta->sta);
 
-	if (WARN_ON_ONCE(!link_conf->chanreq.oper.chan))
+	if (WARN_ON(!chan_ctx))
 		return;
 
 	/* Before we have information about a station, configure the A-MSDU RC
@@ -673,7 +668,7 @@ void iwl_mld_config_tlc_link(struct iwl_mld *mld,
 		ieee80211_sta_recalc_aggregates(link_sta->sta);
 	}
 
-	iwl_mld_send_tlc_cmd(mld, vif, link_sta, link_conf);
+	iwl_mld_send_tlc_cmd(mld, vif, link_sta, chan_ctx);
 
 }
 
@@ -688,11 +683,15 @@ void iwl_mld_config_tlc(struct iwl_mld *mld, struct ieee80211_vif *vif,
 	for_each_vif_active_link(vif, link, link_id) {
 		struct ieee80211_link_sta *link_sta =
 			link_sta_dereference_check(sta, link_id);
+		struct ieee80211_chanctx_conf *chan_ctx;
 
 		if (!link || !link_sta)
 			continue;
 
-		iwl_mld_config_tlc_link(mld, vif, link, link_sta);
+		chan_ctx = rcu_dereference_wiphy(mld->wiphy,
+						 link->chanctx_conf);
+
+		iwl_mld_config_tlc_link(mld, vif, chan_ctx, link_sta);
 	}
 }
 
