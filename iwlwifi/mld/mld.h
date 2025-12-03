@@ -549,9 +549,9 @@ struct iwl_notif_struct_size {
 #define IWL_MLD_INVALID_FW_ID 0xff
 
 #define IWL_MLD_ALLOC_FN(_type, _mac80211_type)						\
-static int										\
+int											\
 iwl_mld_allocate_##_type##_fw_id(struct iwl_mld *mld,					\
-				 u8 *fw_id,				\
+				 u8 *fw_id,						\
 				 struct ieee80211_##_mac80211_type *mac80211_ptr)	\
 {											\
 	u8 rand = IWL_MLD_DIS_RANDOM_FW_ID ? 0 : get_random_u8();			\
