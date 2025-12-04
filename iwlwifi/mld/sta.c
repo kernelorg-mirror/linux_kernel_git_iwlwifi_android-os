@@ -398,21 +398,42 @@ static u32 iwl_mld_get_htc_flags(struct ieee80211_link_sta *link_sta)
 	return htc_flags;
 }
 
+/* Note: modifies the command depending on FW command version */
 static int iwl_mld_send_sta_cmd(struct iwl_mld *mld,
-				const struct iwl_sta_cfg_cmd *cmd)
+				struct iwl_sta_cfg_cmd *cmd)
 {
-	int cmd_ver = iwl_fw_lookup_cmd_ver(mld->fw,
-					    WIDE_ID(MAC_CONF_GROUP,
-						    STA_CONFIG_CMD), 0);
+	int cmd_id = WIDE_ID(MAC_CONF_GROUP, STA_CONFIG_CMD);
+	int cmd_ver = iwl_fw_lookup_cmd_ver(mld->fw, cmd_id, 0);
+	int len = sizeof(*cmd);
+	int ret;
 
-	if (WARN_ON(cmd_ver >= 3 &&
-		    cmd->station_type != cpu_to_le32(STATION_TYPE_NAN_PEER) &&
-		    hweight32(le32_to_cpu(cmd->link_mask)) != 1))
+	if (cmd_ver < 2) {
+		IWL_ERR(mld, "Unsupported STA_CONFIG_CMD version %d\n",
+			cmd_ver);
 		return -EINVAL;
+	} else if (cmd_ver == 2) {
+		struct iwl_sta_cfg_cmd_v2 *cmd_v2 = (void *)cmd;
 
-	int ret = iwl_mld_send_cmd_pdu(mld,
-				       WIDE_ID(MAC_CONF_GROUP, STA_CONFIG_CMD),
-				       cmd);
+		if (WARN_ON(cmd->station_type == cpu_to_le32(STATION_TYPE_NAN_PEER_NMI) ||
+			    cmd->station_type == cpu_to_le32(STATION_TYPE_NAN_PEER_NDI) ||
+			    hweight32(le32_to_cpu(cmd->link_mask)) != 1))
+			return -EINVAL;
+		/*
+		 * These fields are located in a different place in the struct of v2.
+		 * The assumption is that UHR won't be used with FW that has v2.
+		 */
+		if (WARN_ON(cmd->mic_prep_pad_delay || cmd->mic_compute_pad_delay))
+			return -EINVAL;
+
+		len = sizeof(struct iwl_sta_cfg_cmd_v2);
+		cmd_v2->link_id = cpu_to_le32(__ffs(le32_to_cpu(cmd->link_mask)));
+	} else if (WARN_ON(cmd->station_type != cpu_to_le32(STATION_TYPE_NAN_PEER_NMI) &&
+			   cmd->station_type != cpu_to_le32(STATION_TYPE_NAN_PEER_NDI) &&
+			   hweight32(le32_to_cpu(cmd->link_mask)) != 1)) {
+		return -EINVAL;
+	}
+
+	ret = iwl_mld_send_cmd_pdu(mld, cmd_id, cmd, len);
 	if (ret)
 		IWL_ERR(mld, "STA_CONFIG_CMD send failed, ret=0x%x\n", ret);
 	return ret;
@@ -427,8 +448,6 @@ iwl_mld_add_modify_sta_cmd(struct iwl_mld *mld,
 	struct ieee80211_bss_conf *link;
 	struct iwl_mld_link *mld_link;
 	struct iwl_sta_cfg_cmd cmd = {};
-	u32 cmd_id = WIDE_ID(MAC_CONF_GROUP, STA_CONFIG_CMD);
-	int cmd_ver = iwl_fw_lookup_cmd_ver(mld->fw, cmd_id, 0);
 	int fw_id = iwl_mld_fw_sta_id_from_link_sta(mld, link_sta);
 
 	lockdep_assert_wiphy(mld->wiphy);
@@ -442,19 +461,8 @@ iwl_mld_add_modify_sta_cmd(struct iwl_mld *mld,
 		return -EINVAL;
 
 	cmd.sta_id = cpu_to_le32(fw_id);
+	cmd.link_mask = cpu_to_le32(BIT(mld_link->fw_id));
 	cmd.station_type = cpu_to_le32(mld_sta->sta_type);
-
-	if (cmd_ver >= 3) {
-		/* For version 3+, use link_mask with one bit set */
-		cmd.link_mask = cpu_to_le32(BIT(mld_link->fw_id));
-	} else if (cmd_ver == 2) {
-		/* For version 2, use link_id directly */
-		cmd.link_id = cpu_to_le32(mld_link->fw_id);
-	} else {
-		IWL_ERR(mld, "Unsupported STA_CONFIG_CMD version %d\n",
-			cmd_ver);
-		return -EINVAL;
-	}
 
 	memcpy(&cmd.peer_mld_address, sta->addr, ETH_ALEN);
 	memcpy(&cmd.peer_link_address, link_sta->addr, ETH_ALEN);
@@ -1001,26 +1009,12 @@ iwl_mld_add_internal_sta_to_fw(struct iwl_mld *mld,
 			       const u8 *addr)
 {
 	struct iwl_sta_cfg_cmd cmd = {};
-	u32 cmd_id = WIDE_ID(MAC_CONF_GROUP, STA_CONFIG_CMD);
-	int cmd_ver = iwl_fw_lookup_cmd_ver(mld->fw, cmd_id, 0);
 
 	if (internal_sta->sta_type == STATION_TYPE_AUX)
 		return iwl_mld_send_aux_sta_cmd(mld, internal_sta);
 
 	cmd.sta_id = cpu_to_le32((u8)internal_sta->sta_id);
-
-	if (cmd_ver >= 3) {
-		/* For version 3+, use link_mask with one bit set */
-		cmd.link_mask = cpu_to_le32(BIT(fw_link_id));
-	} else if (cmd_ver == 2) {
-		/* For version 2, use link_id directly */
-		cmd.link_id = cpu_to_le32(fw_link_id);
-	} else {
-		IWL_ERR(mld, "Unsupported STA_CONFIG_CMD version %d\n",
-			cmd_ver);
-		return -EINVAL;
-	}
-
+	cmd.link_mask = cpu_to_le32(BIT(fw_link_id));
 	cmd.station_type = cpu_to_le32(internal_sta->sta_type);
 
 	/* FW doesn't allow to add a IGTK/BIGTK if the sta isn't marked as MFP.
