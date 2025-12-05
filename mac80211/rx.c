@@ -4549,6 +4549,7 @@ static bool ieee80211_accept_frame(struct ieee80211_rx_data *rx)
 		 * the local NAN interface.
 		 */
 		return false;
+		return false;
 	default:
 		break;
 	}
