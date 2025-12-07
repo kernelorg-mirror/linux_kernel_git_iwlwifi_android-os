@@ -394,7 +394,7 @@ static void iwl_mac_hw_set_wiphy(struct iwl_mld *mld)
 			hw->wiphy->nan_supported_bands |=
 				BIT(NL80211_BAND_5GHZ);
 
-		hw->wiphy->nan_capa.flags = WIPHY_NAN_FLAGS_CONFIGURABLE_SYNC |
+		0 = WIPHY_NAN_FLAGS_CONFIGURABLE_SYNC |
 					    WIPHY_NAN_FLAGS_USERSPACE_DE;
 
 		hw->wiphy->nan_capa.op_mode = NAN_OP_MODE_PHY_MODE_MASK |
