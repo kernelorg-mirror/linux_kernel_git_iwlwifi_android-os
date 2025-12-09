@@ -7,6 +7,7 @@
 #include "iface.h"
 #include "link.h"
 #include "mlo.h"
+#include "tlc.h"
 #include "fw/api/mac-cfg.h"
 #include "fw/api/mac.h"
 #include "fw/api/rs.h"
@@ -446,14 +447,25 @@ err:
 }
 
 static int iwl_mld_nan_link_set_active(struct iwl_mld *mld,
+				       struct ieee80211_vif *vif,
 				       struct iwl_mld_nan_link *nan_link,
 				       bool active)
 {
 	struct iwl_link_config_cmd cmd;
+	struct ieee80211_sta *sta;
 	int ret;
 
 	if (nan_link->active == active)
 		return 0;
+
+	if (active) {
+		for_each_station(sta, mld->hw) {
+			struct iwl_mld_sta *mld_sta = iwl_mld_sta_from_mac80211(sta);
+
+			if (mld_sta->sta_type == STATION_TYPE_NAN_PEER_NDI)
+				iwl_mld_config_tlc(mld, vif, sta);
+		}
+	}
 
 	nan_link->active = active;
 
@@ -466,8 +478,10 @@ static int iwl_mld_nan_link_set_active(struct iwl_mld *mld,
 		return ret;
 	}
 
-	if (!active)
+	if (!active) {
 		nan_link->chanctx = NULL;
+		/* TODO: when FW is ready, Update phy in TLC to invalid after */
+	}
 
 	return 0;
 }
@@ -597,7 +611,7 @@ void iwl_mld_nan_vif_cfg_changed(struct iwl_mld *mld,
 		if (links[i]) {
 			added_links = true;
 			link_used[links[i]->fw_id] = true;
-			iwl_mld_nan_link_set_active(mld, links[i], true);
+			iwl_mld_nan_link_set_active(mld, vif, links[i], true);
 		}
 	}
 
@@ -637,7 +651,7 @@ void iwl_mld_nan_vif_cfg_changed(struct iwl_mld *mld,
 	/* prepare stations for links we'll remove */
 	for_each_mld_nan_valid_link(mld_vif, nan_link) {
 		if (!link_used[nan_link->fw_id]) {
-			iwl_mld_nan_link_set_active(mld, nan_link, false);
+			iwl_mld_nan_link_set_active(mld, vif, nan_link, false);
 			remove_link_ids |= BIT(nan_link->fw_id);
 			/* mark unused for STA updates */
 			nan_link->fw_id = FW_CTXT_ID_INVALID;
