@@ -662,6 +662,7 @@ static void ieee80211_do_stop(struct ieee80211_sub_if_data *sdata, bool going_do
 			spin_unlock_bh(&sdata->u.nan.de.func_lock);
 		}
 		break;
+	/* case NL80211_IFTYPE_NAN_DATA */
 		RCU_INIT_POINTER(sdata->u.nan_data.nmi, NULL);
 		fallthrough;
 	default:
@@ -1438,6 +1439,7 @@ int ieee80211_do_open(struct wireless_dev *wdev, bool coming_up)
 	case NL80211_IFTYPE_NAN:
 		/* no special treatment */
 		break;
+	/* case NL80211_IFTYPE_NAN_DATA */
 		if (WARN_ON(!rcu_access_pointer(sdata->u.nan_data.nmi)))
 			return -ENOLINK;
 		break;
@@ -1578,6 +1580,7 @@ int ieee80211_do_open(struct wireless_dev *wdev, bool coming_up)
 		case NL80211_IFTYPE_AP:
 		case NL80211_IFTYPE_MESH_POINT:
 		case NL80211_IFTYPE_OCB:
+		/* case NL80211_IFTYPE_NAN_DATA */
 			netif_carrier_off(dev);
 			break;
 		case NL80211_IFTYPE_P2P_DEVICE:
@@ -2016,6 +2019,7 @@ static void ieee80211_setup_sdata(struct ieee80211_sub_if_data *sdata,
 	case NL80211_IFTYPE_P2P_DEVICE:
 		sdata->vif.bss_conf.bssid = sdata->vif.addr;
 		break;
+	/* case NL80211_IFTYPE_NAN_DATA */
 		break;
 	case NL80211_IFTYPE_UNSPECIFIED:
 	case NL80211_IFTYPE_WDS:
