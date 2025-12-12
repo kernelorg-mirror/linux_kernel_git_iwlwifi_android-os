@@ -6,6 +6,7 @@
 
 #define IWL_PE_NVM_VERSION		0x0a1d
 
+/* TODO: set unii9_supported when the firmware will be ready */
 #define IWL_DEVICE_PE							\
 	.ht_params = {							\
 		.stbc = true,						\
@@ -17,7 +18,6 @@
 	.non_shared_ant = ANT_B,					\
 	.vht_mu_mimo_supported = true,					\
 	.uhb_supported = true,						\
-	.unii9_supported = true,					\
 	.eht_supported = true,						\
 	.uhr_supported = true,						\
 	.num_rbds = IWL_NUM_RBDS_EHT,					\
