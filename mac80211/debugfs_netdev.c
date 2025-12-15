@@ -8,6 +8,7 @@
 
 #include <linux/kernel.h>
 #include <linux/device.h>
+#include <linux/hex.h>
 #include <linux/if.h>
 #include <linux/if_ether.h>
 #include <linux/interrupt.h>
