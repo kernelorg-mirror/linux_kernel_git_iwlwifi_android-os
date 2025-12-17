@@ -192,8 +192,6 @@ bool wiphy_hrtimer_work_pending(struct wiphy *wiphy,
 
 #define IEEE80211_CHAN_S1G_NO_PRIMARY	BIT(27)
 
-#define WIPHY_NAN_FLAGS_USERSPACE_DE BIT(1)
-
 static inline enum ieee80211_ap_reg_power
 cfg80211_6ghz_power_type(u8 control, u32 client_flags)
 {
@@ -214,6 +212,8 @@ cfg80211_6ghz_power_type(u8 control, u32 client_flags)
 		return IEEE80211_REG_UNSET_AP;
 	}
 }
+
+#define WIPHY_NAN_FLAGS_USERSPACE_DE BIT(1)
 
 #define IEEE80211_CHAN_NO_UHR 0
 #define NL80211_RRF_NO_UHR 0
