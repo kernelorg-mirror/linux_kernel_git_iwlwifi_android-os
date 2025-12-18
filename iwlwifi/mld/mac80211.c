@@ -394,8 +394,8 @@ static void iwl_mac_hw_set_wiphy(struct iwl_mld *mld)
 			hw->wiphy->nan_supported_bands |=
 				BIT(NL80211_BAND_5GHZ);
 
-		hw->wiphy->nan_capa.op_mode = NAN_OP_MODE_PHY_MODE_MASK |
-					      NAN_OP_MODE_80P80MHZ |
+		hw->wiphy->nan_capa.op_mode = NAN_OP_MODE_PHY_MODE_VHT |
+					      NAN_OP_MODE_PHY_MODE_HE |
 					      NAN_OP_MODE_160MHZ;
 
 		/* Support 2 antenna's for Tx and Rx */
