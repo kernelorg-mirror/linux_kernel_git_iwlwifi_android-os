@@ -1334,6 +1334,8 @@ static struct txq_info *ieee80211_get_txq(struct ieee80211_local *local,
 
 		txq = sta->sta.txq[tid];
 	} else {
+		WARN_ON_ONCE(vif->type == NL80211_IFTYPE_NAN ||
+			     vif->type == NL80211_IFTYPE_NAN_DATA);
 		txq = vif->txq;
 	}
 
@@ -4431,6 +4433,121 @@ static int ieee80211_change_da(struct sk_buff *skb, struct sta_info *sta)
 	return 0;
 }
 
+/**
+ * ieee80211_pack_mcast_in_amsdu - pack multicast frame in unicast A-MSDUs
+ * @skb: the multicast frame to pack (will be freed on success)
+ * @dev: the net device
+ * @queue: output queue for the A-MSDU frames, for each peer.
+ *
+ * For NAN data path, multicast frames can be sent as unicast A-MSDUs
+ * to each peer. This function creates a unicast A-MSDU frame for each
+ * associated NAN peer station.
+ *
+ * The 802.11 header uses: addr1=peer, addr2=source, addr3=cluster_id
+ * The original multicast destination is preserved in the A-MSDU subframe.
+ *
+ * Return: 0 on success (skb is consumed), negative error code on failure
+ * (skb is not consumed, and queue list is empty).
+ */
+static int
+ieee80211_pack_mcast_in_amsdu(struct sk_buff *skb, struct net_device *dev,
+			       struct sk_buff_head *queue)
+{
+	struct ieee80211_sub_if_data *sdata = IEEE80211_DEV_TO_SUB_IF(dev);
+	struct ieee80211_local *local = sdata->local;
+	struct ieee80211_sub_if_data *nmi;
+	struct ethhdr *eth = (struct ethhdr *)skb->data;
+	struct sta_info *sta;
+	struct ieee80211_qos_hdr hdr = {};
+	__be16 len;
+
+	if (WARN_ON_ONCE(sdata->vif.type != NL80211_IFTYPE_NAN_DATA))
+		return -EINVAL;
+
+	guard(rcu)();
+
+	if (skb_is_gso(skb))
+		return -EOPNOTSUPP;
+
+	ieee80211_tx_skb_fixup(skb, 0);
+
+	nmi = rcu_dereference(sdata->u.nan_data.nmi);
+	if (WARN_ON_ONCE(!nmi))
+		return -EINVAL;
+
+	hdr.frame_control = cpu_to_le16(IEEE80211_FTYPE_DATA |
+					IEEE80211_STYPE_QOS_DATA);
+
+	/* addr1 will be set below for each station */
+	memcpy(hdr.addr2, eth->h_source, ETH_ALEN);
+	memcpy(hdr.addr3, nmi->u.nan.conf.cluster_id, ETH_ALEN);
+	hdr.qos_ctrl = cpu_to_le16(IEEE80211_QOS_CTL_A_MSDU_PRESENT);
+
+	len = htons(skb->len - sizeof(*eth) + sizeof(rfc1042_header) +
+		    sizeof(eth->h_proto));
+
+	list_for_each_entry_rcu(sta, &local->sta_list, list) {
+		struct sk_buff *cloned_skb;
+		struct ieee80211_tx_info *info;
+		void *data;
+
+		if (sdata != sta->sdata)
+			continue;
+		if (unlikely(ether_addr_equal(eth->h_source, sta->sta.addr)))
+			/* This is not supposed to happen */
+			continue;
+		if (!test_sta_flag(sta, WLAN_STA_AUTHORIZED))
+			continue;
+
+		cloned_skb = skb_realloc_headroom(skb, sizeof(hdr) +
+						       sizeof(rfc1042_header) +
+						       sizeof(len));
+		if (!cloned_skb)
+			continue;
+
+		/* need space for QoS header + rfc1042 + 2 bytes len */
+		data = skb_push(cloned_skb,
+				sizeof(hdr) + sizeof(rfc1042_header) +
+				sizeof(len));
+
+		/* update the address and push the header */
+		memcpy(hdr.addr1, sta->sta.addr, ETH_ALEN);
+		memcpy(data, &hdr, sizeof(hdr));
+		data += sizeof(hdr);
+
+		/*
+		 * Build the A-MSDU subframe header (DA SA len).
+		 * The ethernet header (DA SA ethertype) is now at
+		 * data + sizeof(rfc1042_header) + sizeof(len).
+		 * Use memmove since source and destination overlap.
+		 */
+		memmove(data, data + sizeof(rfc1042_header) + sizeof(len),
+			2 * ETH_ALEN);
+		data += 2 * ETH_ALEN;
+
+		/* set the subframe length */
+		memcpy(data, &len, sizeof(len));
+		data += sizeof(len);
+
+		/* place rfc1042 header */
+		memcpy(data, rfc1042_header, sizeof(rfc1042_header));
+
+		/* no need to handle padding with a single subframe */
+
+		skb_reset_mac_header(cloned_skb);
+
+		info = IEEE80211_SKB_CB(cloned_skb);
+		memset(info, 0, sizeof(*info));
+
+		info->control.flags |= IEEE80211_TX_CTRL_AMSDU;
+
+		__skb_queue_tail(queue, cloned_skb);
+	}
+
+	kfree_skb(skb);
+	return 0;
+}
+
 static bool ieee80211_multicast_to_unicast(struct sk_buff *skb,
 					   struct net_device *dev)
 {
@@ -4583,7 +4700,30 @@ netdev_tx_t ieee80211_subif_start_xmit(struct sk_buff *skb,
 		return NETDEV_TX_OK;
 	}
 
-	if (unlikely(ieee80211_multicast_to_unicast(skb, dev))) {
+	if (unlikely(sdata->vif.type == NL80211_IFTYPE_NAN_DATA)) {
+		struct sk_buff_head queue;
+
+		__skb_queue_head_init(&queue);
+		if (unlikely(ieee80211_pack_mcast_in_amsdu(skb, dev, &queue))) {
+			kfree_skb(skb);
+			return NETDEV_TX_OK;
+		}
+
+		guard(rcu)();
+		while ((skb = __skb_dequeue(&queue))) {
+			struct ieee80211_hdr *hdr = (void *)skb->data;
+			struct sta_info *sta;
+
+			sta = sta_info_get_bss(sdata, hdr->addr1);
+			if (WARN_ON_ONCE(!sta)) {
+				kfree_skb(skb);
+				continue;
+			}
+
+			dev_sw_netstats_tx_add(dev, 1, skb->len);
+			ieee80211_xmit(sdata, sta, skb);
+		}
+	} else if (unlikely(ieee80211_multicast_to_unicast(skb, dev))) {
 		struct sk_buff_head queue;
 
 		__skb_queue_head_init(&queue);
