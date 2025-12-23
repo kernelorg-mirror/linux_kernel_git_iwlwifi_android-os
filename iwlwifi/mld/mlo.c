@@ -1221,5 +1221,13 @@ void iwl_mld_stop_ignoring_tpt_updates(struct iwl_mld *mld)
 
 int iwl_mld_emlsr_check_nan_block(struct iwl_mld *mld, struct ieee80211_vif *vif)
 {
+	if (mld->nan_device_vif &&
+	    ieee80211_vif_nan_started(mld->nan_device_vif))
+		return iwl_mld_block_emlsr_sync(mld, vif,
+						IWL_MLD_EMLSR_BLOCKED_NAN,
+						iwl_mld_get_primary_link(vif));
+
+	iwl_mld_unblock_emlsr(mld, vif, IWL_MLD_EMLSR_BLOCKED_NAN);
+
 	return 0;
 }
