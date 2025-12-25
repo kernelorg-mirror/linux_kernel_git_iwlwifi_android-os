@@ -69,3 +69,4 @@ ieee80211_get_uhr_iftype_cap(const struct ieee80211_supported_band *sband,
 
 #define CFG80211_NAN_SCHED_NUM_TIME_SLOTS 32
 #define CFG80211_NAN_MAX_PEER_MAPS 2
+#define CFG80211_NAN_INVALID_MAP_ID 0xff
