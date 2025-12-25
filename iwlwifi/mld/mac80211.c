@@ -1273,6 +1273,8 @@ int iwl_mld_assign_vif_chanctx(struct ieee80211_hw *hw,
 
 	/* Now activate the link */
 	if (iwl_mld_can_activate_link(mld, vif, link)) {
+		iwl_mld_tlc_update_phy(mld, vif, link, ctx);
+
 		ret = iwl_mld_activate_link(mld, link);
 		if (ret)
 			goto err;
@@ -1322,6 +1324,8 @@ void iwl_mld_unassign_vif_chanctx(struct ieee80211_hw *hw,
 		iwl_mld_emlsr_check_non_bss_block(mld, -1);
 
 	iwl_mld_deactivate_link(mld, link);
+
+	iwl_mld_tlc_update_phy(mld, vif, link, NULL);
 
 	if (vif->type == NL80211_IFTYPE_MONITOR)
 		iwl_mld_remove_mon_sta(mld, vif, link);
