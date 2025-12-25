@@ -20,4 +20,8 @@ void iwl_mld_handle_tlc_notif(struct iwl_mld *mld,
 
 int iwl_mld_send_tlc_dhc(struct iwl_mld *mld, u8 sta_id, u32 type, u32 data);
 
+void iwl_mld_tlc_update_phy(struct iwl_mld *mld, struct ieee80211_vif *vif,
+			    int link_id,
+			    struct ieee80211_chanctx_conf *chan_ctx);
+
 #endif /* __iwl_mld_tlc_h__ */
