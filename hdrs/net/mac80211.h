@@ -877,8 +877,11 @@ struct ieee80211_bss_conf {
  *	is irrelevant for NAN, still store it for convenience - some functions
  *	require it as an argument.
  * @needed_rx_chains: number of RX chains needed for this NAN channel
- * @chanctx_conf: chanctx_conf assigned to this NAN channel. Will be %NULL
- *	if the channel is ULWed.
+ * @chanctx_conf: chanctx_conf assigned to this NAN channel.
+ *	If a local channel is being ULWed (because we needed this chanctx for
+ *	something else), the local NAN channel that used this chanctx,
+ *	will have this pointer set to %NULL.
+ *	A peer NAN channel should never have this pointer set to %NULL.
  * @channel_entry: the Channel Entry blob as defined in Wi-Fi Aware
  *	(TM) 4.0 specification Table 100 (Channel Entry format for the NAN
  *	Availability attribute).
