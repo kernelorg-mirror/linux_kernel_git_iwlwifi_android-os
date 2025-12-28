@@ -720,22 +720,24 @@ struct iwl_link_config_cmd {
  * @STATION_TYPE_MCAST: the station used for BCAST / MCAST in GO. Will be
  *	suspended / resumed at the right timing depending on the clients'
  *	power save state and the DTIM timing
- * @STATION_TYPE_AUX: aux sta. In the FW there is no need for a special type
- *	for the aux sta, so this type is only for driver - internal use.
  * @STATION_TYPE_NAN_PEER_NMI: NAN management peer station type. A station
  *	of this type can have any number of links (even none) set in the
  *	link_mask. (Supported since version 3.)
  * @STATION_TYPE_NAN_PEER_NDI: NAN data peer station type. A station
  *	of this type can have any number of links (even none) set in the
  *	link_mask. (Supported since version 3.)
+ * @STATION_TYPE_MAX: maximum number of FW station types
+ * @STATION_TYPE_AUX: aux sta. In the FW there is no need for a special type
+ *	for the aux sta, so this type is only for driver - internal use.
  */
 enum iwl_fw_sta_type {
 	STATION_TYPE_PEER,
 	STATION_TYPE_BCAST_MGMT,
 	STATION_TYPE_MCAST,
-	STATION_TYPE_AUX,
 	STATION_TYPE_NAN_PEER_NMI,
 	STATION_TYPE_NAN_PEER_NDI,
+	STATION_TYPE_MAX,
+	STATION_TYPE_AUX = STATION_TYPE_MAX /* this doesn't exist in FW */
 }; /* STATION_TYPE_E_VER_1, _VER_2 */
 
 /**
