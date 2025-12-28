@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * NAN mode implementation
- * Copyright(c) 2025 Intel Corporation
+ * Copyright(c) 2025-2026 Intel Corporation
  */
 #include <net/mac80211.h>
 
@@ -90,6 +90,82 @@ ieee80211_nan_use_chanctx(struct ieee80211_sub_if_data *sdata,
 }
 
 static void
+ieee80211_nan_update_peer_channels(struct ieee80211_sub_if_data *sdata,
+				   struct ieee80211_chanctx_conf *removed_conf)
+{
+	struct ieee80211_local *local = sdata->local;
+	struct sta_info *sta;
+
+	lockdep_assert_wiphy(local->hw.wiphy);
+
+	list_for_each_entry(sta, &local->sta_list, list) {
+		struct ieee80211_nan_peer_sched *peer_sched;
+		int write_idx = 0;
+		bool updated = false;
+
+		if (sta->sdata != sdata)
+			continue;
+
+		peer_sched = sta->sta.nan_sched;
+		if (!peer_sched)
+			continue;
+
+		/* NULL out map slots for channels being removed */
+		for (int i = 0; i < peer_sched->n_channels; i++) {
+			if (peer_sched->channels[i].chanctx_conf != removed_conf)
+				continue;
+
+			for (int m = 0; m < CFG80211_NAN_MAX_PEER_MAPS; m++) {
+				struct ieee80211_nan_peer_map *map =
+					&peer_sched->maps[m];
+
+				if (map->map_id == CFG80211_NAN_INVALID_MAP_ID)
+					continue;
+
+				for (int s = 0; s < ARRAY_SIZE(map->slots); s++)
+					if (map->slots[s] == &peer_sched->channels[i])
+						map->slots[s] = NULL;
+			}
+		}
+
+		/* Compact channels array, removing those with removed_conf */
+		for (int i = 0; i < peer_sched->n_channels; i++) {
+			if (peer_sched->channels[i].chanctx_conf == removed_conf) {
+				updated = true;
+				continue;
+			}
+
+			if (write_idx != i) {
+				/* Update map pointers before moving */
+				for (int m = 0; m < CFG80211_NAN_MAX_PEER_MAPS; m++) {
+					struct ieee80211_nan_peer_map *map =
+						&peer_sched->maps[m];
+
+					if (map->map_id == CFG80211_NAN_INVALID_MAP_ID)
+						continue;
+
+					for (int s = 0; s < ARRAY_SIZE(map->slots); s++)
+						if (map->slots[s] == &peer_sched->channels[i])
+							map->slots[s] = &peer_sched->channels[write_idx];
+				}
+
+				peer_sched->channels[write_idx] = peer_sched->channels[i];
+			}
+			write_idx++;
+		}
+
+		/* Clear any remaining entries at the end */
+		for (int i = write_idx; i < peer_sched->n_channels; i++)
+			memset(&peer_sched->channels[i], 0, sizeof(peer_sched->channels[i]));
+
+		peer_sched->n_channels = write_idx;
+
+		if (updated)
+			drv_nan_peer_sched_changed(local, sdata, sta);
+	}
+}
+
+static void
 ieee80211_nan_remove_channel(struct ieee80211_sub_if_data *sdata,
 			     struct ieee80211_nan_channel *nan_channel)
 {
@@ -109,6 +185,10 @@ ieee80211_nan_remove_channel(struct ieee80211_sub_if_data *sdata,
 			sdata->vif.cfg.nan_schedule[slot] = NULL;
 
 	conf = nan_channel->chanctx_conf;
+
+	/* If any peer nan schedule uses this chanctx, update them */
+	if (conf)
+		ieee80211_nan_update_peer_channels(sdata, conf);
 
 	memset(nan_channel, 0, sizeof(*nan_channel));
 
