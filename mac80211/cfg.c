@@ -372,9 +372,6 @@ static int ieee80211_nan_conf_copy(struct cfg80211_nan_conf *dst,
 		memcpy(&dst->band_cfgs, &src->band_cfgs,
 		       sizeof(dst->band_cfgs));
 
-		kfree(dst->cluster_id);
-		dst->cluster_id = NULL;
-
 		kfree(dst->extra_nan_attrs);
 		dst->extra_nan_attrs = NULL;
 		dst->extra_nan_attrs_len = 0;
@@ -383,12 +380,15 @@ static int ieee80211_nan_conf_copy(struct cfg80211_nan_conf *dst,
 		dst->vendor_elems = NULL;
 		dst->vendor_elems_len = 0;
 
-		if (src->cluster_id) {
+		if (src->cluster_id && !dst->cluster_id) {
 			dst->cluster_id = kmemdup(src->cluster_id, ETH_ALEN,
 						  GFP_KERNEL);
-			if (!dst->cluster_id)
-				goto no_mem;
+		} else if (!src->cluster_id && !dst->cluster_id) {
+			/* Set to 0 address to avoid checking for NULL whenever it is used */
+			dst->cluster_id = kzalloc(ETH_ALEN, GFP_KERNEL);
 		}
+		if (!dst->cluster_id)
+			goto no_mem;
 
 		if (src->extra_nan_attrs && src->extra_nan_attrs_len) {
 			dst->extra_nan_attrs = kmemdup(src->extra_nan_attrs,
@@ -4888,6 +4888,13 @@ void ieee80211_nan_func_match(struct ieee80211_vif *vif,
 	cfg80211_nan_match(ieee80211_vif_to_wdev(vif), match, gfp);
 }
 EXPORT_SYMBOL(ieee80211_nan_func_match);
+
+void ieee80211_nan_cluster_joined(struct ieee80211_vif *vif,
+				  const u8 *cluster_id, bool new_cluster,
+				  gfp_t gfp)
+{
+}
+EXPORT_SYMBOL(ieee80211_nan_cluster_joined);
 
 static int ieee80211_set_multicast_to_unicast(struct wiphy *wiphy,
 					      struct net_device *dev,

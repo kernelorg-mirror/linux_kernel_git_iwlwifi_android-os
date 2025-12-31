@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0 OR BSD-3-Clause
 /*
- * Copyright (C) 2025 Intel Corporation
+ * Copyright (C) 2025-2026 Intel Corporation
  */
 
 #include "mld.h"
@@ -219,8 +219,6 @@ void iwl_mld_handle_nan_cluster_notif(struct iwl_mld *mld,
 				      struct iwl_rx_packet *pkt)
 {
 	struct iwl_nan_cluster_notif *notif = (void *)pkt->data;
-	struct wireless_dev *wdev = mld->nan_device_vif ?
-		ieee80211_vif_to_wdev(mld->nan_device_vif) : NULL;
 	bool new_cluster = !!(notif->flags &
 			      IWL_NAN_CLUSTER_NOTIF_FLAG_NEW_CLUSTER);
 	u8 cluster_id[ETH_ALEN] = {
@@ -232,14 +230,16 @@ void iwl_mld_handle_nan_cluster_notif(struct iwl_mld *mld,
 		       "NAN: cluster event: cluster_id=%pM, flags=0x%x\n",
 		       cluster_id, notif->flags);
 
-	if (IWL_FW_CHECK(mld, !wdev, "NAN: cluster event without wdev\n"))
+	if (IWL_FW_CHECK(mld, !mld->nan_device_vif,
+			 "NAN: cluster event without NAN vif\n"))
 		return;
 
 	if (IWL_FW_CHECK(mld, !ieee80211_vif_nan_started(mld->nan_device_vif),
 			 "NAN: cluster event without NAN started\n"))
 		return;
 
-	cfg80211_nan_cluster_joined(wdev, cluster_id, new_cluster, GFP_KERNEL);
+	ieee80211_nan_cluster_joined(mld->nan_device_vif, cluster_id,
+				     new_cluster, GFP_KERNEL);
 }
 
 bool iwl_mld_cancel_nan_cluster_notif(struct iwl_mld *mld,
