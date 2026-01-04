@@ -1291,7 +1291,6 @@ int iwl_mld_update_link_stas(struct iwl_mld *mld,
 		struct ieee80211_link_sta *link_sta =
 			link_sta_dereference_protected(sta, link_id);
 		struct ieee80211_bss_conf *link;
-		struct ieee80211_chanctx_conf *chan_ctx;
 
 		if (WARN_ON(!link_sta))
 			return -EINVAL;
@@ -1306,14 +1305,9 @@ int iwl_mld_update_link_stas(struct iwl_mld *mld,
 
 		link = link_conf_dereference_protected(mld_sta->vif,
 						       link_sta->link_id);
-		if (WARN_ON(!link))
-			continue;
-
-		chan_ctx = rcu_dereference_wiphy(mld->wiphy,
-						 link->chanctx_conf);
 
 		iwl_mld_set_max_amsdu_len(mld, link_sta);
-		iwl_mld_config_tlc_link(mld, vif, chan_ctx, link_sta);
+		iwl_mld_config_tlc_link(mld, vif, link, link_sta);
 
 		sta_mask_added |= BIT(mld_link_sta->fw_id);
 	}
