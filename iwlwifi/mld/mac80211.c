@@ -1270,7 +1270,7 @@ int iwl_mld_assign_vif_chanctx(struct ieee80211_hw *hw,
 
 	/* Now activate the link */
 	if (iwl_mld_can_activate_link(mld, vif, link)) {
-		iwl_mld_tlc_update_phy(mld, vif, link->link_id, ctx);
+		iwl_mld_tlc_update_phy(mld, vif, link, ctx);
 
 		ret = iwl_mld_activate_link(mld, link);
 		if (ret)
@@ -1322,7 +1322,7 @@ void iwl_mld_unassign_vif_chanctx(struct ieee80211_hw *hw,
 
 	iwl_mld_deactivate_link(mld, link);
 
-	iwl_mld_tlc_update_phy(mld, vif, link->link_id, NULL);
+	iwl_mld_tlc_update_phy(mld, vif, link, NULL);
 
 	if (vif->type == NL80211_IFTYPE_MONITOR)
 		iwl_mld_remove_mon_sta(mld, vif, link);
@@ -2256,15 +2256,11 @@ static void iwl_mld_sta_rc_update(struct ieee80211_hw *hw,
 		       IEEE80211_RC_NSS_CHANGED)) {
 		struct ieee80211_bss_conf *link =
 			link_conf_dereference_check(vif, link_sta->link_id);
-		struct ieee80211_chanctx_conf *chan_ctx;
 
-		if (WARN_ON(!link || !link->chanreq.oper.chan))
+		if (WARN_ON(!link))
 			return;
 
-		chan_ctx = rcu_dereference_wiphy(mld->wiphy,
-						 link->chanctx_conf);
-
-		iwl_mld_config_tlc_link(mld, vif, chan_ctx, link_sta);
+		iwl_mld_config_tlc_link(mld, vif, link, link_sta);
 	}
 }
 
