@@ -2123,6 +2123,13 @@ static int sta_link_apply_parameters(struct ieee80211_local *local,
 	if (!link || !link_sta)
 		return -EINVAL;
 
+	/*
+	 * We should not have any changes in NDI station, its capabilities are
+	 * copied from the NMI sta
+	 */
+	if (WARN_ON(0))
+		return -EINVAL;
+
 	sband = ieee80211_get_link_sband(link);
 	if (!sband)
 		return -EINVAL;
