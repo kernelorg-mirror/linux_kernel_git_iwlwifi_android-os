@@ -4043,6 +4043,10 @@ int iwl_trans_pcie_copy_imr(struct iwl_trans *trans,
 static void get_crf_id(struct iwl_trans *iwl_trans,
 		       struct iwl_trans_info *info)
 {
+#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+	u32 pll_flow_fsm_dbg_ro;
+	u32 pll_lock_error;
+#endif
 	u32 sd_reg_ver_addr;
 	u32 hw_wfpm_id;
 	u32 val = 0;
@@ -4063,6 +4067,18 @@ static void get_crf_id(struct iwl_trans *iwl_trans,
 
 	/* Read cnv info */
 	info->hw_cnv_id = iwl_read_prph_no_grab(iwl_trans, CNVI_AUX_MISC_CHIP);
+
+#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+	pll_lock_error = iwl_read_prph_no_grab(iwl_trans,
+					       CNVR_SCU_REG_PLL_LOCK_ERROR);
+	IWL_INFO(iwl_trans, "CNVR_SCU_REG_PLL_LOCK_ERROR: 0x%08x\n",
+		 pll_lock_error);
+
+	pll_flow_fsm_dbg_ro = iwl_read_prph_no_grab(iwl_trans,
+						    CNVR_SCU_REG_TOP_PLL_FLOW_FSM_DBG_RO);
+	IWL_INFO(iwl_trans, "CNVR_SCU_REG_TOP_PLL_FLOW_FSM_DBG_RO: 0x%08x\n",
+		 pll_flow_fsm_dbg_ro);
+#endif
 
 	/* For BZ-W, take B step also when A step is indicated */
 	if (CSR_HW_REV_TYPE(info->hw_rev) == IWL_CFG_MAC_TYPE_BZ_W)
