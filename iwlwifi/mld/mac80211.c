@@ -1274,7 +1274,7 @@ int iwl_mld_assign_vif_chanctx(struct ieee80211_hw *hw,
 
 	/* Now activate the link */
 	if (iwl_mld_can_activate_link(mld, vif, link)) {
-		iwl_mld_tlc_update_phy(mld, vif, link, ctx);
+		iwl_mld_tlc_update_phy(mld, vif, link);
 
 		ret = iwl_mld_activate_link(mld, link);
 		if (ret)
@@ -1326,8 +1326,6 @@ void iwl_mld_unassign_vif_chanctx(struct ieee80211_hw *hw,
 
 	iwl_mld_deactivate_link(mld, link);
 
-	iwl_mld_tlc_update_phy(mld, vif, link, NULL);
-
 	if (vif->type == NL80211_IFTYPE_MONITOR)
 		iwl_mld_remove_mon_sta(mld, vif, link);
 
@@ -1341,6 +1339,8 @@ void iwl_mld_unassign_vif_chanctx(struct ieee80211_hw *hw,
 	}
 
 	RCU_INIT_POINTER(mld_link->chan_ctx, NULL);
+
+	iwl_mld_tlc_update_phy(mld, vif, link);
 
 	/* in the non-MLO case, remove/re-add the link to clean up FW state.
 	 * In MLO, it'll be done in drv_change_vif_link

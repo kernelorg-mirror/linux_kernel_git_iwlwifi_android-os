@@ -9,6 +9,7 @@
 #include "hcmd.h"
 #include "sta.h"
 #include "phy.h"
+#include "iface.h"
 
 #include "fw/api/rs.h"
 #include "fw/api/context.h"
@@ -646,6 +647,7 @@ void iwl_mld_config_tlc_link(struct iwl_mld *mld,
 			     struct ieee80211_link_sta *link_sta)
 {
 	struct iwl_mld_sta *mld_sta = iwl_mld_sta_from_mac80211(link_sta->sta);
+	struct iwl_mld_link *mld_link = iwl_mld_link_from_mac80211(link_conf);
 	struct ieee80211_chanctx_conf *chan_ctx;
 	struct ieee80211_supported_band *sband;
 	struct iwl_mld_tlc_sta_capa capa = {};
@@ -653,7 +655,10 @@ void iwl_mld_config_tlc_link(struct iwl_mld *mld,
 	enum nl80211_band band;
 	int fw_sta_id, i;
 
-	chan_ctx = rcu_dereference_wiphy(mld->wiphy, link_conf->chanctx_conf);
+	if (WARN_ON_ONCE(!mld_link))
+		return;
+
+	chan_ctx = rcu_dereference_wiphy(mld->wiphy, mld_link->chan_ctx);
 	if (WARN_ON_ONCE(!chan_ctx))
 		return;
 
@@ -695,13 +700,19 @@ void iwl_mld_config_tlc_link(struct iwl_mld *mld,
 }
 
 void iwl_mld_tlc_update_phy(struct iwl_mld *mld, struct ieee80211_vif *vif,
-			    struct ieee80211_bss_conf *link_conf,
-			    struct ieee80211_chanctx_conf *chan_ctx)
+			    struct ieee80211_bss_conf *link_conf)
 {
-	struct ieee80211_sta *sta;
+	struct iwl_mld_link *mld_link = iwl_mld_link_from_mac80211(link_conf);
+	struct ieee80211_chanctx_conf *chan_ctx;
 	int link_id = link_conf->link_id;
+	struct ieee80211_sta *sta;
 
 	lockdep_assert_wiphy(mld->wiphy);
+
+	if (WARN_ON(!mld_link))
+		return;
+
+	chan_ctx = rcu_dereference_wiphy(mld->wiphy, mld_link->chan_ctx);
 
 	for_each_station(sta, mld->hw) {
 		struct iwl_mld_sta *mld_sta = iwl_mld_sta_from_mac80211(sta);
