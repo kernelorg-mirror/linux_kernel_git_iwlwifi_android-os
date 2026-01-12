@@ -68,37 +68,16 @@ static const struct ieee80211_iface_limit iwl_mld_limits_ap[] = {
 };
 
 static const struct ieee80211_iface_limit iwl_mld_limits_nan[] = {
-	{
-		.max = 2,
-		.types = BIT(NL80211_IFTYPE_STATION),
-	},
-	{
-		.max = 1,
-		.types = BIT(NL80211_IFTYPE_NAN),
-	},
 };
 
 static const struct ieee80211_iface_combination
 iwl_mld_iface_combinations[] = {
 	{
-		.num_different_channels = 2,
-		.max_interfaces = 4,
-		.limits = iwl_mld_limits,
-		.n_limits = ARRAY_SIZE(iwl_mld_limits),
+		.num_different_channels = 2, .max_interfaces = 4, .limits = iwl_mld_limits, .n_limits = ARRAY_SIZE(iwl_mld_limits),
 	},
 	{
-		.num_different_channels = 1,
-		.max_interfaces = 4,
-		.limits = iwl_mld_limits_ap,
-		.n_limits = ARRAY_SIZE(iwl_mld_limits_ap),
-	},
-	/* NAN combination follow, this excludes P2P and AP */
-	{
-		.num_different_channels = 2,
-		.max_interfaces = 3,
-		.limits = iwl_mld_limits_nan,
-		.n_limits = ARRAY_SIZE(iwl_mld_limits_nan),
-	},
+		.num_different_channels = 1, .max_interfaces = 4, .limits = iwl_mld_limits_ap, .n_limits = ARRAY_SIZE(iwl_mld_limits_ap),
+				},
 };
 
 static const u8 ext_capa_base[IWL_MLD_STA_EXT_CAPA_SIZE] = {
@@ -372,7 +351,7 @@ static void iwl_mac_hw_set_wiphy(struct iwl_mld *mld)
 	wiphy->hw_timestamp_max_peers = 1;
 
 	wiphy->iface_combinations = iwl_mld_iface_combinations;
-		/* Do not include NAN combinations */
+		/* Do not include NAN combination */
 	wiphy->n_iface_combinations =
 		ARRAY_SIZE(iwl_mld_iface_combinations) - 1;
 
