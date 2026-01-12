@@ -384,9 +384,16 @@ static void iwl_mac_hw_set_wiphy(struct iwl_mld *mld)
 	wiphy->hw_timestamp_max_peers = 1;
 
 	wiphy->iface_combinations = iwl_mld_iface_combinations;
+
+	if (iwl_mld_nan_supported(mld)) {
+		wiphy->n_iface_combinations =
+			ARRAY_SIZE(iwl_mld_iface_combinations);
+		iwl_mld_hw_set_nan(mld);
+	} else {
 		/* Do not include NAN combinations */
-	wiphy->n_iface_combinations =
-		ARRAY_SIZE(iwl_mld_iface_combinations) - 2;
+		wiphy->n_iface_combinations =
+			ARRAY_SIZE(iwl_mld_iface_combinations) - 2;
+	}
 
 	wiphy_ext_feature_set(wiphy, NL80211_EXT_FEATURE_VHT_IBSS);
 	wiphy_ext_feature_set(wiphy, NL80211_EXT_FEATURE_DFS_CONCURRENT);
