@@ -7,6 +7,7 @@
 #include "iface.h"
 #include "link.h"
 #include "mlo.h"
+#include "tlc.h"
 #include "fw/api/mac-cfg.h"
 #include "fw/api/mac.h"
 #include "fw/api/rs.h"
@@ -17,8 +18,16 @@
 
 bool iwl_mld_nan_supported(struct iwl_mld *mld)
 {
-	return fw_has_capa(&mld->fw->ucode_capa,
-			   IWL_UCODE_TLV_CAPA_NAN_SYNC_SUPPORT);
+	const struct iwl_fw *fw = mld->fw;
+
+	if (fw_has_capa(&fw->ucode_capa, IWL_UCODE_TLV_CAPA_NAN_SYNC_SUPPORT) &&
+	    iwl_fw_lookup_cmd_ver(fw, WIDE_ID(MAC_CONF_GROUP, NAN_SCHEDULE_CMD), 0) >= 1 &&
+	    iwl_fw_lookup_cmd_ver(fw, WIDE_ID(MAC_CONF_GROUP, NAN_PEER_CMD), 0) >= 1 &&
+	    iwl_fw_lookup_cmd_ver(fw, WIDE_ID(MAC_CONF_GROUP, STA_CONFIG_CMD), 0) >= 3 &&
+	    iwl_fw_lookup_cmd_ver(fw, WIDE_ID(MAC_CONF_GROUP, MAC_CONFIG_CMD), 0) >= 4 &&
+	    iwl_fw_lookup_cmd_ver(fw, WIDE_ID(DATA_PATH_GROUP, TLC_MNG_CONFIG_CMD), 0) >= 6)
+		return true;
+	return false;
 }
 
 static int iwl_mld_nan_send_config_cmd(struct iwl_mld *mld,
@@ -53,6 +62,11 @@ static int iwl_mld_nan_config(struct iwl_mld *mld,
 	u8 *data __free(kfree) = NULL;
 
 	lockdep_assert_wiphy(mld->wiphy);
+
+	printk(KERN_ALERT "MIRI nan_config: action=%s vif=%pM\n",
+	       action == FW_CTXT_ACTION_ADD ? "ADD" :
+	       action == FW_CTXT_ACTION_MODIFY ? "MODIFY" : "REMOVE",
+	       vif->addr);
 
 	ether_addr_copy(cmd.nmi_addr, vif->addr);
 	cmd.master_pref = conf->master_pref;
@@ -398,6 +412,10 @@ iwl_mld_nan_link_prep_cmd(struct iwl_mld *mld,
 	ether_addr_copy(cmd->local_link_addr, vif->addr);
 
 	cmd->modify_mask = cpu_to_le32(modify_flags);
+	printk(KERN_ALERT "MIRI NAN: link_prep_cmd: phy_id=%u, link_id=%u, mac_id=%u, active=%u, addr=%pM, modify_mask=0x%x\n",
+		le32_to_cpu(cmd->phy_id), le32_to_cpu(cmd->link_id),
+		le32_to_cpu(cmd->mac_id), le32_to_cpu(cmd->active),
+		cmd->local_link_addr, le32_to_cpu(cmd->modify_mask));
 }
 
 static struct iwl_mld_nan_link *
@@ -412,6 +430,7 @@ iwl_mld_nan_link_add(struct iwl_mld *mld,
 
 	lockdep_assert_wiphy(mld->wiphy);
 
+	printk(KERN_ALERT "MIRI NAN: link_add: entering, chanctx=%p\n", chanctx);
 	ret = iwl_mld_allocate_link_fw_id(mld, &fw_id, ERR_PTR(-ENODEV));
 	/*
 	 * We should always have enough links. The schedule contains up to 3,
@@ -432,13 +451,16 @@ iwl_mld_nan_link_add(struct iwl_mld *mld,
 				  LINK_CONTEXT_MODIFY_RATES_INFO |
 				  LINK_CONTEXT_MODIFY_QOS_PARAMS);
 
+	printk(KERN_ALERT "MIRI NAN: link_add: sending LINK_CONFIG ADD cmd, fw_id=%u\n", fw_id);
 	ret = iwl_mld_send_link_cmd(mld, &cmd, FW_CTXT_ACTION_ADD);
 	if (ret) {
+		printk(KERN_ALERT "MIRI NAN: link_add: LINK_CONFIG ADD failed, ret=%d\n", ret);
 		nan_link->fw_id = FW_CTXT_ID_INVALID;
 		nan_link->chanctx = NULL;
 		goto err;
 	}
 
+	printk(KERN_ALERT "MIRI NAN: link_add: SUCCESS, fw_id=%u\n", fw_id);
 	return nan_link;
 err:
 	RCU_INIT_POINTER(mld->fw_id_to_bss_conf[fw_id], NULL);
@@ -452,8 +474,14 @@ static int iwl_mld_nan_link_set_active(struct iwl_mld *mld,
 	struct iwl_link_config_cmd cmd;
 	int ret;
 
-	if (nan_link->active == active)
+	printk(KERN_ALERT "MIRI NAN: link_set_active: fw_id=%u, active=%d->%d\n",
+	       nan_link->fw_id, nan_link->active, active);
+
+	if (nan_link->active == active) {
+		printk(KERN_ALERT "MIRI NAN: link_set_active: already %s, skipping\n",
+		       active ? "active" : "inactive");
 		return 0;
+	}
 
 	nan_link->active = active;
 
@@ -463,9 +491,12 @@ static int iwl_mld_nan_link_set_active(struct iwl_mld *mld,
 	ret = iwl_mld_send_link_cmd(mld, &cmd, FW_CTXT_ACTION_MODIFY);
 	if (ret) {
 		nan_link->active = !nan_link->active;
+		printk(KERN_ALERT "MIRI NAN: link_set_active: FAILED, ret=%d\n", ret);
 		return ret;
 	}
 
+	printk(KERN_ALERT "MIRI NAN: link_set_active: SUCCESS, now %s\n",
+	       active ? "active" : "inactive");
 	return 0;
 }
 
@@ -478,6 +509,10 @@ static void iwl_mld_nan_link_remove(struct iwl_mld *mld,
 		.phy_id = cpu_to_le32(FW_CTXT_ID_INVALID),
 	};
 
+	printk(KERN_ALERT "MIRI NAN: link_remove: fw_id=%u, active=%d\n",
+	       link_id, nan_link->active);
+
+	printk(KERN_ALERT "MIRI NAN: link_remove: sending LINK_CONFIG REMOVE cmd\n");
 	iwl_mld_send_link_cmd(mld, &cmd, FW_CTXT_ACTION_REMOVE);
 
 	RCU_INIT_POINTER(mld->fw_id_to_bss_conf[link_id], NULL);
@@ -488,10 +523,16 @@ static void iwl_mld_nan_link_remove(struct iwl_mld *mld,
 static bool iwl_mld_nan_have_links(struct iwl_mld_vif *mld_vif)
 {
 	struct iwl_mld_nan_link *nan_link;
+	int count = 0;
 
-	for_each_mld_nan_valid_link(mld_vif, nan_link)
+	for_each_mld_nan_valid_link(mld_vif, nan_link) {
+		printk(KERN_ALERT "MIRI NAN: have_links: found valid link fw_id=%u\n",
+		       nan_link->fw_id);
+		count++;
 		return true;
+	}
 
+	printk(KERN_ALERT "MIRI NAN: have_links: no valid links found\n");
 	return false;
 }
 
@@ -525,18 +566,31 @@ void iwl_mld_nan_vif_cfg_changed(struct iwl_mld *mld,
 	bool empty_schedule = true;
 	int ret, i;
 
-	if (!(changes & BSS_CHANGED_NAN_LOCAL_SCHED))
+	printk(KERN_ALERT "MIRI NAN: vif_cfg_changed: changes=0x%llx\n", changes);
+
+	if (!(changes & BSS_CHANGED_NAN_LOCAL_SCHED)) {
+		printk(KERN_ALERT "MIRI NAN: vif_cfg_changed: not a schedule change, skipping\n");
 		return;
+	}
+
+	printk(KERN_ALERT "MIRI NAN: vif_cfg_changed: prev_empty=%d, checking channels...\n",
+	       previously_empty_schedule);
 
 	for (i = 0; i < ARRAY_SIZE(vif->cfg.nan_channels); i++) {
 		if (!vif->cfg.nan_channels[i].chanreq.oper.chan)
 			continue;
+		printk(KERN_ALERT "MIRI NAN: vif_cfg_changed: found channel[%d] with chan, chanctx=%p\n",
+		       i, vif->cfg.nan_channels[i].chanctx_conf);
 		empty_schedule = false;
 		break;
 	}
 
+	printk(KERN_ALERT "MIRI NAN: vif_cfg_changed: empty_schedule=%d, mac_added=%d\n",
+	       empty_schedule, mld_vif->nan.mac_added);
+
 	/* add the MAC if needed (before adding links) */
 	if (!empty_schedule && previously_empty_schedule) {
+		printk(KERN_ALERT "MIRI NAN: vif_cfg_changed: ADDING NAN MAC (first schedule)\n");
 		WARN_ON(mld_vif->nan.mac_added);
 		ret = iwl_mld_add_nan_vif(mld, vif);
 
@@ -544,9 +598,11 @@ void iwl_mld_nan_vif_cfg_changed(struct iwl_mld *mld,
 			IWL_ERR(mld, "NAN: failed to add MAC (%d)\n", ret);
 			return;
 		}
+		printk(KERN_ALERT "MIRI NAN: vif_cfg_changed: NAN MAC added successfully\n");
 	}
 
 	if (!mld_vif->nan.mac_added) {
+		printk(KERN_ALERT "MIRI NAN: vif_cfg_changed: mac not added, returning early\n");
 		/* nothing to do */
 		return;
 	}
@@ -571,18 +627,37 @@ void iwl_mld_nan_vif_cfg_changed(struct iwl_mld *mld,
 			link_used[link->fw_id] = true;
 	}
 
+	printk(KERN_ALERT "MIRI NAN: vif_cfg_changed: deactivating unused links\n");
+	for_each_mld_nan_valid_link(mld_vif, nan_link) {
+		if (link_used[nan_link->fw_id]) {
+			printk(KERN_ALERT "MIRI NAN: vif_cfg_changed: link fw_id=%u is used, keeping\n", nan_link->fw_id);
+			continue;
+		}
+	}
+
 	/* add/reassign links for new channels */
+	printk(KERN_ALERT "MIRI NAN: vif_cfg_changed: add/reassign links for new channels\n");
 	for (i = 0; i < ARRAY_SIZE(vif->cfg.nan_channels); i++) {
 		struct ieee80211_chanctx_conf *chanctx;
 
+		printk(KERN_ALERT "MIRI NAN: vif_cfg_changed: channel[%d] links[i]=%p\n", i, links[i]);
+
 		/* already have an existing active link */
-		if (links[i])
+		if (links[i]) {
+			printk(KERN_ALERT "MIRI NAN: vif_cfg_changed: channel[%d] already has link, skip\n", i);
 			continue;
+		}
 
 		chanctx = vif->cfg.nan_channels[i].chanctx_conf;
 		/* ULW or unused slot */
-		if (!chanctx)
+		if (!chanctx) {
+			printk(KERN_ALERT "MIRI NAN: vif_cfg_changed: channel[%d] no chanctx, skip\n", i);
 			continue;
+		}
+
+		printk(KERN_ALERT "MIRI NAN: vif_cfg_changed: channel[%d] has chanctx=%p, looking for link\n", i, chanctx);
+
+		printk(KERN_ALERT "MIRI NAN: vif_cfg_changed: calling link_add for channel[%d]\n", i);
 
 		/*
 		 * if this fails we still update the schedule, but
@@ -590,13 +665,20 @@ void iwl_mld_nan_vif_cfg_changed(struct iwl_mld *mld,
 		 */
 		links[i] = iwl_mld_nan_link_add(mld, mld_vif, chanctx);
 
+		printk(KERN_ALERT "MIRI NAN: vif_cfg_changed: link_add returned %p\n", links[i]);
+
 		/* we have a link, activate it */
 		if (links[i]) {
 			added_links = true;
+			printk(KERN_ALERT "MIRI NAN: vif_cfg_changed: activating link fw_id=%u\n", links[i]->fw_id);
 			link_used[links[i]->fw_id] = true;
 			iwl_mld_nan_link_set_active(mld, links[i], true);
+		} else {
+			printk(KERN_ALERT "MIRI NAN: vif_cfg_changed: no link for channel[%d], will ULW\n", i);
 		}
 	}
+
+	printk(KERN_ALERT "MIRI NAN: vif_cfg_changed: filling schedule command\n");
 
 	/* fill the command */
 	for (i = 0; i < ARRAY_SIZE(vif->cfg.nan_channels); i++) {
@@ -609,6 +691,8 @@ void iwl_mld_nan_vif_cfg_changed(struct iwl_mld *mld,
 		       vif->cfg.nan_channels[i].channel_entry, 6);
 		cmd.channels[i].link_id =
 			links[i] ? links[i]->fw_id : FW_CTXT_ID_INVALID;
+		printk(KERN_ALERT "MIRI NAN: vif_cfg_changed: cmd.channels[%d].link_id=%u\n",
+		       i, cmd.channels[i].link_id);
 	}
 
 	for (i = 0; i < CFG80211_NAN_SCHED_NUM_TIME_SLOTS; i++) {
@@ -623,8 +707,22 @@ void iwl_mld_nan_vif_cfg_changed(struct iwl_mld *mld,
 			continue;
 
 		cmd.channels[chan_idx].availability_map |= cpu_to_le32(BIT(i));
+		printk(KERN_ALERT "MIRI NAN: vif_cfg_changed: slot[%d] -> chan_idx=%d, avail_map now=0x%x\n",
+		       i, chan_idx, le32_to_cpu(cmd.channels[chan_idx].availability_map));
 	}
 
+	printk(KERN_ALERT "MIRI NAN: vif_cfg_changed: sending NAN_SCHEDULE_CMD\n");
+	for (i = 0; i < ARRAY_SIZE(cmd.channels); i++) {
+		printk(KERN_ALERT "MIRI NAN: NAN_SCHEDULE_CMD: channel[%d]: link_id=%u, avail_map=0x%08x, chan_entry=%02x:%02x:%02x:%02x:%02x:%02x\n",
+		       i, cmd.channels[i].link_id,
+		       le32_to_cpu(cmd.channels[i].availability_map),
+		       cmd.channels[i].channel_entry[0],
+		       cmd.channels[i].channel_entry[1],
+		       cmd.channels[i].channel_entry[2],
+		       cmd.channels[i].channel_entry[3],
+		       cmd.channels[i].channel_entry[4],
+		       cmd.channels[i].channel_entry[5]);
+	}
 	ret = iwl_mld_send_cmd_pdu(mld,
 				   WIDE_ID(MAC_CONF_GROUP, NAN_SCHEDULE_CMD),
 				   &cmd);
@@ -634,6 +732,7 @@ void iwl_mld_nan_vif_cfg_changed(struct iwl_mld *mld,
 	/* prepare stations for links we'll remove */
 	for_each_mld_nan_valid_link(mld_vif, nan_link) {
 		if (!link_used[nan_link->fw_id]) {
+			printk(KERN_ALERT "MIRI NAN: vif_cfg_changed: deactivating link fw_id=%u\n", nan_link->fw_id);
 			iwl_mld_nan_link_set_active(mld, nan_link, false);
 			remove_link_ids |= BIT(nan_link->fw_id);
 			/* mark unused for STA updates */
@@ -650,15 +749,22 @@ void iwl_mld_nan_vif_cfg_changed(struct iwl_mld *mld,
 			if (mld_sta->sta_type == STATION_TYPE_NAN_PEER_NMI ||
 			    mld_sta->sta_type == STATION_TYPE_NAN_PEER_NDI)
 				iwl_mld_add_modify_sta_cmd(mld, &sta->deflink);
+
+			if (mld_sta->sta_type == STATION_TYPE_NAN_PEER_NDI)
+				iwl_mld_config_tlc(mld, vif, sta);
 		}
 	}
 
+	printk(KERN_ALERT "MIRI NAN: vif_cfg_changed: deleting unused links\n");
 	/* delete unused links */
-	for_each_set_bit(i, &remove_link_ids, ARRAY_SIZE(mld_vif->nan.links))
+	for_each_set_bit(i, &remove_link_ids, ARRAY_SIZE(mld_vif->nan.links)) {
+		printk(KERN_ALERT "MIRI NAN: vif_cfg_changed: deleting link fw_id=%u\n", nan_link->fw_id);
 		iwl_mld_nan_link_remove(mld, &mld_vif->nan.links[i], i);
+	}
 
 	/* remove MAC if needed */
 	if (!previously_empty_schedule && empty_schedule) {
+		printk(KERN_ALERT "MIRI NAN: vif_cfg_changed: REMOVING NAN MAC (schedule now empty)\n");
 		/* must have been added */
 		WARN_ON_ONCE(!mld_vif->nan.mac_added);
 
@@ -666,6 +772,9 @@ void iwl_mld_nan_vif_cfg_changed(struct iwl_mld *mld,
 		if (!WARN_ON_ONCE(mld->fw_status.in_hw_restart) &&
 		                  !iwl_mld_error_before_recovery(mld))
 			iwl_mld_rm_vif(mld, vif);
+	} else {
+		printk(KERN_ALERT "MIRI NAN: vif_cfg_changed: no MAC removal needed (prev_empty=%d, empty=%d)\n",
+		       previously_empty_schedule, empty_schedule);
 	}
 }
 
@@ -677,6 +786,7 @@ int iwl_mld_mac802111_nan_peer_sched_changed(struct ieee80211_hw *hw,
 	struct iwl_mld_vif *mld_vif = iwl_mld_vif_from_mac80211(mld_sta->vif);
 	struct iwl_mld *mld = IWL_MAC80211_GET_MLD(hw);
 	struct iwl_mld_nan_link *nan_link;
+	int ret;
 	struct iwl_nan_peer_cmd cmd = {
 		.nmi_sta_id = mld_sta->deflink.fw_id,
 		.sequence_id = sched->seq_id,
@@ -750,5 +860,16 @@ int iwl_mld_mac802111_nan_peer_sched_changed(struct ieee80211_hw *hw,
 		}
 	}
 
-	return iwl_mld_send_cmd(mld, &hcmd);
+	printk(KERN_ALERT "MIRI NAN PEER_SCHED: sta=%pM nmi_sta_id=%u seq_id=%u committed_dw=0x%x\n",
+	       sta->addr, cmd.nmi_sta_id, cmd.sequence_id,
+	       le16_to_cpu(cmd.committed_dw_info));
+	for (int i = 0; i < NUM_PHY_CTX; i++) {
+		printk(KERN_ALERT "MIRI NAN PEER_SCHED: per_phy[%d]: link_id=%u map_id=%u avail_map=0x%08x\n",
+		       i, cmd.per_phy[i].link_id, cmd.per_phy[i].map_id,
+		       le32_to_cpu(cmd.per_phy[i].availability_map));
+	}
+
+	ret = iwl_mld_send_cmd(mld, &hcmd);
+	printk(KERN_ALERT "MIRI NAN PEER_SCHED: send_cmd returned %d\n", ret);
+	return ret;
 }

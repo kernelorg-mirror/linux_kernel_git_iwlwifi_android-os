@@ -155,7 +155,7 @@ bool ieee80211_ht_cap_ie_to_sta_ht_cap(struct ieee80211_sub_if_data *sdata,
 		goto apply;
 
 	/* NDI station are using the capabilities from the NMI station */
-	if (WARN_ON_ONCE(0))
+	if (WARN_ON_ONCE(sdata->vif.type == NL80211_IFTYPE_NAN_DATA))
 		return 0;
 
 	ht_cap.ht_supported = true;
@@ -261,7 +261,7 @@ bool ieee80211_ht_cap_ie_to_sta_ht_cap(struct ieee80211_sub_if_data *sdata,
 	if (WARN_ON(!link_conf)) {
 		width = NL80211_CHAN_WIDTH_20_NOHT;
 	} else if (sdata->vif.type == NL80211_IFTYPE_NAN ||
-		   0) {
+		   sdata->vif.type == NL80211_IFTYPE_NAN_DATA) {
 		/* In NAN, link_sta->bandwidth is invalid since NAN operates on
 		 * multiple channels. Just take the maximum.
 		 */
@@ -298,7 +298,7 @@ bool ieee80211_ht_cap_ie_to_sta_ht_cap(struct ieee80211_sub_if_data *sdata,
 	if (sta->sdata->vif.type == NL80211_IFTYPE_AP ||
 	    sta->sdata->vif.type == NL80211_IFTYPE_AP_VLAN ||
 	    sta->sdata->vif.type == NL80211_IFTYPE_NAN ||
-	    0) {
+	    sta->sdata->vif.type == NL80211_IFTYPE_NAN_DATA) {
 		enum ieee80211_smps_mode smps_mode;
 
 		switch ((ht_cap.cap & IEEE80211_HT_CAP_SM_PS)

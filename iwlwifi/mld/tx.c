@@ -76,7 +76,7 @@ static int iwl_mld_allocate_txq(struct iwl_mld *mld, struct ieee80211_txq *txq)
 
 	switch (txq->vif->type) {
 	case NL80211_IFTYPE_AP:		/* STA might go to PS */
-	/* case NL80211_IFTYPE_NAN_DATA */	/* peer might ULW/break schedule */
+	case NL80211_IFTYPE_NAN_DATA:	/* peer might ULW/break schedule */
 		watchdog_timeout = IWL_WATCHDOG_DISABLED;
 		break;
 	default:
@@ -350,6 +350,9 @@ u8 iwl_mld_get_lowest_rate(struct iwl_mld *mld,
 
 	iwl_mld_get_basic_rates_and_band(mld, vif, info, &basic_rates, &band);
 
+	if (vif->type == NL80211_IFTYPE_NAN_DATA)
+		return IWL_FIRST_OFDM_RATE;
+
 	if (band >= NUM_NL80211_BANDS) {
 		WARN_ON(vif->type != NL80211_IFTYPE_NAN);
 		return IWL_FIRST_OFDM_RATE;
@@ -563,6 +566,7 @@ iwl_mld_fill_tx_cmd(struct iwl_mld *mld, struct sk_buff *skb,
 	 * - frames that are sent to an NMI sta, which is only used for management.
 	 */
 	if (unlikely(!sta || mld_sta->vif->type == NL80211_IFTYPE_NAN ||
+		     mld_sta->vif->type == NL80211_IFTYPE_NAN_DATA ||
 		     info->control.flags & IEEE80211_TX_CTRL_RATE_INJECT)) {
 		flags |= IWL_TX_FLAGS_CMD_RATE;
 		rate_n_flags = iwl_mld_get_tx_rate_n_flags(mld, info, sta,

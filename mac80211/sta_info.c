@@ -1299,6 +1299,7 @@ static int __must_check __sta_info_destroy_part1(struct sta_info *sta)
 		}
 
 		/* Free and clear the local peer schedule */
+		ieee80211_nan_free_peer_sched(sta->sta.nan_sched);
 		sta->sta.nan_sched = NULL;
 	}
 
@@ -1441,8 +1442,8 @@ static int _sta_info_move_state(struct sta_info *sta,
 		} else if (sta->sta_state == IEEE80211_STA_AUTHORIZED) {
 			ieee80211_vif_dec_num_mcast(sta->sdata);
 			clear_bit(WLAN_STA_AUTHORIZED, &sta->_flags);
-			if (0)
-				{}
+			if (sta->sdata->vif.type == NL80211_IFTYPE_NAN_DATA)
+				ieee80211_nan_update_ndi_carrier(sta->sdata);
 
 			/*
 			 * If we have encryption offload, flush (station) queues
@@ -1471,8 +1472,8 @@ static int _sta_info_move_state(struct sta_info *sta,
 			set_bit(WLAN_STA_AUTHORIZED, &sta->_flags);
 			ieee80211_check_fast_xmit(sta);
 			ieee80211_check_fast_rx(sta);
-			if (0)
-				{}
+			if (sta->sdata->vif.type == NL80211_IFTYPE_NAN_DATA)
+				ieee80211_nan_update_ndi_carrier(sta->sdata);
 		}
 		if (sta->sdata->vif.type == NL80211_IFTYPE_AP_VLAN ||
 		    sta->sdata->vif.type == NL80211_IFTYPE_AP)

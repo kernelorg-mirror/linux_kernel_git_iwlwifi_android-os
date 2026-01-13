@@ -218,6 +218,7 @@ static void iwl_mld_mac_cmd_fill_common(struct iwl_mld *mld,
 		cpu_to_le32(iwl_mld_mac80211_iftype_to_fw(vif));
 
 	memcpy(cmd->local_mld_addr, vif->addr, ETH_ALEN);
+	printk(KERN_ALERT "MIRI---- %s (%d) local_addr = %pM\n", __func__, __LINE__, cmd->local_mld_addr);
 
 	if (iwlwifi_mod_params.disable_11ax)
 		return;
@@ -390,21 +391,24 @@ static int iwl_mld_fill_mac_cmd_nan(struct iwl_mld *mld,
 	 * In hw restart, the iteration below will find the ndi_being_added.
 	 */
 	if (ndi_being_added && !mld->fw_status.in_hw_restart) {
+		printk(KERN_ALERT "MIRI NAN: fill_mac_cmd_nan: adding ndi_being_added=%pM\n", ndi_being_added->addr);
 		memcpy(cmd->nan.ndi_addrs[idx].addr, ndi_being_added->addr, ETH_ALEN);
 		idx++;
 	}
 
 	for_each_active_interface(iter, mld->hw) {
-		if (1)
+		if (iter->type != NL80211_IFTYPE_NAN_DATA)
 			continue;
 
 		if (WARN_ON_ONCE(idx >= ARRAY_SIZE(cmd->nan.ndi_addrs)))
 			return -EINVAL;
 
+		printk(KERN_ALERT "MIRI NAN: fill_mac_cmd_nan: adding iter NDI=%pM\n", iter->addr);
 		memcpy(cmd->nan.ndi_addrs[idx].addr, iter->addr, ETH_ALEN);
 		idx++;
 	}
 
+	printk(KERN_ALERT "MIRI NAN: fill_mac_cmd_nan: total ndi_addrs_count=%u\n", idx);
 	cmd->nan.ndi_addrs_count = cpu_to_le32(idx);
 
 	return 0;
@@ -432,13 +436,19 @@ __iwl_mld_mac_fw_action(struct iwl_mld *mld, struct ieee80211_vif *vif,
 	lockdep_assert_wiphy(mld->wiphy);
 
 	/* NAN_DATA interface type is not known to FW */
-	if (WARN_ON(0))
+	if (WARN_ON(vif->type == NL80211_IFTYPE_NAN_DATA))
 		return -EINVAL;
 
 	/* ndi_being_added is only relevant for NAN and when adding a NAN_DATA interface */
 	if (WARN_ON(ndi_being_added &&
 		    (vif->type != NL80211_IFTYPE_NAN || action != FW_CTXT_ACTION_MODIFY)))
 		return -EINVAL;
+
+	if (vif->type == NL80211_IFTYPE_NAN)
+		printk(KERN_ALERT "MIRI NAN: mac_fw_action: action=%s, vif=%pM\n",
+		       action == FW_CTXT_ACTION_ADD ? "ADD" :
+		       action == FW_CTXT_ACTION_MODIFY ? "MODIFY" : "REMOVE",
+		       vif->addr);
 
 	if (action == FW_CTXT_ACTION_REMOVE)
 		return iwl_mld_rm_mac_from_fw(mld, vif);
@@ -565,8 +575,10 @@ int iwl_mld_add_vif(struct iwl_mld *mld, struct ieee80211_vif *vif)
 		return 0;
 
 	/* NAN_DATA interface type is not known to FW, but we need to update NAN MAC */
-	if (0)
+	if (vif->type == NL80211_IFTYPE_NAN_DATA) {
+		printk(KERN_ALERT "MIRI---- %s (%d)\n", __func__, __LINE__);
 		return iwl_mld_update_nan_mac(mld, vif);
+	}
 
 	ret = iwl_mld_allocate_vif_fw_id(mld, &mld_vif->fw_id, vif);
 	if (ret)
@@ -585,6 +597,8 @@ int iwl_mld_add_nan_vif(struct iwl_mld *mld, struct ieee80211_vif *vif)
 	int ret;
 
 	lockdep_assert_wiphy(mld->wiphy);
+
+	printk(KERN_ALERT "MIRI---- NAN: add_nan_vif: adding NAN MAC vif=%pM\n", vif->addr);
 
 	if (WARN_ON(vif->type != NL80211_IFTYPE_NAN))
 		return -EINVAL;
@@ -610,10 +624,14 @@ void iwl_mld_rm_vif(struct iwl_mld *mld, struct ieee80211_vif *vif)
 
 	lockdep_assert_wiphy(mld->wiphy);
 
-	if (0) {
+	if (vif->type == NL80211_IFTYPE_NAN_DATA) {
+		printk(KERN_ALERT "MIRI NAN: rm_vif called for NAN_DATA vif=%pM\n", vif->addr);
 		iwl_mld_update_nan_mac(mld, NULL);
 		return;
 	}
+
+	if (vif->type == NL80211_IFTYPE_NAN)
+		printk(KERN_ALERT "MIRI NAN: rm_vif: REMOVING NAN MAC vif=%pM (schedule empty)\n", vif->addr);
 
 	if (!iwl_mld_vif_fw_id_valid(mld_vif))
 		return;
@@ -622,8 +640,10 @@ void iwl_mld_rm_vif(struct iwl_mld *mld, struct ieee80211_vif *vif)
 
 	RCU_INIT_POINTER(mld->fw_id_to_vif[mld_vif->fw_id], NULL);
 
-	if (vif->type == NL80211_IFTYPE_NAN)
+	if (vif->type == NL80211_IFTYPE_NAN) {
+		printk(KERN_ALERT "MIRI NAN: rm_vif: NAN MAC removed successfully\n");
 		mld_vif->nan.mac_added = false;
+	}
 
 	iwl_mld_cancel_notifications_of_object(mld, IWL_MLD_OBJECT_TYPE_VIF,
 					       mld_vif->fw_id);

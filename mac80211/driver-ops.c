@@ -148,6 +148,8 @@ int drv_sta_state(struct ieee80211_local *local,
 
 	trace_drv_sta_state(local, sdata, &sta->sta, old_state, new_state);
 	if (local->ops->sta_state) {
+		printk(KERN_ALERT "MIRI---- %s (%d) iftype=%d sta=%pM %d->%d\n",
+		       __func__, __LINE__, sdata->vif.type, sta->sta.addr, old_state, new_state);
 		ret = local->ops->sta_state(&local->hw, &sdata->vif, &sta->sta,
 					    old_state, new_state);
 	} else if (old_state == IEEE80211_STA_AUTH &&
