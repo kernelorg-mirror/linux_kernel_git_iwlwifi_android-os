@@ -408,6 +408,9 @@ static int iwl_mld_send_sta_cmd(struct iwl_mld *mld,
 	int len = sizeof(*cmd);
 	int ret;
 
+	printk(KERN_ALERT "MIRI NAN STA_CONFIG_CMD: cmd_ver=%d, station_type=%d, link_mask=0x%x\n",
+	       cmd_ver, le32_to_cpu(cmd->station_type), le32_to_cpu(cmd->link_mask));
+
 	if (cmd_ver < 2) {
 		IWL_ERR(mld, "Unsupported STA_CONFIG_CMD version %d\n",
 			cmd_ver);
@@ -491,6 +494,9 @@ int iwl_mld_add_modify_sta_cmd(struct iwl_mld *mld,
 	cmd.sta_id = cpu_to_le32(fw_id);
 	cmd.link_mask = cpu_to_le32(link_mask);
 	cmd.station_type = cpu_to_le32(mld_sta->sta_type);
+
+	printk(KERN_ALERT "MIRI NAN STA: sta_id=%d link_mask=0x%x sta_type=%d\n",
+	       fw_id, link_mask, mld_sta->sta_type);
 
 	memcpy(&cmd.peer_mld_address, sta->addr, ETH_ALEN);
 	memcpy(&cmd.peer_link_address, link_sta->addr, ETH_ALEN);
@@ -644,6 +650,8 @@ static int iwl_mld_rm_sta_from_fw(struct iwl_mld *mld, u8 fw_sta_id)
 		.sta_id = cpu_to_le32(fw_sta_id),
 	};
 	int ret;
+
+	printk(KERN_ALERT "MIRI NAN: rm_sta_from_fw: sta_id=%d\n", fw_sta_id);
 
 	ret = iwl_mld_send_cmd_pdu(mld,
 				   WIDE_ID(MAC_CONF_GROUP, STA_REMOVE_CMD),
@@ -812,11 +820,13 @@ int iwl_mld_add_sta(struct iwl_mld *mld, struct ieee80211_sta *sta,
 	int link_id;
 	int ret;
 
+	printk(KERN_ALERT "MIRI NAN ADD_STA: vif->type=%d\n", vif->type);
+
 	switch (vif->type) {
 	case NL80211_IFTYPE_NAN:
 		type = STATION_TYPE_NAN_PEER_NMI;
 		break;
-	/* case NL80211_IFTYPE_NAN_DATA */
+	case NL80211_IFTYPE_NAN_DATA:
 		type = STATION_TYPE_NAN_PEER_NDI;
 		break;
 	default:
@@ -889,6 +899,9 @@ void iwl_mld_remove_sta(struct iwl_mld *mld, struct ieee80211_sta *sta)
 	u8 link_id;
 
 	lockdep_assert_wiphy(mld->wiphy);
+
+	printk(KERN_ALERT "MIRI NAN: remove_sta called, sta=%pM sta_type=%d vif_type=%d\n",
+	       sta->addr, mld_sta->sta_type, vif->type);
 
 	/* Tell the HW to flush the queues */
 	iwl_mld_flush_sta_txqs(mld, sta);

@@ -69,12 +69,16 @@ static const struct ieee80211_iface_limit iwl_mld_limits_ap[] = {
 
 static const struct ieee80211_iface_limit iwl_mld_limits_nan[] = {
 	{
-		.max = 2,
+		.max = 1,
 		.types = BIT(NL80211_IFTYPE_STATION),
 	},
 	{
 		.max = 1,
 		.types = BIT(NL80211_IFTYPE_NAN),
+	},
+	{
+		.max = 2,
+		.types = BIT(NL80211_IFTYPE_NAN_DATA),
 	},
 };
 
@@ -94,8 +98,8 @@ iwl_mld_iface_combinations[] = {
 	},
 	/* NAN combination follow, this excludes P2P and AP */
 	{
-		.num_different_channels = 2,
-		.max_interfaces = 3,
+		.num_different_channels = 3,
+		.max_interfaces = 4,
 		.limits = iwl_mld_limits_nan,
 		.n_limits = ARRAY_SIZE(iwl_mld_limits_nan),
 	},
@@ -310,6 +314,41 @@ static void iwl_mac_hw_set_flags(struct iwl_mld *mld)
 	ieee80211_hw_set(hw, TDLS_WIDER_BW);
 }
 
+static void iwl_mld_hw_set_nan(struct iwl_mld *mld)
+{
+	struct ieee80211_hw *hw = mld->hw;
+
+	hw->wiphy->interface_modes |= BIT(NL80211_IFTYPE_NAN);
+	hw->wiphy->interface_modes |= BIT(NL80211_IFTYPE_NAN_DATA);
+
+	wiphy_ext_feature_set(hw->wiphy, NL80211_EXT_FEATURE_SECURE_NAN);
+
+	hw->wiphy->nan_supported_bands = BIT(NL80211_BAND_2GHZ);
+	if (mld->nvm_data->bands[NL80211_BAND_5GHZ].n_channels)
+		hw->wiphy->nan_supported_bands |=
+			BIT(NL80211_BAND_5GHZ);
+
+	hw->wiphy->nan_capa.flags = WIPHY_NAN_FLAGS_CONFIGURABLE_SYNC |
+				    WIPHY_NAN_FLAGS_USERSPACE_DE;
+
+	hw->wiphy->nan_capa.op_mode = NAN_OP_MODE_PHY_MODE_VHT |
+				      NAN_OP_MODE_PHY_MODE_HE |
+				      NAN_OP_MODE_160MHZ;
+
+	/* Support 2 antennas for Tx and Rx */
+	hw->wiphy->nan_capa.n_antennas = 0x22;
+
+	/* Maximal channel switch time is 4 msec */
+	hw->wiphy->nan_capa.max_channel_switch_time = 4;
+	hw->wiphy->nan_capa.dev_capabilities =
+		NAN_DEV_CAPA_EXT_KEY_ID_SUPPORTED |
+		NAN_DEV_CAPA_NDPE_SUPPORTED;
+
+	hw->wiphy->nan_capa.phy.ht = mld->nvm_data->nan_phy_capa.ht;
+	hw->wiphy->nan_capa.phy.vht = mld->nvm_data->nan_phy_capa.vht;
+	hw->wiphy->nan_capa.phy.he = mld->nvm_data->nan_phy_capa.he;
+}
+
 static void iwl_mac_hw_set_wiphy(struct iwl_mld *mld)
 {
 	struct ieee80211_hw *hw = mld->hw;
@@ -379,7 +418,7 @@ static void iwl_mac_hw_set_wiphy(struct iwl_mld *mld)
 			ARRAY_SIZE(iwl_mld_iface_combinations);
 		iwl_mld_hw_set_nan(mld);
 	} else {
-		/* Do not include NAN combinations */
+		/* Do not include NAN combination */
 		wiphy->n_iface_combinations =
 			ARRAY_SIZE(iwl_mld_iface_combinations) - 1;
 	}
@@ -766,7 +805,7 @@ int iwl_mld_mac80211_add_interface(struct ieee80211_hw *hw,
 	if (ret)
 		return ret;
 
-	if (0)
+	if (vif->type == NL80211_IFTYPE_NAN_DATA)
 		return 0;
 
 	/*
@@ -837,7 +876,7 @@ void iwl_mld_mac80211_remove_interface(struct ieee80211_hw *hw,
 
 	if (vif->type == NL80211_IFTYPE_NAN)
 		mld->nan_device_vif = NULL;
-	else if (1)
+	else if (vif->type != NL80211_IFTYPE_NAN_DATA)
 		iwl_mld_remove_link(mld, &vif->bss_conf);
 
 #ifdef CPTCFG_IWLWIFI_DEBUGFS
@@ -1480,7 +1519,7 @@ iwl_mld_mac80211_link_info_changed(struct ieee80211_hw *hw,
 			iwl_mld_update_mu_groups(mld, link_conf);
 		break;
 	case NL80211_IFTYPE_NAN:
-	/* case NL80211_IFTYPE_NAN_DATA */
+	case NL80211_IFTYPE_NAN_DATA:
 		/* NAN has no links */
 		break;
 	default:
@@ -1758,7 +1797,7 @@ iwl_mld_mac80211_conf_tx(struct ieee80211_hw *hw,
 
 	lockdep_assert_wiphy(mld->wiphy);
 
-	if (vif->type == NL80211_IFTYPE_NAN || 0)
+	if (vif->type == NL80211_IFTYPE_NAN || vif->type == NL80211_IFTYPE_NAN_DATA)
 		return 0;
 
 	link = iwl_mld_link_dereference_check(mld_vif, link_id);
@@ -1934,6 +1973,7 @@ static int iwl_mld_move_sta_state_up(struct iwl_mld *mld,
 		 * If we're the AP, we'll just assume mandatory rates at
 		 * this point, but we know nothing about the STA anyway.
 		 */
+		printk(KERN_ALERT "MIRI---- %s (%d)\n", __func__, __LINE__);
 		iwl_mld_config_tlc(mld, vif, sta);
 
 		return ret;
@@ -1957,6 +1997,7 @@ static int iwl_mld_move_sta_state_up(struct iwl_mld *mld,
 			iwl_mld_mac_fw_action(mld, vif, FW_CTXT_ACTION_MODIFY);
 		}
 
+		printk(KERN_ALERT "MIRI---- %s (%d)\n", __func__, __LINE__);
 		/* Now the link_sta's capabilities are set, update the FW */
 		iwl_mld_config_tlc(mld, vif, sta);
 
@@ -2058,6 +2099,7 @@ static int iwl_mld_move_sta_state_down(struct iwl_mld *mld,
 				iwl_mld_mac_fw_action(mld, vif,
 						      FW_CTXT_ACTION_MODIFY);
 		}
+		printk(KERN_ALERT "MIRI---- %s (%d)\n", __func__, __LINE__);
 	} else if (old_state == IEEE80211_STA_AUTH &&
 		   new_state == IEEE80211_STA_NONE) {
 		/* nothing */
@@ -2085,6 +2127,7 @@ static int iwl_mld_move_sta_state_down(struct iwl_mld *mld,
 			iwl_mld_mac_fw_action(mld, vif, FW_CTXT_ACTION_MODIFY);
 		}
 	} else {
+		printk(KERN_ALERT "MIRI---- %s (%d)\n", __func__, __LINE__);
 		return -EINVAL;
 	}
 	return 0;

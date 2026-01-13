@@ -434,6 +434,18 @@ iwl_mld_fill_supp_rates(struct iwl_mld *mld,
 	cmd->non_ht_rates = cpu_to_le16(capa->non_ht_rates);
 	cmd->mode = IWL_TLC_MNG_MODE_NON_HT;
 
+	printk(KERN_ALERT "MIRI---- %s: HT cap present=%d, ht_supported=%d\n",
+	       __func__, !!capa->ht_cap,
+	       capa->ht_cap ? capa->ht_cap->ht_supported : 0);
+	printk(KERN_ALERT "MIRI---- %s: VHT cap present=%d, vht_supported=%d\n",
+	       __func__, !!capa->vht_cap,
+	       capa->vht_cap ? capa->vht_cap->vht_supported : 0);
+	printk(KERN_ALERT "MIRI---- %s: HE cap present=%d, has_he=%d, own_he_cap=%d\n",
+	       __func__, !!capa->he_cap,
+	       capa->he_cap ? capa->he_cap->has_he : 0,
+	       !!capa->own_he_cap);
+
+
 	if (capa->uhr_cap && capa->uhr_cap->has_uhr && capa->own_uhr_cap) {
 		cmd->mode = IWL_TLC_MNG_MODE_UHR;
 		/*
@@ -454,12 +466,15 @@ iwl_mld_fill_supp_rates(struct iwl_mld *mld,
 		cmd->mode = IWL_TLC_MNG_MODE_EHT;
 		iwl_mld_fill_eht_rates(vif, capa, cmd);
 	} else if (capa->he_cap && capa->he_cap->has_he && capa->own_he_cap) {
+		printk(KERN_ALERT "MIRI---- %s (%d)\n", __func__, __LINE__);
 		cmd->mode = IWL_TLC_MNG_MODE_HE;
 		iwl_mld_fill_he_rates(capa, cmd);
 	} else if (capa->vht_cap && capa->vht_cap->vht_supported) {
+		printk(KERN_ALERT "MIRI---- %s (%d)\n", __func__, __LINE__);
 		cmd->mode = IWL_TLC_MNG_MODE_VHT;
 			iwl_mld_fill_vht_rates(capa, cmd);
 	} else if (capa->ht_cap && capa->ht_cap->ht_supported) {
+		printk(KERN_ALERT "MIRI---- %s (%d)\n", __func__, __LINE__);
 		cmd->mode = IWL_TLC_MNG_MODE_HT;
 		cmd->ht_rates[IWL_TLC_NSS_1][IWL_TLC_MCS_PER_BW_80] =
 			cpu_to_le32(capa->ht_cap->mcs.rx_mask[0]);
@@ -472,6 +487,7 @@ iwl_mld_fill_supp_rates(struct iwl_mld *mld,
 			cmd->ht_rates[IWL_TLC_NSS_2][IWL_TLC_MCS_PER_BW_80] =
 				cpu_to_le32(capa->ht_cap->mcs.rx_mask[1]);
 	}
+	printk(KERN_ALERT "MIRI---- %s (%d)\n", __func__, __LINE__);
 #ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
 	if (mld->trans->dbg_cfg.tx_siso_80bw_like_160bw) {
 		/* if AP disables mimo on 160 MHz,
@@ -547,7 +563,7 @@ static int iwl_mld_convert_tlc_cmd_to_v4(struct iwl_tlc_config_cmd *cmd,
 static void iwl_mld_send_tlc_cmd(struct iwl_mld *mld,
 				 struct ieee80211_vif *vif,
 				 struct iwl_mld_sta *mld_sta,
-				 int fw_sta_id, int phy_id,
+				 int fw_sta_mask, int phy_id,
 				 struct iwl_mld_tlc_sta_capa *capa)
 {
 	struct iwl_tlc_config_cmd cmd = {
@@ -568,10 +584,7 @@ static void iwl_mld_send_tlc_cmd(struct iwl_mld *mld,
 	u8 cmd_size;
 	int ret;
 
-	if (fw_sta_id < 0)
-		return;
-
-	cmd.sta_mask = cpu_to_le32(BIT(fw_sta_id));
+	cmd.sta_mask = cpu_to_le32(fw_sta_mask);
 	cmd.phy_id = cpu_to_le32(phy_id);
 
 #ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
@@ -604,10 +617,11 @@ static void iwl_mld_send_tlc_cmd(struct iwl_mld *mld,
 		return;
 	}
 
-	IWL_DEBUG_RATE(mld,
-		       "TLC CONFIG CMD, sta_mask=0x%x, max_ch_width=%d, mode=%d, phy_id=%d\n",
-		       le32_to_cpu(cmd.sta_mask), cmd.max_ch_width, cmd.mode,
-		       le32_to_cpu(cmd.phy_id));
+	printk(KERN_ALERT "MIRI: TLC CONFIG CMD: fw_sta_mask=0x%x, phy_id=%d, max_ch_width=%d, mode=%d, chains=0x%x, flags=0x%x, non_ht_rates=0x%x, vif_type=%d\n",
+	       le32_to_cpu(cmd.sta_mask), le32_to_cpu(cmd.phy_id),
+	       cmd.max_ch_width, cmd.mode, cmd.chains,
+	       le16_to_cpu(cmd.flags), le16_to_cpu(cmd.non_ht_rates),
+	       vif->type);
 
 	/* Send async since this can be called within a RCU-read section */
 	ret = iwl_mld_send_cmd_with_flags_pdu(mld, cmd_id, CMD_ASYNC, cmd_ptr,
@@ -641,25 +655,28 @@ int iwl_mld_send_tlc_dhc(struct iwl_mld *mld, u8 sta_id, u32 type, u32 data)
 	return ret;
 }
 
-void iwl_mld_config_tlc_link(struct iwl_mld *mld,
-			     struct ieee80211_vif *vif,
-			     struct ieee80211_bss_conf *link_conf,
-			     struct ieee80211_link_sta *link_sta)
+static void _iwl_mld_config_tlc_link(struct iwl_mld *mld,
+				     struct ieee80211_vif *vif,
+				     struct ieee80211_chanctx_conf *chan_ctx,
+				     u32 fw_sta_mask,
+				     struct ieee80211_link_sta *link_sta,
+				     struct iwl_mld_tlc_sta_capa *capa)
 {
 	struct iwl_mld_sta *mld_sta = iwl_mld_sta_from_mac80211(link_sta->sta);
-	struct iwl_mld_link *mld_link = iwl_mld_link_from_mac80211(link_conf);
-	struct ieee80211_chanctx_conf *chan_ctx;
 	struct ieee80211_supported_band *sband;
-	struct iwl_mld_tlc_sta_capa capa = {};
 	unsigned long rates_bitmap;
 	enum nl80211_band band;
-	int fw_sta_id, i;
+	int i;
 
-	if (WARN_ON_ONCE(!mld_link))
-		return;
+	/*
+	 * Note: Due to NAN, the chan_ctx here might not be the same as the
+	 * vif->links[link_sta->link_id] one (which is NULL in NAN), so some
+	 * care is needed in this function (and the 'capa' exists to make it
+	 * less error-prone, the other functions need not worry about it.)
+	 */
 
-	chan_ctx = rcu_dereference_wiphy(mld->wiphy, mld_link->chan_ctx);
-	if (WARN_ON_ONCE(!chan_ctx))
+
+	if (WARN_ON(!chan_ctx))
 		return;
 
 	band = chan_ctx->def.chan->band;
@@ -677,25 +694,30 @@ void iwl_mld_config_tlc_link(struct iwl_mld *mld,
 	/* non HT rates */
 	rates_bitmap = link_sta->supp_rates[sband->band];
 	for_each_set_bit(i, &rates_bitmap, BITS_PER_LONG)
-		capa.non_ht_rates |= BIT(sband->bitrates[i].hw_value);
+		capa->non_ht_rates |= BIT(sband->bitrates[i].hw_value);
 
-	capa.rx_nss = link_sta->rx_nss;
-	capa.smps_mode = link_sta->smps_mode;
-	capa.bandwidth = link_sta->bandwidth;
-	capa.max_amsdu_len = link_sta->agg.max_amsdu_len;
-	capa.ht_cap = &link_sta->ht_cap;
-	capa.vht_cap = &link_sta->vht_cap;
-	capa.he_cap = &link_sta->he_cap;
-	capa.eht_cap = &link_sta->eht_cap;
-	capa.uhr_cap = &link_sta->uhr_cap;
-	capa.own_he_cap = ieee80211_get_he_iftype_cap_vif(sband, vif);
-	capa.own_eht_cap = ieee80211_get_eht_iftype_cap_vif(sband, vif);
-	capa.own_uhr_cap = ieee80211_get_uhr_iftype_cap_vif(sband, vif);
+	capa->max_amsdu_len = link_sta->agg.max_amsdu_len;
+	capa->ht_cap = &link_sta->ht_cap;
+	capa->vht_cap = &link_sta->vht_cap;
+	capa->he_cap = &link_sta->he_cap;
+	capa->eht_cap = &link_sta->eht_cap;
+	capa->uhr_cap = &link_sta->uhr_cap;
 
-	fw_sta_id = iwl_mld_fw_sta_id_from_link_sta(mld, link_sta);
-	iwl_mld_send_tlc_cmd(mld, vif, mld_sta, fw_sta_id,
+	if (vif->type == NL80211_IFTYPE_NAN ||
+	    vif->type == NL80211_IFTYPE_NAN_DATA) {
+		printk(KERN_ALERT "MIRI---- %s: NMI/NDI sta %pM caps: "
+		       "HT=%d VHT=%d HE=%d EHT=%d UHR=%d\n",
+		       __func__, link_sta->sta->addr,
+		       link_sta->ht_cap.ht_supported,
+		       link_sta->vht_cap.vht_supported,
+		       link_sta->he_cap.has_he,
+		       link_sta->eht_cap.has_eht,
+		       false/* no UHR */);
+	}
+
+	iwl_mld_send_tlc_cmd(mld, vif, mld_sta, fw_sta_mask,
 			     iwl_mld_phy_from_mac80211(chan_ctx)->fw_id,
-			     &capa);
+			     capa);
 
 }
 
@@ -742,6 +764,129 @@ void iwl_mld_tlc_update_phy(struct iwl_mld *mld, struct ieee80211_vif *vif,
 	}
 }
 
+void iwl_mld_config_tlc_link(struct iwl_mld *mld,
+			     struct ieee80211_vif *vif,
+			     struct ieee80211_bss_conf *link_conf,
+			     struct ieee80211_link_sta *link_sta)
+{
+	struct iwl_mld_vif *nan_mld_vif;
+	struct ieee80211_nan_peer_sched *sched;
+	struct ieee80211_sta *nmi, *iter;
+	u32 fw_sta_mask;
+	int fw_sta_id = iwl_mld_fw_sta_id_from_link_sta(mld, link_sta);
+
+	if (vif->type == NL80211_IFTYPE_NAN ||
+	    vif->type == NL80211_IFTYPE_NAN_DATA)
+		return;
+
+	if (fw_sta_id < 0)
+		return;
+
+	if (vif->type == NL80211_IFTYPE_NAN)
+		return;
+
+	if (vif->type != NL80211_IFTYPE_NAN_DATA) {
+		struct iwl_mld_link *mld_link = iwl_mld_link_from_mac80211(link_conf);
+		struct ieee80211_chanctx_conf *chan_ctx;
+		struct ieee80211_supported_band *sband;
+		struct iwl_mld_tlc_sta_capa capa = {};
+		enum nl80211_band band;
+
+		if (WARN_ON_ONCE(!mld_link))
+			return;
+
+		chan_ctx = rcu_dereference_wiphy(mld->wiphy,
+						 mld_link->chan_ctx);
+		if (WARN_ON_ONCE(!chan_ctx))
+			return;
+
+		band = chan_ctx->def.chan->band;
+		sband = mld->hw->wiphy->bands[band];
+
+		capa.smps_mode = link_sta->smps_mode;
+		capa.rx_nss = link_sta->rx_nss;
+		capa.bandwidth = link_sta->bandwidth;
+		capa.own_he_cap = ieee80211_get_he_iftype_cap_vif(sband, vif);
+		capa.own_eht_cap = ieee80211_get_eht_iftype_cap_vif(sband, vif);
+		capa.own_uhr_cap = ieee80211_get_uhr_iftype_cap_vif(sband, vif);
+
+		_iwl_mld_config_tlc_link(mld, vif, chan_ctx, BIT(fw_sta_id),
+					 link_sta, &capa);
+		return;
+	}
+
+	nmi = wiphy_dereference(mld->wiphy, link_sta->sta->nmi);
+	if (WARN_ON(!nmi))
+		return;
+
+	sched = nmi->nan_sched;
+
+	/* This sta might not be in the list yet as it is just getting added */
+	fw_sta_mask = BIT(fw_sta_id);
+
+	printk(KERN_ALERT "MIRI---- NAN_DATA TLC config for sta %pM, initial fw_sta_mask=0x%x\n",
+	       link_sta->sta->addr, fw_sta_mask);
+
+	for_each_station(iter, mld->hw) {
+		struct iwl_mld_sta *mld_sta = iwl_mld_sta_from_mac80211(iter);
+		struct ieee80211_sta *iter_nmi;
+
+		printk(KERN_ALERT "MIRI---- checking station %pM for same NMI\n",
+		       iter->addr);
+		iter_nmi = wiphy_dereference(mld->wiphy, iter->nmi);
+
+		if (iter_nmi == nmi) {
+			printk(KERN_ALERT "MIRI---- station %pM shares NMI, adding fw_id=%d to mask\n",
+			       iter->addr, mld_sta->deflink.fw_id);
+			fw_sta_mask |= BIT(mld_sta->deflink.fw_id);
+		}
+	}
+
+	if (WARN_ON(!mld->nan_device_vif))
+		return;
+
+	nan_mld_vif = iwl_mld_vif_from_mac80211(mld->nan_device_vif);
+	/* for NAN, iterate all the NAN links and ignore the link passed in */
+	for (int i = 0; i < ARRAY_SIZE(nan_mld_vif->nan.links); i++) {
+		struct ieee80211_chanctx_conf *chan_ctx;
+		struct iwl_mld_tlc_sta_capa capa = {};
+
+		printk(KERN_ALERT "MIRI---- processing NAN link[%d]\n", i);
+		chan_ctx = nan_mld_vif->nan.links[i].chanctx;
+		if (!chan_ctx)
+			continue;
+		printk(KERN_ALERT "MIRI---- NAN link[%d] has chanctx, configuring TLC\n", i);
+		capa.smps_mode = IEEE80211_SMPS_OFF; /* always off */
+
+		/* Note these are irrelevant if there's no schedule */
+		capa.rx_nss = 2; /* maximum we support */
+		capa.bandwidth = IEEE80211_STA_RX_BW_MAX;
+
+		for (int j = 0; j < (sched ? sched->n_channels : 0); j++) {
+			enum ieee80211_sta_rx_bandwidth rx_bw;
+			enum nl80211_chan_width width;
+			int chains;
+
+			printk(KERN_ALERT "MIRI---- checking sched channel[%d] against link chanctx\n", j);
+			if (sched->channels[j].chanctx_conf != chan_ctx)
+				continue;
+			width = sched->channels[j].chanreq.oper.width;
+			printk(KERN_ALERT "MIRI---- sched channel[%d] matches, width=%d\n", j, width);
+			rx_bw = ieee80211_chan_width_to_rx_bw(width);
+			capa.bandwidth = min(capa.bandwidth, rx_bw);
+
+			chains = sched->channels[j].needed_rx_chains;
+			capa.rx_nss = min(capa.rx_nss, chains);
+		}
+
+		capa.own_he_cap = &mld->wiphy->nan_capa.phy.he;
+		/* no EHT/UHR for NAN */
+
+		_iwl_mld_config_tlc_link(mld, vif, chan_ctx, fw_sta_mask,
+					 link_sta, &capa);
+	}
+}
+
 void iwl_mld_config_tlc(struct iwl_mld *mld, struct ieee80211_vif *vif,
 			struct ieee80211_sta *sta)
 {
@@ -750,6 +895,7 @@ void iwl_mld_config_tlc(struct iwl_mld *mld, struct ieee80211_vif *vif,
 
 	lockdep_assert_wiphy(mld->wiphy);
 
+	/* Note: for NAN this is only the mac80211-level deflink */
 	for_each_vif_active_link(vif, link, link_id) {
 		struct ieee80211_link_sta *link_sta =
 			link_sta_dereference_check(sta, link_id);

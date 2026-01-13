@@ -121,25 +121,42 @@ u16 ieee80211_select_queue_80211(struct ieee80211_sub_if_data *sdata,
 	struct ieee80211_local *local = sdata->local;
 	struct ieee80211_tx_info *info = IEEE80211_SKB_CB(skb);
 	u8 *p;
+	u16 ret;
 
 	/* Ensure hash is set prior to potential SW encryption */
 	skb_get_hash(skb);
 
 	if ((info->control.flags & IEEE80211_TX_CTRL_DONT_REORDER) ||
-	    local->hw.queues < IEEE80211_NUM_ACS)
+	    local->hw.queues < IEEE80211_NUM_ACS) {
+		if (sdata->vif.type == NL80211_IFTYPE_NAN)
+			pr_info("select_queue_80211: iftype=%d DONT_REORDER or queues<%d, ret=0\n",
+				sdata->vif.type, IEEE80211_NUM_ACS);
 		return 0;
+	}
 
 	if (!ieee80211_is_data(hdr->frame_control)) {
 		skb->priority = 7;
-		return ieee802_1d_to_ac[skb->priority];
+		ret = ieee802_1d_to_ac[skb->priority];
+		if (sdata->vif.type == NL80211_IFTYPE_NAN)
+			pr_info("select_queue_80211: iftype=%d not data, priority=7, ac=%d\n",
+				sdata->vif.type, ret);
+		return ret;
 	}
 	if (!ieee80211_is_data_qos(hdr->frame_control)) {
 		skb->priority = 0;
-		return ieee802_1d_to_ac[skb->priority];
+		ret = ieee802_1d_to_ac[skb->priority];
+		if (sdata->vif.type == NL80211_IFTYPE_NAN)
+			pr_info("select_queue_80211: iftype=%d not data_qos, priority=0, ac=%d\n",
+				sdata->vif.type, ret);
+		return ret;
 	}
 
 	p = ieee80211_get_qos_ctl(hdr);
 	skb->priority = *p & IEEE80211_QOS_CTL_TAG1D_MASK;
+
+	if (sdata->vif.type == NL80211_IFTYPE_NAN)
+		pr_info("select_queue_80211: iftype=%d data_qos, qos_ctl=0x%x, priority=%d\n",
+			sdata->vif.type, *p, skb->priority);
 
 	return ieee80211_downgrade_queue(sdata, NULL, skb);
 }
@@ -150,6 +167,7 @@ u16 ieee80211_select_queue(struct ieee80211_sub_if_data *sdata,
 	const struct ethhdr *eth = (void *)skb->data;
 	struct mac80211_qos_map *qos_map;
 	bool qos;
+	u16 ret;
 
 	/* Ensure hash is set prior to potential SW encryption */
 	skb_get_hash(skb);
@@ -164,13 +182,20 @@ u16 ieee80211_select_queue(struct ieee80211_sub_if_data *sdata,
 	else
 		qos = false;
 
+	pr_info("select_queue: iftype=%d sta=%px sta->wme=%d qos=%d\n",
+		sdata->vif.type, sta, sta ? sta->sta.wme : -1, qos);
+
 	if (!qos) {
 		skb->priority = 0; /* required for correct WPA/11i MIC */
+		pr_info("select_queue: iftype=%d no qos, priority=0\n",
+			sdata->vif.type);
 		return IEEE80211_AC_BE;
 	}
 
 	if (skb->protocol == sdata->control_port_protocol) {
 		skb->priority = 7;
+		pr_info("select_queue: iftype=%d control_port, priority=7\n",
+			sdata->vif.type);
 		goto downgrade;
 	}
 
@@ -180,8 +205,14 @@ u16 ieee80211_select_queue(struct ieee80211_sub_if_data *sdata,
 	skb->priority = cfg80211_classify8021d(skb, qos_map ?
 					       &qos_map->qos_map : NULL);
 
+	pr_info("select_queue: iftype=%d cfg80211_classify8021d, priority=%d\n",
+		sdata->vif.type, skb->priority);
+
  downgrade:
-	return ieee80211_downgrade_queue(sdata, sta, skb);
+	ret = ieee80211_downgrade_queue(sdata, sta, skb);
+	pr_info("select_queue: iftype=%d after downgrade, priority=%d, ac=%d\n",
+		sdata->vif.type, skb->priority, ret);
+	return ret;
 }
 
 /**
