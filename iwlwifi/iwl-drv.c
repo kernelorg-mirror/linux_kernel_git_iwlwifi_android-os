@@ -2109,7 +2109,7 @@ static int iwl_drv_load_fseq_image(struct iwl_trans *trans, struct iwl_fw *fw,
  */
 static void iwl_req_fw_callback(const struct firmware *ucode_raw, void *context)
 {
-	unsigned int min_core, max_core, loaded_core;
+	int min_core, max_core, loaded_core;
 	struct iwl_drv *drv = context;
 	struct iwl_fw *fw = &drv->fw;
 	const struct iwl_ucode_header *ucode;
@@ -2209,7 +2209,7 @@ static void iwl_req_fw_callback(const struct firmware *ucode_raw, void *context)
 	if (loaded_core < min_core || loaded_core > max_core) {
 		IWL_ERR(drv,
 			"Driver unable to support your firmware API. "
-			"Driver supports FW core %u..%u, firmware is %u.\n",
+			"Driver supports FW core %d..%d, firmware is %d.\n",
 			min_core, max_core, loaded_core);
 		goto try_again;
 	}
