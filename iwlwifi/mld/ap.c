@@ -418,8 +418,6 @@ void iwl_mld_stop_ap_ibss(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
 		iwl_mld_vif_update_low_latency(mld, vif, false,
 					       LOW_LATENCY_VIF_TYPE);
 
-	iwl_mld_ftm_responder_clear(mld, vif);
-
 	iwl_mld_remove_bcast_sta(mld, vif, link);
 
 	iwl_mld_remove_mcast_sta(mld, vif, link);
