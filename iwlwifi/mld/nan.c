@@ -221,6 +221,9 @@ static int iwl_mld_nan_link_set_active(struct iwl_mld *mld,
 		return ret;
 	}
 
+	if (!active)
+		nan_link->chanctx = NULL;
+
 	return 0;
 }
 
