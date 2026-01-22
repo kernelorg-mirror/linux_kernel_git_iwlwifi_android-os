@@ -530,15 +530,15 @@ void iwl_mld_remove_link(struct iwl_mld *mld,
 	iwl_mld_rm_link_from_fw(mld, bss_conf);
 	/* Continue cleanup on failure */
 
-	if (!is_deflink)
-		kfree_rcu(link, rcu_head);
-
 	RCU_INIT_POINTER(mld_vif->link[bss_conf->link_id], NULL);
 
 	if (WARN_ON(link->fw_id >= mld->fw->ucode_capa.num_links))
 		return;
 
 	RCU_INIT_POINTER(mld->fw_id_to_bss_conf[link->fw_id], NULL);
+
+	if (!is_deflink)
+		kfree_rcu(link, rcu_head);
 }
 
 void iwl_mld_handle_missed_beacon_notif(struct iwl_mld *mld,
