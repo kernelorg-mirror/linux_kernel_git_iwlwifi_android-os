@@ -27,12 +27,6 @@ static inline bool iwl7000_wiphy_ext_feature_isset(struct wiphy *wiphy,
 #define wiphy_ext_feature_set iwl7000_wiphy_ext_feature_set
 #define wiphy_ext_feature_isset iwl7000_wiphy_ext_feature_isset
 
-static inline bool
-cfg80211_chandef_is_s1g(const struct cfg80211_chan_def *chandef)
-{
-	return chandef->chan->band == NL80211_BAND_S1GHZ;
-}
-
 static inline enum ieee80211_ap_reg_power
 cfg80211_6ghz_power_type(u8 control, u32 client_flags)
 {
