@@ -321,6 +321,8 @@ static void iwl_mld_hw_set_nan(struct iwl_mld *mld)
 	hw->wiphy->interface_modes |= BIT(NL80211_IFTYPE_NAN);
 	hw->wiphy->interface_modes |= BIT(NL80211_IFTYPE_NAN_DATA);
 
+	wiphy_ext_feature_set(hw->wiphy, NL80211_EXT_FEATURE_SECURE_NAN);
+
 	hw->wiphy->nan_supported_bands = BIT(NL80211_BAND_2GHZ);
 	if (mld->nvm_data->bands[NL80211_BAND_5GHZ].n_channels)
 		hw->wiphy->nan_supported_bands |=
