@@ -383,39 +383,10 @@ static void iwl_mac_hw_set_wiphy(struct iwl_mld *mld)
 
 	wiphy->hw_timestamp_max_peers = 1;
 
-	if (iwl_mld_nan_supported(mld)) {
-		hw->wiphy->interface_modes |= BIT(NL80211_IFTYPE_NAN);
-		hw->wiphy->iface_combinations = iwl_mld_iface_combinations;
-		hw->wiphy->n_iface_combinations =
-			ARRAY_SIZE(iwl_mld_iface_combinations);
-
-		hw->wiphy->nan_supported_bands = BIT(NL80211_BAND_2GHZ);
-		if (mld->nvm_data->bands[NL80211_BAND_5GHZ].n_channels)
-			hw->wiphy->nan_supported_bands |=
-				BIT(NL80211_BAND_5GHZ);
-
-		hw->wiphy->nan_capa.op_mode = NAN_OP_MODE_PHY_MODE_VHT |
-					      NAN_OP_MODE_PHY_MODE_HE |
-					      NAN_OP_MODE_160MHZ;
-
-		/* Support 2 antenna's for Tx and Rx */
-		hw->wiphy->nan_capa.n_antennas = 0x22;
-
-		/* Maximal channel switch time is 4 msec */
-		hw->wiphy->nan_capa.max_channel_switch_time = 4;
-		hw->wiphy->nan_capa.dev_capabilities =
-			NAN_DEV_CAPA_EXT_KEY_ID_SUPPORTED |
-			NAN_DEV_CAPA_NDPE_SUPPORTED;
-
-		hw->wiphy->nan_capa.phy.ht = mld->nvm_data->nan_phy_capa.ht;
-		hw->wiphy->nan_capa.phy.vht = mld->nvm_data->nan_phy_capa.vht;
-		hw->wiphy->nan_capa.phy.he = mld->nvm_data->nan_phy_capa.he;
-	} else {
-		wiphy->iface_combinations = iwl_mld_iface_combinations;
+	wiphy->iface_combinations = iwl_mld_iface_combinations;
 		/* Do not include NAN combinations */
-		wiphy->n_iface_combinations =
-			ARRAY_SIZE(iwl_mld_iface_combinations) - 2;
-	}
+	wiphy->n_iface_combinations =
+		ARRAY_SIZE(iwl_mld_iface_combinations) - 2;
 
 	wiphy_ext_feature_set(wiphy, NL80211_EXT_FEATURE_VHT_IBSS);
 	wiphy_ext_feature_set(wiphy, NL80211_EXT_FEATURE_DFS_CONCURRENT);
