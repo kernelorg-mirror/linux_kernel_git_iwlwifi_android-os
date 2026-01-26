@@ -14,8 +14,7 @@
 
 bool iwl_mld_nan_supported(struct iwl_mld *mld)
 {
-	return fw_has_capa(&mld->fw->ucode_capa,
-			   IWL_UCODE_TLV_CAPA_NAN_SYNC_SUPPORT);
+	return false;
 }
 
 static int iwl_mld_nan_send_config_cmd(struct iwl_mld *mld,
