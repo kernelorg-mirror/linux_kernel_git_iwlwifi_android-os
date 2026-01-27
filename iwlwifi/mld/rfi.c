@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0 OR BSD-3-Clause
 /*
- * Copyright (C) 2024-2025 Intel Corporation
+ * Copyright (C) 2024-2026 Intel Corporation
  */
 
 #include <kunit/static_stub.h>
@@ -205,9 +205,14 @@ bool iwl_mld_rfi_supported(struct iwl_mld *mld,
 		return fw_has_capa(&mld->fw->ucode_capa,
 				   IWL_UCODE_TLV_CAPA_RFI_DDR_SUPPORT);
 
-	if (rfi_feature == IWL_MLD_RFI_DLVR_FEATURE)
+	if (rfi_feature == IWL_MLD_RFI_DLVR_FEATURE) {
+		if (mac_type == IWL_CFG_MAC_TYPE_SC2 ||
+		    mac_type == IWL_CFG_MAC_TYPE_SC2F)
+			return false;
+
 		return fw_has_capa(&mld->fw->ucode_capa,
 				   IWL_UCODE_TLV_CAPA_RFI_DLVR_SUPPORT);
+	}
 
 #define IWL_4D40_DEVICE_ID	0x4D40
 
