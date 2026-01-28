@@ -1636,7 +1636,7 @@ fw_dbg_conf:
 			break;
 #ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
 		case IWL_UCODE_TLV_FSEQ_BIN_VERSION: {
-			const struct iwl_fw_fseq_bin_version *fseq;
+			const struct iwl_fw_fseq_bin_version_v1 *fseq;
 
 			if (tlv_len != sizeof(*fseq))
 				goto invalid_tlv_len;
@@ -2055,7 +2055,7 @@ static int iwl_drv_load_fseq_image(struct iwl_trans *trans, struct iwl_fw *fw,
 			}
 			break;
 		case IWL_UCODE_TLV_FSEQ_BIN_VERSION: {
-			const struct iwl_fw_fseq_bin_version *ver;
+			const struct iwl_fw_fseq_bin_version_v1 *ver;
 
 			if (tlv_len != sizeof(*ver))
 				goto invalid_tlv_len;
