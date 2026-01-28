@@ -1635,15 +1635,27 @@ fw_dbg_conf:
 			}
 			break;
 #ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
-		case IWL_UCODE_TLV_FSEQ_BIN_VERSION: {
-			const struct iwl_fw_fseq_bin_version_v1 *fseq;
+		case IWL_UCODE_TLV_FSEQ_BIN_VERSION:
+			if (tlv_len == sizeof(struct iwl_fw_fseq_bin_version_v1)) {
+				const struct iwl_fw_fseq_bin_version_v1 *fseq;
 
-			if (tlv_len != sizeof(*fseq))
+				fseq = (const void *)tlv_data;
+				pieces->fseq_ver.major = le32_to_cpu(fseq->major);
+				pieces->fseq_ver.minor = le32_to_cpu(fseq->minor);
+			} else if (tlv_len == sizeof(struct iwl_fw_fseq_bin_version)) {
+				const struct iwl_fw_fseq_bin_version *fseq;
+				u32 cnvi_id = drv->trans->info.hw_cnv_id;
+				u32 mac_id = CNVI_AUX_MISC_CHIP_PROD_TYPE(cnvi_id);
+
+				fseq = (const void *)tlv_data;
+				if (mac_id == le32_to_cpu(fseq->mac_id)) {
+					pieces->fseq_ver.major =
+						le32_to_cpu(fseq->major);
+					pieces->fseq_ver.minor =
+						le32_to_cpu(fseq->minor);
+				}
+			} else {
 				goto invalid_tlv_len;
-
-			fseq = (const void *)tlv_data;
-			pieces->fseq_ver.major = le32_to_cpu(fseq->major);
-			pieces->fseq_ver.minor = le32_to_cpu(fseq->minor);
 			}
 			break;
 #endif
@@ -2054,15 +2066,30 @@ static int iwl_drv_load_fseq_image(struct iwl_trans *trans, struct iwl_fw *fw,
 				 fseq_ver->version);
 			}
 			break;
-		case IWL_UCODE_TLV_FSEQ_BIN_VERSION: {
-			const struct iwl_fw_fseq_bin_version_v1 *ver;
+		case IWL_UCODE_TLV_FSEQ_BIN_VERSION:
+			if (tlv_len == sizeof(struct iwl_fw_fseq_bin_version_v1)) {
+				const struct iwl_fw_fseq_bin_version_v1 *ver;
 
-			if (tlv_len != sizeof(*ver))
+				ver = (const void *)tlv_data;
+				fseq_major = le32_to_cpu(ver->major);
+				fseq_minor = le32_to_cpu(ver->minor);
+			} else if (tlv_len == sizeof(struct iwl_fw_fseq_bin_version)) {
+				u32 mac_id = CNVI_AUX_MISC_CHIP_PROD_TYPE(cnvi_id);
+				const struct iwl_fw_fseq_bin_version *ver;
+
+				ver = (const void *)tlv_data;
+				if (mac_id != le32_to_cpu(ver->mac_id)) {
+					IWL_ERR(trans,
+						"Invalid FSEQ MAC ID (0x%x vs 0x%x)\n",
+						mac_id,
+						le32_to_cpu(ver->mac_id));
+					err = -EINVAL;
+					goto out;
+				}
+				fseq_major = le32_to_cpu(ver->major);
+				fseq_minor = le32_to_cpu(ver->minor);
+			} else {
 				goto invalid_tlv_len;
-
-			ver = (const void *)tlv_data;
-			fseq_major = le32_to_cpu(ver->major);
-			fseq_minor = le32_to_cpu(ver->minor);
 			}
 			break;
 		default:
