@@ -9,7 +9,7 @@
  * Copyright (c) 2006, Michael Wu <flamingice@sourmilk.net>
  * Copyright (c) 2013 - 2014 Intel Mobile Communications GmbH
  * Copyright (c) 2016 - 2017 Intel Deutschland GmbH
- * Copyright (c) 2018 - 2025 Intel Corporation
+ * Copyright (c) 2018 - 2026 Intel Corporation
  */
 
 #ifndef LINUX_IEEE80211_H
@@ -1806,7 +1806,7 @@ enum ieee80211_eid_ext {
 	WLAN_EID_EXT_UHR_CAPA = 152,
 	WLAN_EID_EXT_MACP = 153,
 	WLAN_EID_EXT_SMD = 154,
-	WLAN_EID_EXT_BSS_TRANS_PARAMS = 155,
+	WLAN_EID_EXT_BSS_SMD_TRANS_PARAMS = 155,
 	WLAN_EID_EXT_CHAN_USAGE = 156,
 	WLAN_EID_EXT_UHR_MODE_CHG = 157,
 	WLAN_EID_EXT_UHR_PARAM_UPD = 158,
