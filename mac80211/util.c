@@ -6,7 +6,7 @@
  * Copyright 2007	Johannes Berg <johannes@sipsolutions.net>
  * Copyright 2013-2014  Intel Mobile Communications GmbH
  * Copyright (C) 2015-2017	Intel Deutschland GmbH
- * Copyright (C) 2018-2025 Intel Corporation
+ * Copyright (C) 2018-2026 Intel Corporation
  *
  * utilities for mac80211
  */
@@ -4617,10 +4617,11 @@ int ieee80211_put_uhr_cap(struct sk_buff *skb,
 	if (!uhr_cap)
 		return 0;
 
-        len = 2 + 1 + sizeof(struct ieee80211_uhr_capa) +
-              sizeof(struct ieee80211_uhr_capa_phy);
-        if (skb_tailroom(skb) < len)
-                return -ENOBUFS;
+	len = 2 + 1 + sizeof(struct ieee80211_uhr_cap) +
+	      sizeof(struct ieee80211_uhr_cap_phy);
+
+	if (skb_tailroom(skb) < len)
+		return -ENOBUFS;
 
 	skb_put_u8(skb, WLAN_EID_EXTENSION);
 	skb_put_u8(skb, len - 2);

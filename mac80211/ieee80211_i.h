@@ -5,7 +5,7 @@
  * Copyright 2006-2007	Jiri Benc <jbenc@suse.cz>
  * Copyright 2007-2010	Johannes Berg <johannes@sipsolutions.net>
  * Copyright 2013-2015  Intel Mobile Communications GmbH
- * Copyright (C) 2018-2025 Intel Corporation
+ * Copyright (C) 2018-2026 Intel Corporation
  */
 
 #ifndef IEEE80211_I_H
@@ -1844,8 +1844,8 @@ struct ieee802_11_elems {
 	const struct ieee80211_multi_link_elem *ml_epcs;
 	const struct ieee80211_bandwidth_indication *bandwidth_indication;
 	const struct ieee80211_ttlm_elem *ttlm[IEEE80211_TTLM_MAX_CNT];
-	const struct ieee80211_uhr_capa *uhr_capa;
-	const struct ieee80211_uhr_oper *uhr_oper;
+	const struct ieee80211_uhr_cap *uhr_cap;
+	const struct ieee80211_uhr_operation *uhr_operation;
 
 	/* not the order in the psd values is per element, not per chandef */
 	struct ieee80211_parsed_tpe tpe;
@@ -1870,8 +1870,8 @@ struct ieee802_11_elems {
 	u8 country_elem_len;
 	u8 bssid_index_len;
 	u8 eht_cap_len;
-	u8 uhr_capa_len;
-	u8 uhr_oper_len;
+	u8 uhr_cap_len;
+	u8 uhr_operation_len;
 
 	/* mult-link element can be de-fragmented and thus u8 is not sufficient */
 	size_t ml_basic_len;
@@ -2909,8 +2909,8 @@ void ieee80211_stop_mbssid(struct ieee80211_sub_if_data *sdata);
 void
 ieee80211_uhr_cap_ie_to_sta_uhr_cap(struct ieee80211_sub_if_data *sdata,
 				    struct ieee80211_supported_band *sband,
-				    const struct ieee80211_uhr_capa *uhr_capa,
-				    u8 uhr_capa_len,
+				    const struct ieee80211_uhr_cap *uhr_cap,
+				    u8 uhr_cap_len,
 				    struct link_sta_info *link_sta);
 
 #if IS_ENABLED(CPTCFG_MAC80211_KUNIT_TEST)

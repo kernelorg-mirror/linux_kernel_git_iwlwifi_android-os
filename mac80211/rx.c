@@ -5595,9 +5595,14 @@ void ieee80211_rx_list(struct ieee80211_hw *hw, struct ieee80211_sta *pubsta,
 				      (status->nss != 1 || status->rate_idx > 1 ||
 				       status->uhr.gi != NL80211_RATE_INFO_EHT_GI_1_6 ||
 				       status->bw != RATE_INFO_BW_20 || status->uhr.im),
-				      "bad UHR ELR MCS MCS:%d, NCSS:%d, GI:%d, BW:%d, IM:%d\n",
+				      "bad UHR ELR MCS MCS:%d, NSS:%d, GI:%d, BW:%d, IM:%d\n",
 				      status->rate_idx, status->nss, status->uhr.gi,
 				      status->bw, status->uhr.im))
+				goto drop;
+			if (WARN_ONCE(status->uhr.im &&
+				      (status->nss != 1 || status->rate_idx == 15),
+				      "bad UHR IM MCS MCS:%d, NSS:%d\n",
+				      status->rate_idx, status->nss))
 				goto drop;
 			break;
 		default:
