@@ -226,8 +226,8 @@ cfg80211_6ghz_power_type(u8 control, u32 client_flags)
 
 struct ieee80211_sta_uhr_cap {
 	bool has_uhr;
-	struct ieee80211_uhr_capa_mac mac;
-	struct ieee80211_uhr_capa_phy phy;
+	struct ieee80211_uhr_cap_mac mac;
+	struct ieee80211_uhr_cap_phy phy;
 };
 
 static inline const struct ieee80211_sta_uhr_cap *

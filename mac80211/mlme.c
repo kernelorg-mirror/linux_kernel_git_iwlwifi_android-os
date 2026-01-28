@@ -2225,8 +2225,8 @@ ieee80211_link_common_elems_size(struct ieee80211_sub_if_data *sdata,
 		sizeof(struct ieee80211_eht_mcs_nss_supp) +
 		IEEE80211_EHT_PPE_THRES_MAX_LEN;
 
-	size += 2 + 1 + sizeof(struct ieee80211_uhr_capa) +
-		sizeof(struct ieee80211_uhr_capa_phy);
+	size += 2 + 1 + sizeof(struct ieee80211_uhr_cap) +
+		sizeof(struct ieee80211_uhr_cap_phy);
 
 	return size;
 }
@@ -5578,11 +5578,11 @@ static bool ieee80211_assoc_config_link(struct ieee80211_link_data *link,
 		bss_conf->epcs_support = false;
 	}
 
-	if (elems->uhr_oper && elems->uhr_capa &&
+	if (elems->uhr_operation && elems->uhr_cap &&
 	    link->u.mgd.conn.mode >= IEEE80211_CONN_MODE_UHR) {
 		ieee80211_uhr_cap_ie_to_sta_uhr_cap(sdata, sband,
-						    elems->uhr_capa,
-						    elems->uhr_capa_len,
+						    elems->uhr_cap,
+						    elems->uhr_cap_len,
 						    link_sta);
 
 		bss_conf->uhr_support = false/* no UHR */;
