@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0 OR BSD-3-Clause
 /*
- * Copyright (C) 2005-2014, 2018-2025 Intel Corporation
+ * Copyright (C) 2005-2014, 2018-2026 Intel Corporation
  * Copyright (C) 2013-2015 Intel Mobile Communications GmbH
  * Copyright (C) 2016-2017 Intel Deutschland GmbH
  */
@@ -1629,8 +1629,9 @@ fw_dbg_conf:
 
 			if (tlv_len != sizeof(*fseq_ver))
 				goto invalid_tlv_len;
-			IWL_DEBUG_INFO(drv, "TLV_FW_FSEQ_VERSION: %.32s\n",
-				       fseq_ver->version);
+			IWL_DEBUG_INFO(drv,
+				       "TLV_FW_FSEQ_VERSION: %.32s (sha1: %.20s)\n",
+				       fseq_ver->version, fseq_ver->sha1);
 			}
 			break;
 #ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
