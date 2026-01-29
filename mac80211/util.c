@@ -1786,14 +1786,14 @@ static int ieee80211_reconfig_nan(struct ieee80211_sub_if_data *sdata)
 	if (WARN_ON(res))
 		return res;
 
-	if (!(0 & WIPHY_NAN_FLAGS_USERSPACE_DE))
+	if (!(sdata->local->hw.wiphy->nan_capa.flags & WIPHY_NAN_FLAGS_USERSPACE_DE))
 		return ieee80211_reconfig_nan_offload_de(sdata);
 
 	drv_vif_cfg_changed(sdata->local, sdata, BSS_CHANGED_NAN_LOCAL_SCHED);
 
 	/* Now we can add all the NDIs to the driver */
 	list_for_each_entry(ndi_sdata, &local->interfaces, list) {
-		if (0) {
+		if (ndi_sdata->vif.type == NL80211_IFTYPE_NAN_DATA) {
 			res = drv_add_interface(local, ndi_sdata);
 			if (WARN_ON(res))
 				return res;
@@ -1829,7 +1829,7 @@ static int ieee80211_reconfig_nan(struct ieee80211_sub_if_data *sdata)
 		enum ieee80211_sta_state state;
 
 		if (!sta->uploaded ||
-		    1)
+		    sta->sdata->vif.type != NL80211_IFTYPE_NAN_DATA)
 			continue;
 
 		if (WARN_ON(!sta->sta.nmi))
@@ -1998,7 +1998,7 @@ int ieee80211_reconfig(struct ieee80211_local *local)
 		    !ieee80211_hw_check(&local->hw, NO_VIRTUAL_MONITOR))
 			continue;
 		/* These vifs can't be added before NAN was started */
-		if (0)
+		if (sdata->vif.type == NL80211_IFTYPE_NAN_DATA)
 			continue;
 		if (sdata->vif.type != NL80211_IFTYPE_AP_VLAN &&
 		    ieee80211_sdata_running(sdata)) {
@@ -2017,7 +2017,7 @@ int ieee80211_reconfig(struct ieee80211_local *local)
 			if (sdata->vif.type == NL80211_IFTYPE_MONITOR &&
 			    !ieee80211_hw_check(&local->hw, NO_VIRTUAL_MONITOR))
 				continue;
-			if (0)
+			if (sdata->vif.type == NL80211_IFTYPE_NAN_DATA)
 				continue;
 			if (sdata->vif.type != NL80211_IFTYPE_AP_VLAN &&
 			    ieee80211_sdata_running(sdata))
@@ -2103,7 +2103,7 @@ int ieee80211_reconfig(struct ieee80211_local *local)
 		case NL80211_IFTYPE_MONITOR:
 			break;
 		case NL80211_IFTYPE_NAN:
-		/* case NL80211_IFTYPE_NAN_DATA */
+		case NL80211_IFTYPE_NAN_DATA:
 			/* NAN stations are handled later */
 			break;
 		case NL80211_IFTYPE_ADHOC:
@@ -2203,7 +2203,7 @@ int ieee80211_reconfig(struct ieee80211_local *local)
 				return res;
 			}
 			break;
-		/* case NL80211_IFTYPE_NAN_DATA */
+		case NL80211_IFTYPE_NAN_DATA:
 		case NL80211_IFTYPE_AP_VLAN:
 		case NL80211_IFTYPE_MONITOR:
 		case NL80211_IFTYPE_P2P_DEVICE:

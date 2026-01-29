@@ -734,6 +734,78 @@ void iwl_mld_tlc_update_phy(struct iwl_mld *mld, struct ieee80211_vif *vif,
 	}
 }
 
+static void iwl_mld_config_tlc_nan(struct iwl_mld *mld,
+				   struct ieee80211_vif *vif,
+				   struct ieee80211_link_sta *link_sta,
+				   int fw_sta_id)
+{
+	struct ieee80211_nan_peer_sched *sched;
+	struct iwl_mld_nan_link *nan_link;
+	struct ieee80211_sta *nmi, *iter;
+	struct iwl_mld_vif *nan_mld_vif;
+	u32 fw_sta_mask;
+
+	nmi = wiphy_dereference(mld->wiphy, link_sta->sta->nmi);
+	if (WARN_ON(!nmi))
+		return;
+
+	sched = nmi->nan_sched;
+
+	/* This sta might not be in the list yet as it is just getting added */
+	fw_sta_mask = BIT(fw_sta_id);
+	for_each_station(iter, mld->hw) {
+		struct iwl_mld_sta *mld_sta = iwl_mld_sta_from_mac80211(iter);
+		struct ieee80211_sta *iter_nmi;
+
+		iter_nmi = wiphy_dereference(mld->wiphy, iter->nmi);
+
+		if (iter_nmi == nmi)
+			fw_sta_mask |= BIT(mld_sta->deflink.fw_id);
+	}
+
+	if (WARN_ON(!mld->nan_device_vif))
+		return;
+
+	nan_mld_vif = iwl_mld_vif_from_mac80211(mld->nan_device_vif);
+
+	for_each_mld_nan_valid_link(nan_mld_vif, nan_link) {
+		struct ieee80211_chanctx_conf *chan_ctx;
+		struct iwl_mld_tlc_sta_capa capa = {};
+
+		chan_ctx = nan_link->chanctx;
+		if (!chan_ctx)
+			continue;
+
+		capa.smps_mode = IEEE80211_SMPS_OFF; /* always off */
+
+		/* Note these are irrelevant if there's no schedule */
+		capa.rx_nss = 2; /* maximum we support */
+		capa.bandwidth = IEEE80211_STA_RX_BW_MAX;
+
+		for (int j = 0; j < (sched ? sched->n_channels : 0); j++) {
+			enum ieee80211_sta_rx_bandwidth rx_bw;
+			enum nl80211_chan_width width;
+			int chains;
+
+			if (sched->channels[j].chanctx_conf != chan_ctx)
+				continue;
+
+			width = sched->channels[j].chanreq.oper.width;
+			rx_bw = ieee80211_chan_width_to_rx_bw(width);
+			capa.bandwidth = min(capa.bandwidth, rx_bw);
+
+			chains = sched->channels[j].needed_rx_chains;
+			capa.rx_nss = min(capa.rx_nss, chains);
+		}
+
+		capa.own_he_cap = &mld->wiphy->nan_capa.phy.he;
+		/* no EHT/UHR for NAN */
+
+		_iwl_mld_config_tlc_link(mld, vif, chan_ctx, fw_sta_mask,
+					 link_sta, &capa);
+	}
+}
+
 void iwl_mld_config_tlc_link(struct iwl_mld *mld,
 			     struct ieee80211_vif *vif,
 			     struct ieee80211_bss_conf *link_conf,
@@ -752,7 +824,8 @@ void iwl_mld_config_tlc_link(struct iwl_mld *mld,
 	if (vif->type == NL80211_IFTYPE_NAN)
 		return;
 
-	if (0) {
+	if (vif->type == NL80211_IFTYPE_NAN_DATA) {
+		iwl_mld_config_tlc_nan(mld, vif, link_sta, fw_sta_id);
 		return;
 	}
 
