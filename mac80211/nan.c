@@ -211,40 +211,6 @@ ieee80211_nan_remove_channel(struct ieee80211_sub_if_data *sdata,
 		ieee80211_free_chanctx(sdata->local, ctx, false);
 }
 
-struct ieee80211_nan_slots_bitmap {
-	DECLARE_BITMAP(map, CFG80211_NAN_SCHED_NUM_TIME_SLOTS);
-};
-
-static struct ieee80211_nan_slots_bitmap
-ieee80211_get_channel_schedule(struct ieee80211_sub_if_data *sdata,
-			       struct ieee80211_nan_channel *chan)
-{
-	struct ieee80211_nan_slots_bitmap schedule = {};
-
-	for (int slot = 0; slot < ARRAY_SIZE(sdata->vif.cfg.nan_schedule); slot++) {
-		if (sdata->vif.cfg.nan_schedule[slot] == chan)
-			__set_bit(slot, schedule.map);
-	}
-
-	return schedule;
-}
-
-static int
-ieee80211_nan_find_existing_channel(struct ieee80211_nan_channel *channels,
-				    const struct cfg80211_chan_def *chandef)
-{
-	for (int i = 0; i < IEEE80211_NAN_MAX_CHANNELS; i++) {
-		if (!channels[i].chanreq.oper.chan)
-			break;
-
-		if (cfg80211_chandef_identical(&channels[i].chanreq.oper,
-					       chandef))
-			return i;
-	}
-
-	return -ENOENT;
-}
-
 static void
 ieee80211_nan_update_all_ndi_carriers(struct ieee80211_local *local)
 {
@@ -262,11 +228,23 @@ ieee80211_nan_update_all_ndi_carriers(struct ieee80211_local *local)
 	}
 }
 
+static struct ieee80211_nan_channel *
+ieee80211_nan_find_free_channel(struct ieee80211_vif_cfg *vif_cfg)
+{
+	for (int i = 0; i < ARRAY_SIZE(vif_cfg->nan_channels); i++) {
+		if (!vif_cfg->nan_channels[i].chanreq.oper.chan)
+			return &vif_cfg->nan_channels[i];
+	}
+
+	return NULL;
+}
+
 int ieee80211_nan_set_local_sched(struct ieee80211_sub_if_data *sdata,
 				  struct cfg80211_nan_local_sched *sched)
 {
-	struct ieee80211_nan_slots_bitmap backup_schedules[IEEE80211_NAN_MAX_CHANNELS] = {};
-	struct ieee80211_nan_channel backup_channels[IEEE80211_NAN_MAX_CHANNELS] = {};
+	struct ieee80211_nan_channel backup_channels[IEEE80211_NAN_MAX_CHANNELS];
+	struct ieee80211_nan_channel *backup_schedule[CFG80211_NAN_SCHED_NUM_TIME_SLOTS];
+	struct ieee80211_nan_channel *sched_idx_to_chan[IEEE80211_NAN_MAX_CHANNELS] = {};
 	DECLARE_BITMAP(removed_channels, IEEE80211_NAN_MAX_CHANNELS) = {};
 	struct ieee80211_vif_cfg *vif_cfg = &sdata->vif.cfg;
 	int ret;
@@ -274,30 +252,25 @@ int ieee80211_nan_set_local_sched(struct ieee80211_sub_if_data *sdata,
 	if (sched->n_channels > IEEE80211_NAN_MAX_CHANNELS)
 		return -EOPNOTSUPP;
 
-	/* Backup all existing channels and their schedules */
-	for (int i = 0; i < ARRAY_SIZE(vif_cfg->nan_channels); i++) {
-		if (!vif_cfg->nan_channels[i].chanreq.oper.chan)
-			break;
-
-		backup_channels[i] = vif_cfg->nan_channels[i];
-		backup_schedules[i] =
-			ieee80211_get_channel_schedule(sdata,
-						       &vif_cfg->nan_channels[i]);
-	}
+	memcpy(backup_schedule, vif_cfg->nan_schedule, sizeof(backup_schedule));
+	memcpy(backup_channels, vif_cfg->nan_channels, sizeof(backup_channels));
 
 	/*
 	 * Remove channels that are no longer in the new schedule to free up
 	 * resources before adding new channels.
+	 * Create a mapping from sched index to vif_cfg channel
 	 */
 	for (int i = 0; i < ARRAY_SIZE(vif_cfg->nan_channels); i++) {
 		bool still_needed = false;
 
 		if (!vif_cfg->nan_channels[i].chanreq.oper.chan)
-			break;
+			continue;
 
 		for (int j = 0; j < sched->n_channels; j++) {
 			if (cfg80211_chandef_identical(&vif_cfg->nan_channels[i].chanreq.oper,
 						       &sched->nan_channels[j].chandef)) {
+				sched_idx_to_chan[j] =
+					&vif_cfg->nan_channels[i];
 				still_needed = true;
 				break;
 			}
@@ -309,21 +282,20 @@ int ieee80211_nan_set_local_sched(struct ieee80211_sub_if_data *sdata,
 		}
 	}
 
-	/* Clear the channel array and schedule, we'll rebuild them */
-	memset(&vif_cfg->nan_schedule, 0, sizeof(vif_cfg->nan_schedule));
-	memset(&vif_cfg->nan_channels, 0, sizeof(vif_cfg->nan_channels));
-
 	for (int i = 0; i < sched->n_channels; i++) {
-		struct ieee80211_nan_channel *chan = &vif_cfg->nan_channels[i];
-		int existing_idx =
-			ieee80211_nan_find_existing_channel(backup_channels,
-							    &sched->nan_channels[i].chandef);
+		struct ieee80211_nan_channel *chan = sched_idx_to_chan[i];
 
-		if (existing_idx >= 0) {
-			*chan = backup_channels[existing_idx];
+		if (chan) {
 			ieee80211_nan_update_channel(sdata->local, chan,
 						     &sched->nan_channels[i]);
 		} else {
+			chan = ieee80211_nan_find_free_channel(vif_cfg);
+			if (WARN_ON(!chan)) {
+				ret = -EINVAL;
+				goto err;
+			}
+
+			sched_idx_to_chan[i] = chan;
 			ieee80211_nan_init_channel(chan,
 						   &sched->nan_channels[i]);
 
@@ -333,10 +305,14 @@ int ieee80211_nan_set_local_sched(struct ieee80211_sub_if_data *sdata,
 				goto err;
 			}
 		}
+	}
 
-		for (int s = 0; s < ARRAY_SIZE(sched->schedule); s++)
-			if (sched->schedule[s] == i)
-				vif_cfg->nan_schedule[s] = chan;
+	for (int s = 0; s < ARRAY_SIZE(vif_cfg->nan_schedule); s++) {
+		if (sched->schedule[s] < ARRAY_SIZE(sched_idx_to_chan))
+			vif_cfg->nan_schedule[s] =
+				sched_idx_to_chan[sched->schedule[s]];
+		else
+			vif_cfg->nan_schedule[s] = NULL;
 	}
 
 	drv_vif_cfg_changed(sdata->local, sdata, BSS_CHANGED_NAN_LOCAL_SCHED);
@@ -350,24 +326,17 @@ err:
 		struct cfg80211_chan_def *chan_def = &vif_cfg->nan_channels[i].chanreq.oper;
 
 		if (!chan_def->chan)
-			break;
+			continue;
 
-		if (ieee80211_nan_find_existing_channel(backup_channels,
-							chan_def) < 0)
+		if (!cfg80211_chandef_identical(&backup_channels[i].chanreq.oper,
+						chan_def))
 			ieee80211_nan_remove_channel(sdata,
 						     &vif_cfg->nan_channels[i]);
 	}
 
-	memset(&vif_cfg->nan_schedule, 0, sizeof(vif_cfg->nan_schedule));
-	memset(&vif_cfg->nan_channels, 0, sizeof(vif_cfg->nan_channels));
-
 	/* Re-add all backed up channels */
 	for (int i = 0; i < ARRAY_SIZE(backup_channels); i++) {
 		struct ieee80211_nan_channel *chan = &vif_cfg->nan_channels[i];
-		int slot;
-
-		if (!backup_channels[i].chanreq.oper.chan)
-			break;
 
 		*chan = backup_channels[i];
 
@@ -394,11 +363,9 @@ err:
 								  struct ieee80211_chanctx,
 								  conf));
 		}
-
-		for_each_set_bit(slot, backup_schedules[i].map,
-				 CFG80211_NAN_SCHED_NUM_TIME_SLOTS)
-			vif_cfg->nan_schedule[slot] = chan;
 	}
+
+	memcpy(vif_cfg->nan_schedule, backup_schedule, sizeof(backup_schedule));
 
 	drv_vif_cfg_changed(sdata->local, sdata, BSS_CHANGED_NAN_LOCAL_SCHED);
 	ieee80211_nan_update_all_ndi_carriers(sdata->local);
