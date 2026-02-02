@@ -1324,6 +1324,7 @@ static int ieee80211_config_bw(struct ieee80211_link_data *link,
 {
 	struct ieee80211_channel *channel = link->conf->chanreq.oper.chan;
 	struct ieee80211_sub_if_data *sdata = link->sdata;
+	struct ieee80211_chanctx_conf *chanctx_conf;
 	struct ieee80211_chan_req chanreq = {};
 	struct cfg80211_chan_def ap_chandef;
 	enum ieee80211_conn_mode ap_mode;
@@ -1410,8 +1411,11 @@ static int ieee80211_config_bw(struct ieee80211_link_data *link,
 		}
 	}
 
-	if (ieee80211_chanreq_identical(&chanreq, &link->conf->chanreq))
+	if (ieee80211_chanreq_identical(&chanreq, &link->conf->chanreq)) {
+		if (update)
+			goto update_npca;
 		return 0;
+	}
 
 	link_info(link,
 		  "AP %pM changed bandwidth in %s, new used config is %d.%03d MHz, width %d (%d.%03d/%d MHz)\n",
@@ -1458,6 +1462,13 @@ static int ieee80211_config_bw(struct ieee80211_link_data *link,
 	}
 
 	cfg80211_schedule_channels_check(&sdata->wdev);
+
+update_npca:
+	chanctx_conf = sdata_dereference(link->conf->chanctx_conf, sdata);
+	/* must be non-NULL when update is true */
+	if (WARN_ON(!chanctx_conf))
+		return -EINVAL;
+
 	return 0;
 }
 
