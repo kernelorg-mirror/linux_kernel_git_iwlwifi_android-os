@@ -988,6 +988,8 @@ struct ieee80211_if_mntr {
  * @de: Discovery Engine state (only valid if !WIPHY_NAN_FLAGS_USERSPACE_DE)
  * @de.func_lock: lock for @de.function_inst_ids
  * @de.function_inst_ids: a bitmap of available instance_id's
+ * @removed_channels: bitmap of channels that should be removed from the NAN
+ *	schedule once the deferred schedule update is completed.
  */
 struct ieee80211_if_nan {
 	struct cfg80211_nan_conf conf;
@@ -998,6 +1000,8 @@ struct ieee80211_if_nan {
 		spinlock_t func_lock;
 		struct idr function_inst_ids;
 	} de;
+
+	DECLARE_BITMAP(removed_channels, IEEE80211_NAN_MAX_CHANNELS);
 };
 
 /**
