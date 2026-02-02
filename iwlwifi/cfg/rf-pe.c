@@ -1,10 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0 OR BSD-3-Clause
 /*
- * Copyright (C) 2025 Intel Corporation
+ * Copyright (C) 2025-2026 Intel Corporation
  */
 #include "iwl-config.h"
-
-#define IWL_PE_NVM_VERSION		0x0a1d
 
 /* TODO: set unii9_supported when the firmware will be ready */
 #define IWL_DEVICE_PE							\
@@ -21,7 +19,6 @@
 	.eht_supported = true,						\
 	.uhr_supported = true,						\
 	.num_rbds = IWL_NUM_RBDS_EHT,					\
-	.nvm_ver = IWL_PE_NVM_VERSION,					\
 	.nvm_type = IWL_NVM_EXT
 
 const struct iwl_rf_cfg iwl_rf_pe = {
