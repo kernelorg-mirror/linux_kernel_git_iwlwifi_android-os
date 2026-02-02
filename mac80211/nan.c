@@ -24,9 +24,11 @@ ieee80211_nan_init_channel(struct ieee80211_nan_channel *nan_channel,
 static void
 ieee80211_nan_update_channel(struct ieee80211_local *local,
 			     struct ieee80211_nan_channel *nan_channel,
-			     struct cfg80211_nan_channel *cfg_nan_channel)
+			     struct cfg80211_nan_channel *cfg_nan_channel,
+			     bool deferred)
 {
 	struct ieee80211_chanctx_conf *conf;
+	bool reducing_nss;
 
 	if (WARN_ON(!cfg80211_chandef_identical(&nan_channel->chanreq.oper,
 						&cfg_nan_channel->chandef)))
@@ -40,10 +42,16 @@ ieee80211_nan_update_channel(struct ieee80211_local *local,
 	if (nan_channel->needed_rx_chains == cfg_nan_channel->rx_nss)
 		return;
 
+	reducing_nss = nan_channel->needed_rx_chains > cfg_nan_channel->rx_nss;
 	nan_channel->needed_rx_chains = cfg_nan_channel->rx_nss;
 
 	conf = nan_channel->chanctx_conf;
-	if (!conf)
+
+	/*
+	 * If we are adding NSSs, we need to be ready before notifying the peer,
+	 * if we are reducing NSSs, we need to wait until the peer is notified.
+	 */
+	if (!conf || (deferred && reducing_nss))
 		return;
 
 	ieee80211_recalc_smps_chanctx(local, container_of(conf,
@@ -244,7 +252,6 @@ int ieee80211_nan_set_local_sched(struct ieee80211_sub_if_data *sdata,
 				  struct cfg80211_nan_local_sched *sched)
 {
 	struct ieee80211_nan_channel *sched_idx_to_chan[IEEE80211_NAN_MAX_CHANNELS] = {};
-	DECLARE_BITMAP(removed_channels, IEEE80211_NAN_MAX_CHANNELS) = {};
 	struct ieee80211_nan_sched_cfg *sched_cfg = &sdata->vif.cfg.nan_sched;
 	struct ieee80211_nan_sched_cfg backup_sched;
 	int ret;
@@ -254,6 +261,19 @@ int ieee80211_nan_set_local_sched(struct ieee80211_sub_if_data *sdata,
 
 	if (sched->nan_avail_blob_len > IEEE80211_NAN_AVAIL_BLOB_MAX_LEN)
 		return -EINVAL;
+
+	/*
+	 * If a deferred schedule update is pending completion, new updates are
+	 * not allowed. Only allow to configure an empty schedule so NAN can be
+	 * stopped in the middle of a deferred update. This is fine because
+	 * empty schedule means the local NAN device will not be available for
+	 * peers anymore so there is no need to update peers about a new
+	 * schedule.
+	 */
+	if (WARN_ON(sched_cfg->deferred && sched->n_channels))
+		return -EBUSY;
+
+	bitmap_zero(sdata->u.nan.removed_channels, IEEE80211_NAN_MAX_CHANNELS);
 
 	memcpy(backup_sched.schedule, sched_cfg->schedule,
 	       sizeof(backup_sched.schedule));
@@ -265,7 +285,8 @@ int ieee80211_nan_set_local_sched(struct ieee80211_sub_if_data *sdata,
 
 	/*
 	 * Remove channels that are no longer in the new schedule to free up
-	 * resources before adding new channels.
+	 * resources before adding new channels. For deferred schedule, channels
+	 * will be removed when the schedule is applied.
 	 * Create a mapping from sched index to sched_cfg channel
 	 */
 	for (int i = 0; i < ARRAY_SIZE(sched_cfg->channels); i++) {
@@ -285,9 +306,10 @@ int ieee80211_nan_set_local_sched(struct ieee80211_sub_if_data *sdata,
 		}
 
 		if (!still_needed) {
-			__set_bit(i, removed_channels);
-			ieee80211_nan_remove_channel(sdata,
-						     &sched_cfg->channels[i]);
+			__set_bit(i, sdata->u.nan.removed_channels);
+			if (!sched->deferred)
+				ieee80211_nan_remove_channel(sdata,
+							     &sched_cfg->channels[i]);
 		}
 	}
 
@@ -296,7 +318,8 @@ int ieee80211_nan_set_local_sched(struct ieee80211_sub_if_data *sdata,
 
 		if (chan) {
 			ieee80211_nan_update_channel(sdata->local, chan,
-						     &sched->nan_channels[i]);
+						     &sched->nan_channels[i],
+						     sched->deferred);
 		} else {
 			chan = ieee80211_nan_find_free_channel(sched_cfg);
 			if (WARN_ON(!chan)) {
@@ -327,10 +350,21 @@ int ieee80211_nan_set_local_sched(struct ieee80211_sub_if_data *sdata,
 	memcpy(sched_cfg->avail_blob, sched->nan_avail_blob,
 	       sched->nan_avail_blob_len);
 	sched_cfg->avail_blob_len = sched->nan_avail_blob_len;
+	sched_cfg->deferred = sched->deferred;
 
 	drv_vif_cfg_changed(sdata->local, sdata, BSS_CHANGED_NAN_LOCAL_SCHED);
 
+	/*
+	 * For deferred update, don't update NDI carriers yet as the new
+	 * schedule is not yet applied so common slots don't change. The NDI
+	 * carrier will be updated once the driver notifies the new schedule is
+	 * applied.
+	 */
+	if (sched_cfg->deferred)
+		return 0;
+
 	ieee80211_nan_update_all_ndi_carriers(sdata->local);
+	bitmap_zero(sdata->u.nan.removed_channels, IEEE80211_NAN_MAX_CHANNELS);
 
 	return 0;
 err:
@@ -354,10 +388,14 @@ err:
 
 		*chan = backup_sched.channels[i];
 
-		if (!chan->chanctx_conf)
+		/*
+		 * For deferred update, no channels were removed and the channel
+		 * context didn't change, so nothing else to do.
+		 */
+		if (!chan->chanctx_conf || sched->deferred)
 			continue;
 
-		if (test_bit(i, removed_channels)) {
+		if (test_bit(i, sdata->u.nan.removed_channels)) {
 			/* Clear the stale chanctx pointer */
 			chan->chanctx_conf = NULL;
 			/*
@@ -384,11 +422,62 @@ err:
 	memcpy(sched_cfg->avail_blob, backup_sched.avail_blob,
 	       sizeof(backup_sched.avail_blob));
 	sched_cfg->avail_blob_len = backup_sched.avail_blob_len;
+	sched_cfg->deferred = false;
+	bitmap_zero(sdata->u.nan.removed_channels, IEEE80211_NAN_MAX_CHANNELS);
 
 	drv_vif_cfg_changed(sdata->local, sdata, BSS_CHANGED_NAN_LOCAL_SCHED);
 	ieee80211_nan_update_all_ndi_carriers(sdata->local);
+
 	return ret;
 }
+
+void ieee80211_nan_sched_update_done(struct ieee80211_vif *vif)
+{
+	struct ieee80211_sub_if_data *sdata = vif_to_sdata(vif);
+	struct ieee80211_nan_sched_cfg *sched_cfg = &vif->cfg.nan_sched;
+	unsigned int i;
+
+	lockdep_assert_wiphy(sdata->local->hw.wiphy);
+
+	if (WARN_ON(!sched_cfg->deferred))
+		return;
+
+	ieee80211_nan_update_all_ndi_carriers(sdata->local);
+
+	/*
+	 * Clear the deferred flag before removing channels. Removing channels
+	 * will trigger another schedule update to the driver, and there is no
+	 * need for this update to be deferred since removed channels are not
+	 * part of the schedule anymore, so no need to notify peers about
+	 * removing them.
+	 */
+	sched_cfg->deferred = false;
+
+	for (i = 0; i < ARRAY_SIZE(sched_cfg->channels); i++) {
+		struct ieee80211_nan_channel *chan = &sched_cfg->channels[i];
+		struct ieee80211_chanctx_conf *conf = chan->chanctx_conf;
+
+		if (!chan->chanreq.oper.chan)
+			continue;
+
+		if (test_bit(i, sdata->u.nan.removed_channels))
+			ieee80211_nan_remove_channel(sdata, chan);
+		else if (conf)
+			/*
+			 * We might have called this already for some channels,
+			 * but this knows to handle a no-op.
+			 */
+			ieee80211_recalc_smps_chanctx(sdata->local,
+						      container_of(conf,
+								   struct ieee80211_chanctx,
+								   conf));
+	}
+
+	bitmap_zero(sdata->u.nan.removed_channels, IEEE80211_NAN_MAX_CHANNELS);
+	cfg80211_nan_sched_update_done(ieee80211_vif_to_wdev(vif), true,
+				       GFP_KERNEL);
+}
+EXPORT_SYMBOL(ieee80211_nan_sched_update_done);
 
 void ieee80211_nan_free_peer_sched(struct ieee80211_nan_peer_sched *sched)
 {
