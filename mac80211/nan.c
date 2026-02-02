@@ -252,10 +252,16 @@ int ieee80211_nan_set_local_sched(struct ieee80211_sub_if_data *sdata,
 	if (sched->n_channels > IEEE80211_NAN_MAX_CHANNELS)
 		return -EOPNOTSUPP;
 
+	if (sched->nan_avail_blob_len > IEEE80211_NAN_AVAIL_BLOB_MAX_LEN)
+		return -EINVAL;
+
 	memcpy(backup_sched.schedule, sched_cfg->schedule,
 	       sizeof(backup_sched.schedule));
 	memcpy(backup_sched.channels, sched_cfg->channels,
 	       sizeof(backup_sched.channels));
+	memcpy(backup_sched.avail_blob, sched_cfg->avail_blob,
+	       sizeof(backup_sched.avail_blob));
+	backup_sched.avail_blob_len = sched_cfg->avail_blob_len;
 
 	/*
 	 * Remove channels that are no longer in the new schedule to free up
@@ -318,6 +324,10 @@ int ieee80211_nan_set_local_sched(struct ieee80211_sub_if_data *sdata,
 			sched_cfg->schedule[s] = NULL;
 	}
 
+	memcpy(sched_cfg->avail_blob, sched->nan_avail_blob,
+	       sched->nan_avail_blob_len);
+	sched_cfg->avail_blob_len = sched->nan_avail_blob_len;
+
 	drv_vif_cfg_changed(sdata->local, sdata, BSS_CHANGED_NAN_LOCAL_SCHED);
 
 	ieee80211_nan_update_all_ndi_carriers(sdata->local);
@@ -371,6 +381,9 @@ err:
 
 	memcpy(sched_cfg->schedule, backup_sched.schedule,
 	       sizeof(backup_sched.schedule));
+	memcpy(sched_cfg->avail_blob, backup_sched.avail_blob,
+	       sizeof(backup_sched.avail_blob));
+	sched_cfg->avail_blob_len = backup_sched.avail_blob_len;
 
 	drv_vif_cfg_changed(sdata->local, sdata, BSS_CHANGED_NAN_LOCAL_SCHED);
 	ieee80211_nan_update_all_ndi_carriers(sdata->local);
