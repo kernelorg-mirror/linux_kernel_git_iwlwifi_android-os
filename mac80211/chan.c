@@ -39,9 +39,9 @@ ieee80211_chanctx_user_iter_next_nan_channel(struct ieee80211_chanctx *ctx,
 {
 	/* Start from the next index after current position */
 	for (int i = iter->nan_channel_next_idx;
-	     i < ARRAY_SIZE(iter->sdata->vif.cfg.nan_channels); i++) {
+	     i < ARRAY_SIZE(iter->sdata->vif.cfg.nan_sched.channels); i++) {
 		struct ieee80211_nan_channel *nan_channel =
-			&iter->sdata->vif.cfg.nan_channels[i];
+			&iter->sdata->vif.cfg.nan_sched.channels[i];
 
 		if (!nan_channel->chanreq.oper.chan)
 			continue;
