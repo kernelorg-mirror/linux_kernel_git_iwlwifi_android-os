@@ -171,6 +171,7 @@ ieee80211_nan_remove_channel(struct ieee80211_sub_if_data *sdata,
 {
 	struct ieee80211_chanctx_conf *conf;
 	struct ieee80211_chanctx *ctx;
+	struct ieee80211_nan_sched_cfg *sched_cfg = &sdata->vif.cfg.nan_sched;
 
 	if (WARN_ON(!nan_channel))
 		return;
@@ -180,9 +181,9 @@ ieee80211_nan_remove_channel(struct ieee80211_sub_if_data *sdata,
 	if (!nan_channel->chanreq.oper.chan)
 		return;
 
-	for (int slot = 0; slot < ARRAY_SIZE(sdata->vif.cfg.nan_schedule); slot++)
-		if (sdata->vif.cfg.nan_schedule[slot] == nan_channel)
-			sdata->vif.cfg.nan_schedule[slot] = NULL;
+	for (int slot = 0; slot < ARRAY_SIZE(sched_cfg->schedule); slot++)
+		if (sched_cfg->schedule[slot] == nan_channel)
+			sched_cfg->schedule[slot] = NULL;
 
 	conf = nan_channel->chanctx_conf;
 
@@ -229,11 +230,11 @@ ieee80211_nan_update_all_ndi_carriers(struct ieee80211_local *local)
 }
 
 static struct ieee80211_nan_channel *
-ieee80211_nan_find_free_channel(struct ieee80211_vif_cfg *vif_cfg)
+ieee80211_nan_find_free_channel(struct ieee80211_nan_sched_cfg *sched_cfg)
 {
-	for (int i = 0; i < ARRAY_SIZE(vif_cfg->nan_channels); i++) {
-		if (!vif_cfg->nan_channels[i].chanreq.oper.chan)
-			return &vif_cfg->nan_channels[i];
+	for (int i = 0; i < ARRAY_SIZE(sched_cfg->channels); i++) {
+		if (!sched_cfg->channels[i].chanreq.oper.chan)
+			return &sched_cfg->channels[i];
 	}
 
 	return NULL;
@@ -242,35 +243,36 @@ ieee80211_nan_find_free_channel(struct ieee80211_vif_cfg *vif_cfg)
 int ieee80211_nan_set_local_sched(struct ieee80211_sub_if_data *sdata,
 				  struct cfg80211_nan_local_sched *sched)
 {
-	struct ieee80211_nan_channel backup_channels[IEEE80211_NAN_MAX_CHANNELS];
-	struct ieee80211_nan_channel *backup_schedule[CFG80211_NAN_SCHED_NUM_TIME_SLOTS];
 	struct ieee80211_nan_channel *sched_idx_to_chan[IEEE80211_NAN_MAX_CHANNELS] = {};
 	DECLARE_BITMAP(removed_channels, IEEE80211_NAN_MAX_CHANNELS) = {};
-	struct ieee80211_vif_cfg *vif_cfg = &sdata->vif.cfg;
+	struct ieee80211_nan_sched_cfg *sched_cfg = &sdata->vif.cfg.nan_sched;
+	struct ieee80211_nan_sched_cfg backup_sched;
 	int ret;
 
 	if (sched->n_channels > IEEE80211_NAN_MAX_CHANNELS)
 		return -EOPNOTSUPP;
 
-	memcpy(backup_schedule, vif_cfg->nan_schedule, sizeof(backup_schedule));
-	memcpy(backup_channels, vif_cfg->nan_channels, sizeof(backup_channels));
+	memcpy(backup_sched.schedule, sched_cfg->schedule,
+	       sizeof(backup_sched.schedule));
+	memcpy(backup_sched.channels, sched_cfg->channels,
+	       sizeof(backup_sched.channels));
 
 	/*
 	 * Remove channels that are no longer in the new schedule to free up
 	 * resources before adding new channels.
-	 * Create a mapping from sched index to vif_cfg channel
+	 * Create a mapping from sched index to sched_cfg channel
 	 */
-	for (int i = 0; i < ARRAY_SIZE(vif_cfg->nan_channels); i++) {
+	for (int i = 0; i < ARRAY_SIZE(sched_cfg->channels); i++) {
 		bool still_needed = false;
 
-		if (!vif_cfg->nan_channels[i].chanreq.oper.chan)
+		if (!sched_cfg->channels[i].chanreq.oper.chan)
 			continue;
 
 		for (int j = 0; j < sched->n_channels; j++) {
-			if (cfg80211_chandef_identical(&vif_cfg->nan_channels[i].chanreq.oper,
+			if (cfg80211_chandef_identical(&sched_cfg->channels[i].chanreq.oper,
 						       &sched->nan_channels[j].chandef)) {
 				sched_idx_to_chan[j] =
-					&vif_cfg->nan_channels[i];
+					&sched_cfg->channels[i];
 				still_needed = true;
 				break;
 			}
@@ -278,7 +280,8 @@ int ieee80211_nan_set_local_sched(struct ieee80211_sub_if_data *sdata,
 
 		if (!still_needed) {
 			__set_bit(i, removed_channels);
-			ieee80211_nan_remove_channel(sdata, &vif_cfg->nan_channels[i]);
+			ieee80211_nan_remove_channel(sdata,
+						     &sched_cfg->channels[i]);
 		}
 	}
 
@@ -289,7 +292,7 @@ int ieee80211_nan_set_local_sched(struct ieee80211_sub_if_data *sdata,
 			ieee80211_nan_update_channel(sdata->local, chan,
 						     &sched->nan_channels[i]);
 		} else {
-			chan = ieee80211_nan_find_free_channel(vif_cfg);
+			chan = ieee80211_nan_find_free_channel(sched_cfg);
 			if (WARN_ON(!chan)) {
 				ret = -EINVAL;
 				goto err;
@@ -307,12 +310,12 @@ int ieee80211_nan_set_local_sched(struct ieee80211_sub_if_data *sdata,
 		}
 	}
 
-	for (int s = 0; s < ARRAY_SIZE(vif_cfg->nan_schedule); s++) {
+	for (int s = 0; s < ARRAY_SIZE(sched_cfg->schedule); s++) {
 		if (sched->schedule[s] < ARRAY_SIZE(sched_idx_to_chan))
-			vif_cfg->nan_schedule[s] =
+			sched_cfg->schedule[s] =
 				sched_idx_to_chan[sched->schedule[s]];
 		else
-			vif_cfg->nan_schedule[s] = NULL;
+			sched_cfg->schedule[s] = NULL;
 	}
 
 	drv_vif_cfg_changed(sdata->local, sdata, BSS_CHANGED_NAN_LOCAL_SCHED);
@@ -322,23 +325,24 @@ int ieee80211_nan_set_local_sched(struct ieee80211_sub_if_data *sdata,
 	return 0;
 err:
 	/* Remove newly added channels */
-	for (int i = 0; i < ARRAY_SIZE(vif_cfg->nan_channels); i++) {
-		struct cfg80211_chan_def *chan_def = &vif_cfg->nan_channels[i].chanreq.oper;
+	for (int i = 0; i < ARRAY_SIZE(sched_cfg->channels); i++) {
+		struct cfg80211_chan_def *chan_def =
+			&sched_cfg->channels[i].chanreq.oper;
 
 		if (!chan_def->chan)
 			continue;
 
-		if (!cfg80211_chandef_identical(&backup_channels[i].chanreq.oper,
+		if (!cfg80211_chandef_identical(&backup_sched.channels[i].chanreq.oper,
 						chan_def))
 			ieee80211_nan_remove_channel(sdata,
-						     &vif_cfg->nan_channels[i]);
+						     &sched_cfg->channels[i]);
 	}
 
 	/* Re-add all backed up channels */
-	for (int i = 0; i < ARRAY_SIZE(backup_channels); i++) {
-		struct ieee80211_nan_channel *chan = &vif_cfg->nan_channels[i];
+	for (int i = 0; i < ARRAY_SIZE(backup_sched.channels); i++) {
+		struct ieee80211_nan_channel *chan = &sched_cfg->channels[i];
 
-		*chan = backup_channels[i];
+		*chan = backup_sched.channels[i];
 
 		if (!chan->chanctx_conf)
 			continue;
@@ -365,7 +369,8 @@ err:
 		}
 	}
 
-	memcpy(vif_cfg->nan_schedule, backup_schedule, sizeof(backup_schedule));
+	memcpy(sched_cfg->schedule, backup_sched.schedule,
+	       sizeof(backup_sched.schedule));
 
 	drv_vif_cfg_changed(sdata->local, sdata, BSS_CHANGED_NAN_LOCAL_SCHED);
 	ieee80211_nan_update_all_ndi_carriers(sdata->local);
@@ -387,9 +392,12 @@ ieee80211_nan_init_peer_channel(struct ieee80211_sub_if_data *sdata,
 				const struct cfg80211_nan_channel *cfg_chan,
 				struct ieee80211_nan_channel *new_chan)
 {
+	struct ieee80211_nan_sched_cfg *sched_cfg = &sdata->vif.cfg.nan_sched;
+
 	/* Find compatible local channel */
-	for (int j = 0; j < ARRAY_SIZE(sdata->vif.cfg.nan_channels); j++) {
-		struct ieee80211_nan_channel *local_chan = &sdata->vif.cfg.nan_channels[j];
+	for (int j = 0; j < ARRAY_SIZE(sched_cfg->channels); j++) {
+		struct ieee80211_nan_channel *local_chan =
+			&sched_cfg->channels[j];
 		const struct cfg80211_chan_def *compat;
 
 		if (!local_chan->chanreq.oper.chan)
@@ -452,7 +460,7 @@ ieee80211_nan_has_common_slots(struct ieee80211_sub_if_data *sdata,
 {
 	for (int slot = 0; slot < CFG80211_NAN_SCHED_NUM_TIME_SLOTS; slot++) {
 		struct ieee80211_nan_channel *local_chan =
-			sdata->vif.cfg.nan_schedule[slot];
+			sdata->vif.cfg.nan_sched.schedule[slot];
 
 		if (!local_chan || !local_chan->chanctx_conf)
 			continue;
