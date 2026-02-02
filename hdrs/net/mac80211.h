@@ -2034,12 +2034,22 @@ enum ieee80211_offload_flags {
  *	the NAN channel on which the radio will operate. NULL if unscheduled.
  * @avail_blob: NAN Availability attribute blob.
  * @avail_blob_len: length of the @avail_blob in bytes.
+ * @deferred: indicates that the driver should notify peers before applying the
+ *	new NAN schedule, and apply the new schedule the second NAN Slot
+ *	boundary after it notified the peers, as defined in Wi-Fi Aware (TM) 4.0
+ *	specification, section 5.2.2.
+ *	The driver must call ieee80211_nan_sched_update_done() after the
+ *	schedule has been applied.
+ *	If a HW restart happened while a deferred schedule update was pending,
+ *	mac80211 will reconfigure the deferred schedule (and wait for the driver
+ *	to notify that the schedule has been applied).
  */
 struct ieee80211_nan_sched_cfg {
 	struct ieee80211_nan_channel channels[IEEE80211_NAN_MAX_CHANNELS];
 	struct ieee80211_nan_channel *schedule[CFG80211_NAN_SCHED_NUM_TIME_SLOTS];
 	u8 avail_blob[IEEE80211_NAN_AVAIL_BLOB_MAX_LEN];
 	u16 avail_blob_len;
+	bool deferred;
 };
 
 /**
@@ -7867,6 +7877,17 @@ void ieee80211_nan_func_match(struct ieee80211_vif *vif,
 void ieee80211_nan_cluster_joined(struct ieee80211_vif *vif,
 				  const u8 *cluster_id, bool new_cluster,
 				  gfp_t gfp);
+
+/**
+ * ieee80211_nan_sched_update_done - notify that NAN schedule update is done
+ *
+ * This function is called by the driver to notify mac80211 that the NAN
+ * schedule update has been applied.
+ * Must be called with wiphy mutex held. May sleep.
+ *
+ * @vif: &struct ieee80211_vif pointer from the add_interface callback.
+ */
+void ieee80211_nan_sched_update_done(struct ieee80211_vif *vif);
 
 /**
  * ieee80211_calc_rx_airtime - calculate estimated transmission airtime for RX.
