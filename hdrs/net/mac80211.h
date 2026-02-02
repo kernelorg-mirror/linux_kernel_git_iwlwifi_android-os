@@ -2024,16 +2024,22 @@ enum ieee80211_offload_flags {
 	IEEE80211_OFFLOAD_DECAP_ENABLED		= BIT(2),
 };
 
+#define IEEE80211_NAN_AVAIL_BLOB_MAX_LEN	100
+
 /**
  * struct ieee80211_nan_sched_cfg - NAN schedule configuration
  * @channels: array of NAN channels. A channel entry is in use if
  *	channels[i].chanreq.oper.chan is not NULL.
  * @schedule: NAN local schedule - mapping of each 16TU time slot to
  *	the NAN channel on which the radio will operate. NULL if unscheduled.
+ * @avail_blob: NAN Availability attribute blob.
+ * @avail_blob_len: length of the @avail_blob in bytes.
  */
 struct ieee80211_nan_sched_cfg {
 	struct ieee80211_nan_channel channels[IEEE80211_NAN_MAX_CHANNELS];
 	struct ieee80211_nan_channel *schedule[CFG80211_NAN_SCHED_NUM_TIME_SLOTS];
+	u8 avail_blob[IEEE80211_NAN_AVAIL_BLOB_MAX_LEN];
+	u16 avail_blob_len;
 };
 
 /**
