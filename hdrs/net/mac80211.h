@@ -1993,6 +1993,18 @@ enum ieee80211_offload_flags {
 };
 
 /**
+ * struct ieee80211_nan_sched_cfg - NAN schedule configuration
+ * @channels: array of NAN channels. A channel entry is in use if
+ *	channels[i].chanreq.oper.chan is not NULL.
+ * @schedule: NAN local schedule - mapping of each 16TU time slot to
+ *	the NAN channel on which the radio will operate. NULL if unscheduled.
+ */
+struct ieee80211_nan_sched_cfg {
+	struct ieee80211_nan_channel channels[IEEE80211_NAN_MAX_CHANNELS];
+	struct ieee80211_nan_channel *schedule[CFG80211_NAN_SCHED_NUM_TIME_SLOTS];
+};
+
+/**
  * struct ieee80211_vif_cfg - interface configuration
  * @assoc: association status
  * @ibss_joined: indicates whether this station is part of an IBSS or not
@@ -2020,10 +2032,7 @@ enum ieee80211_offload_flags {
  *	your driver/device needs to do.
  * @ap_addr: AP MLD address, or BSSID for non-MLO connections
  *	(station mode only)
- * @nan_channels: array of NAN channels. A channel slot is in use if
- *	nan_channels[i].chanreq.oper.chan is not NULL.
- * @nan_schedule: NAN local schedule - mapping of each 16TU time slot to
- *	the NAN channel on which the radio will operate. NULL if unscheduled.
+ * @nan_sched: NAN schedule parameters. &struct ieee80211_nan_sched_cfg
  */
 struct ieee80211_vif_cfg {
 	/* association related data */
@@ -2042,9 +2051,8 @@ struct ieee80211_vif_cfg {
 	bool s1g;
 	bool idle;
 	u8 ap_addr[ETH_ALEN] __aligned(2);
-	/* These are protected by the wiphy mutex */
-	struct ieee80211_nan_channel nan_channels[IEEE80211_NAN_MAX_CHANNELS];
-	struct ieee80211_nan_channel *nan_schedule[CFG80211_NAN_SCHED_NUM_TIME_SLOTS];
+	/* Protected by the wiphy mutex */
+	struct ieee80211_nan_sched_cfg nan_sched;
 };
 
 #define IEEE80211_TTLM_NUM_TIDS 8
