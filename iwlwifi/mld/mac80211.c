@@ -356,7 +356,6 @@ static void iwl_mac_hw_set_wiphy(struct iwl_mld *mld)
 	if (iwl_mld_nan_supported(mld)) {
 		wiphy->n_iface_combinations =
 			ARRAY_SIZE(iwl_mld_iface_combinations);
-		iwl_mld_hw_set_nan(mld);
 	} else {
 		/* Do not include NAN combination */
 		wiphy->n_iface_combinations =
