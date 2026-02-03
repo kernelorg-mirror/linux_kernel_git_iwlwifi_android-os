@@ -330,7 +330,6 @@ static void ieee80211_stop_p2p_device(struct wiphy *wiphy,
 
 static void ieee80211_nan_conf_free(struct cfg80211_nan_conf *conf)
 {
-	kfree(conf->cluster_id);
 	kfree(conf->extra_nan_attrs);
 	kfree(conf->vendor_elems);
 	memset(conf, 0, sizeof(*conf));
@@ -380,15 +379,8 @@ static int ieee80211_nan_conf_copy(struct cfg80211_nan_conf *dst,
 		dst->vendor_elems = NULL;
 		dst->vendor_elems_len = 0;
 
-		if (src->cluster_id && !dst->cluster_id) {
-			dst->cluster_id = kmemdup(src->cluster_id, ETH_ALEN,
-						  GFP_KERNEL);
-		} else if (!src->cluster_id && !dst->cluster_id) {
-			/* Set to 0 address to avoid checking for NULL whenever it is used */
-			dst->cluster_id = kzalloc(ETH_ALEN, GFP_KERNEL);
-		}
-		if (!dst->cluster_id)
-			goto no_mem;
+		if (is_zero_ether_addr(dst->cluster_id))
+			ether_addr_copy(dst->cluster_id, src->cluster_id);
 
 		if (src->extra_nan_attrs && src->extra_nan_attrs_len) {
 			dst->extra_nan_attrs = kmemdup(src->extra_nan_attrs,
@@ -4957,7 +4949,6 @@ void ieee80211_nan_cluster_joined(struct ieee80211_vif *vif,
 				  gfp_t gfp)
 {
 	struct ieee80211_sub_if_data *sdata = vif_to_sdata(vif);
-	u8 *new_cluster_id;
 
 	if (WARN_ON(vif->type != NL80211_IFTYPE_NAN))
 		return;
@@ -4965,12 +4956,7 @@ void ieee80211_nan_cluster_joined(struct ieee80211_vif *vif,
 	if (WARN_ON(!sdata->u.nan.started))
 		return;
 
-	new_cluster_id = kmemdup(cluster_id, ETH_ALEN, gfp);
-	if (!new_cluster_id)
-		return;
-
-	kfree(sdata->u.nan.conf.cluster_id);
-	sdata->u.nan.conf.cluster_id = new_cluster_id;
+	ether_addr_copy(sdata->u.nan.conf.cluster_id, cluster_id);
 
 	cfg80211_nan_cluster_joined(ieee80211_vif_to_wdev(vif), cluster_id,
 				    new_cluster, gfp);
