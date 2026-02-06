@@ -1063,7 +1063,11 @@ void iwl_mld_change_chanctx(struct ieee80211_hw *hw,
 
 	/* Check if a FW update is required */
 
-	if (changed & IEEE80211_CHANCTX_CHANGE_AP)
+	if (!changed)
+		return;
+
+	if (changed & IEEE80211_CHANCTX_CHANGE_AP ||
+	    changed & IEEE80211_CHANCTX_CHANGE_NPCA)
 		goto update;
 
 	if (chandef->chan == phy->chandef.chan &&
@@ -1325,6 +1329,9 @@ u32 iwl_mld_link_changed_mapping(struct iwl_mld *mld,
 		IWL_DEBUG_MAC80211(mld, "Associated in HE mode\n");
 		link_changes |= LINK_CONTEXT_MODIFY_HE_PARAMS;
 	}
+
+	if (changes & BSS_CHANGED_NPCA)
+		link_changes |= LINK_CONTEXT_MODIFY_UHR_PARAMS;
 
 	return link_changes;
 }
