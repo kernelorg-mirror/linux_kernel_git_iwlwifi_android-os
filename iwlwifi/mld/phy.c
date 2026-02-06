@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0 OR BSD-3-Clause
 /*
- * Copyright (C) 2024-2025 Intel Corporation
+ * Copyright (C) 2024-2026 Intel Corporation
  */
 #include <net/mac80211.h>
 
@@ -99,9 +99,9 @@ iwl_mld_nl80211_width_to_fw(enum nl80211_chan_width width)
 /* Maps the driver specific control channel position (relative to the center
  * freq) definitions to the fw values
  */
-u8 iwl_mld_get_fw_ctrl_pos(const struct cfg80211_chan_def *chandef)
+static u8 _iwl_mld_get_fw_ctrl_pos(u32 control, u32 cf1)
 {
-	int offs = chandef->chan->center_freq - chandef->center_freq1;
+	int offs = control - cf1;
 	int abs_offs = abs(offs);
 	u8 ret;
 
@@ -125,6 +125,12 @@ u8 iwl_mld_get_fw_ctrl_pos(const struct cfg80211_chan_def *chandef)
 	ret |= (offs > 0) * IWL_PHY_CTRL_POS_ABOVE;
 
 	return ret;
+}
+
+u8 iwl_mld_get_fw_ctrl_pos(const struct cfg80211_chan_def *chandef)
+{
+	return _iwl_mld_get_fw_ctrl_pos(chandef->chan->center_freq,
+					chandef->center_freq1);
 }
 
 int iwl_mld_phy_fw_action(struct iwl_mld *mld,
