@@ -499,6 +499,7 @@ static void iwl_mld_nan_link_remove(struct iwl_mld *mld,
 	RCU_INIT_POINTER(mld->fw_id_to_bss_conf[link_id], NULL);
 	nan_link->fw_id = FW_CTXT_ID_INVALID;
 	nan_link->active = false;
+	nan_link->chanctx = NULL;
 }
 
 static bool iwl_mld_nan_have_links(struct iwl_mld_vif *mld_vif)
