@@ -1065,8 +1065,7 @@ static int iwl_mld_send_aux_sta_cmd(struct iwl_mld *mld,
 static int
 iwl_mld_add_internal_sta_to_fw(struct iwl_mld *mld,
 			       const struct iwl_mld_int_sta *internal_sta,
-			       u8 fw_link_id,
-			       const u8 *addr)
+			       u32 link_mask, const u8 *addr)
 {
 	struct iwl_sta_cfg_cmd cmd = {};
 
@@ -1074,7 +1073,7 @@ iwl_mld_add_internal_sta_to_fw(struct iwl_mld *mld,
 		return iwl_mld_send_aux_sta_cmd(mld, internal_sta);
 
 	cmd.sta_id = cpu_to_le32((u8)internal_sta->sta_id);
-	cmd.link_mask = cpu_to_le32(BIT(fw_link_id));
+	cmd.link_mask = cpu_to_le32(link_mask);
 	cmd.station_type = cpu_to_le32(internal_sta->sta_type);
 
 	/* FW doesn't allow to add a IGTK/BIGTK if the sta isn't marked as MFP.
@@ -1096,7 +1095,8 @@ iwl_mld_add_internal_sta_to_fw(struct iwl_mld *mld,
 static int iwl_mld_add_internal_sta(struct iwl_mld *mld,
 				    struct iwl_mld_int_sta *internal_sta,
 				    enum iwl_fw_sta_type sta_type,
-				    u8 fw_link_id, const u8 *addr, u8 tid)
+				    u32 link_mask, const u8 *addr,
+				    u8 tid, bool add_txq)
 {
 	int ret, queue_id;
 
@@ -1108,10 +1108,13 @@ static int iwl_mld_add_internal_sta(struct iwl_mld *mld,
 
 	internal_sta->sta_type = sta_type;
 
-	ret = iwl_mld_add_internal_sta_to_fw(mld, internal_sta, fw_link_id,
+	ret = iwl_mld_add_internal_sta_to_fw(mld, internal_sta, link_mask,
 					     addr);
 	if (ret)
 		goto err;
+
+	if (!add_txq)
+		return 0;
 
 	queue_id = iwl_mld_allocate_internal_txq(mld, internal_sta, tid);
 	if (queue_id < 0) {
@@ -1147,8 +1150,8 @@ int iwl_mld_add_bcast_sta(struct iwl_mld *mld,
 
 	return iwl_mld_add_internal_sta(mld, &mld_link->bcast_sta,
 					STATION_TYPE_BCAST_MGMT,
-					mld_link->fw_id, addr,
-					IWL_MGMT_TID);
+					BIT(mld_link->fw_id), addr,
+					IWL_MGMT_TID, true);
 }
 
 int iwl_mld_add_mcast_sta(struct iwl_mld *mld,
@@ -1167,14 +1170,16 @@ int iwl_mld_add_mcast_sta(struct iwl_mld *mld,
 
 	return iwl_mld_add_internal_sta(mld, &mld_link->mcast_sta,
 					STATION_TYPE_MCAST,
-					mld_link->fw_id, mcast_addr, 0);
+					BIT(mld_link->fw_id), mcast_addr,
+					0, true);
 }
 
 int iwl_mld_add_aux_sta(struct iwl_mld *mld,
 			struct iwl_mld_int_sta *internal_sta)
 {
 	return iwl_mld_add_internal_sta(mld, internal_sta, STATION_TYPE_AUX,
-					0, NULL, IWL_MAX_TID_COUNT);
+					0, NULL, IWL_MAX_TID_COUNT,
+					true);
 }
 
 int iwl_mld_add_mon_sta(struct iwl_mld *mld,
@@ -1191,23 +1196,25 @@ int iwl_mld_add_mon_sta(struct iwl_mld *mld,
 
 	return iwl_mld_add_internal_sta(mld, &mld_link->mon_sta,
 					STATION_TYPE_BCAST_MGMT,
-					mld_link->fw_id, NULL,
-					IWL_MAX_TID_COUNT);
+					BIT(mld_link->fw_id), NULL,
+					IWL_MAX_TID_COUNT,
+					true);
 }
 
 static void iwl_mld_remove_internal_sta(struct iwl_mld *mld,
 					struct iwl_mld_int_sta *internal_sta,
 					bool flush, u8 tid)
 {
-	if (WARN_ON_ONCE(internal_sta->sta_id == IWL_INVALID_STA ||
-			 internal_sta->queue_id == IWL_MLD_INVALID_QUEUE))
+	if (WARN_ON_ONCE(internal_sta->sta_id == IWL_INVALID_STA))
 		return;
 
-	if (flush)
+	if (flush && !WARN_ON_ONCE(internal_sta->queue_id ==
+				   IWL_MLD_INVALID_QUEUE))
 		iwl_mld_flush_link_sta_txqs(mld, internal_sta->sta_id);
 
-	iwl_mld_free_txq(mld, BIT(internal_sta->sta_id),
-			 tid, internal_sta->queue_id);
+	if (internal_sta->queue_id != IWL_MLD_INVALID_QUEUE)
+		iwl_mld_free_txq(mld, BIT(internal_sta->sta_id),
+				 tid, internal_sta->queue_id);
 
 	iwl_mld_rm_sta_from_fw(mld, internal_sta->sta_id);
 
@@ -1419,7 +1426,8 @@ int iwl_mld_add_pasn_sta(struct iwl_mld *mld, struct ieee80211_vif *vif,
 	struct iwl_mld_link *link = &mld_vif->deflink;
 
 	ret = iwl_mld_add_internal_sta(mld, sta, STATION_TYPE_PEER,
-				       link->fw_id, addr, IWL_MGMT_TID);
+				       BIT(link->fw_id), addr,
+				       IWL_MGMT_TID, true);
 	if (ret)
 		return ret;
 
@@ -1444,4 +1452,32 @@ void iwl_mld_remove_pasn_sta(struct iwl_mld *mld, struct ieee80211_vif *vif,
 
 	if (!WARN_ON(!sta))
 		iwl_mld_remove_internal_sta(mld, sta, true, IWL_MGMT_TID);
+}
+
+int iwl_mld_add_nan_bcast_sta(struct iwl_mld *mld,
+			      struct iwl_mld_int_sta *sta)
+{
+	const u8 bcast_addr[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+
+	return iwl_mld_add_internal_sta(mld, sta, STATION_TYPE_NAN_BCAST,
+					0, bcast_addr, 0, false);
+}
+
+int iwl_mld_add_nan_mgmt_sta(struct iwl_mld *mld,
+			     struct iwl_mld_int_sta *sta)
+{
+	return iwl_mld_add_internal_sta(mld, sta, STATION_TYPE_NAN_MGMT,
+					0, NULL, IWL_MAX_TID_COUNT, true);
+}
+
+void iwl_mld_remove_nan_bcast_sta(struct iwl_mld *mld,
+				  struct iwl_mld_int_sta *sta)
+{
+	iwl_mld_remove_internal_sta(mld, sta, false, 0);
+}
+
+void iwl_mld_remove_nan_mgmt_sta(struct iwl_mld *mld,
+				 struct iwl_mld_int_sta *sta)
+{
+	iwl_mld_remove_internal_sta(mld, sta, true, IWL_MAX_TID_COUNT);
 }
