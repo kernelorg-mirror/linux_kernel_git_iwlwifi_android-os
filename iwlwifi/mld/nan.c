@@ -463,7 +463,7 @@ static int iwl_mld_nan_link_set_active(struct iwl_mld *mld,
 			struct iwl_mld_sta *mld_sta = iwl_mld_sta_from_mac80211(sta);
 
 			if (mld_sta->sta_type == STATION_TYPE_NAN_PEER_NDI)
-				iwl_mld_config_tlc(mld, vif, sta);
+				iwl_mld_config_tlc(mld, mld_sta->vif, sta);
 		}
 	}
 
