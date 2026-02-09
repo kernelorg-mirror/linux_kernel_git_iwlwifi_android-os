@@ -285,4 +285,17 @@ int iwl_mld_add_pasn_sta(struct iwl_mld *mld, struct ieee80211_vif *vif,
 void iwl_mld_remove_pasn_sta(struct iwl_mld *mld, struct ieee80211_vif *vif,
 			     struct iwl_mld_int_sta *sta,
 			     struct ieee80211_key_conf *keyconf);
+
+int iwl_mld_add_nan_bcast_sta(struct iwl_mld *mld,
+			      struct iwl_mld_int_sta *sta);
+
+int iwl_mld_add_nan_mgmt_sta(struct iwl_mld *mld,
+			     struct iwl_mld_int_sta *sta);
+
+void iwl_mld_remove_nan_bcast_sta(struct iwl_mld *mld,
+				  struct iwl_mld_int_sta *sta);
+
+void iwl_mld_remove_nan_mgmt_sta(struct iwl_mld *mld,
+				 struct iwl_mld_int_sta *sta);
+
 #endif /* __iwl_mld_sta_h__ */
