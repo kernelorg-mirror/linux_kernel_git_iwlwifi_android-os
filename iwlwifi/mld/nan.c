@@ -682,8 +682,8 @@ void iwl_mld_nan_vif_cfg_changed(struct iwl_mld *mld,
 		WARN_ON_ONCE(!mld_vif->nan.mac_added);
 
 		/* mac80211 should reconfigure same state */
-		if (!WARN_ON_ONCE(mld->fw_status.in_hw_restart) &&
-		                  !iwl_mld_error_before_recovery(mld))
+		if (!WARN_ON_ONCE(mld->fw_status.in_hw_restart &&
+				  !iwl_mld_error_before_recovery(mld)))
 			iwl_mld_rm_vif(mld, vif);
 	}
 }
