@@ -759,7 +759,7 @@ int iwl_mld_mac802111_nan_peer_sched_changed(struct ieee80211_hw *hw,
 
 			cmd.per_phy[phy->fw_id].map_id = sched->maps[i].map_id;
 			memcpy(cmd.per_phy[phy->fw_id].channel_entry,
-			       sched->channels[i].channel_entry,
+			       chan->channel_entry,
 			       sizeof(cmd.per_phy[phy->fw_id].channel_entry));
 			cmd.per_phy[phy->fw_id].availability_map |=
 				cpu_to_le32(BIT(slot));
