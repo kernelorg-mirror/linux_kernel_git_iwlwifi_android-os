@@ -21,6 +21,11 @@ bool iwl_mld_nan_supported(struct iwl_mld *mld)
 	return false;
 }
 
+int iwl_mld_nan_get_mgmt_queue(struct iwl_mld *mld, struct ieee80211_vif *vif)
+{
+	return 0;
+}
+
 int iwl_mld_start_nan(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
 		      struct cfg80211_nan_conf *conf)
 {
