@@ -1982,7 +1982,6 @@ static void _iwl_op_mode_stop(struct iwl_drv *drv)
 	}
 }
 
-#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
 static int iwl_drv_load_fseq_image(struct iwl_trans *trans, struct iwl_fw *fw,
 				   struct iwl_firmware_pieces *pieces)
 {
@@ -2133,7 +2132,6 @@ static int iwl_drv_load_fseq_image(struct iwl_trans *trans, struct iwl_fw *fw,
 	release_firmware(fseq_fw);
 	return err;
 }
-#endif
 
 /*
  * iwl_req_fw_callback - callback when firmware was loaded
@@ -2412,13 +2410,12 @@ static void iwl_req_fw_callback(const struct firmware *ucode_raw, void *context)
 #ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
 	if (!load_fw_dbg_err)
 		release_firmware(fw_dbg_config);
+#endif
 
-	if (drv->trans->dbg_cfg.load_external_fseq &&
-	    fw_has_capa(&fw->ucode_capa,
+	if (fw_has_capa(&fw->ucode_capa,
 			IWL_UCODE_TLV_CAPA_EXT_FSEQ_IMAGE_SUPPORT) &&
 	    iwl_drv_load_fseq_image(drv->trans, fw, pieces))
 		goto out_unbind;
-#endif
 
 	iwl_dbg_tlv_load_bin(drv->trans->dev, drv->trans);
 
