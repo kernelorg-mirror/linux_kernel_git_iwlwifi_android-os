@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0 OR BSD-3-Clause */
 /*
- * Copyright (C) 2013-2015, 2018-2025 Intel Corporation
+ * Copyright (C) 2013-2015, 2018-2026 Intel Corporation
  * Copyright (C) 2013-2015 Intel Mobile Communications GmbH
  */
 #if !defined(__IWL_DBG_CFG_H__) || defined(DBG_CFG_REINCLUDE)
@@ -304,7 +304,6 @@ struct iwl_dbg_cfg {
 	IWL_DBG_CFG_NODEF(bool, DISABLE_STUCK_TIMER)
 	IWL_DBG_CFG_NODEF(bool, disable_eml)
 	IWL_DBG_CFG_DEF(int, eml_capa_override, -1)
-	IWL_DBG_CFG_DEF(bool, load_external_fseq, false)
 	IWL_DBG_CFG_NODEF(bool, load_external_pnvm)
 #ifdef CPTCFG_IWLWIFI_DEBUG
 	IWL_MOD_PARAM(u32, debug_level)
