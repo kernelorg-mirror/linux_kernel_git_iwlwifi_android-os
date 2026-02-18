@@ -21,6 +21,17 @@ bool iwl_mld_nan_supported(struct iwl_mld *mld)
 	return false;
 }
 
+bool iwl_mld_nan_use_nan_stations(struct iwl_mld *mld)
+{
+	/*
+	 * If the FW supports version 1 of the NAN config command, it means that
+	 * it needs to receive the station ID of the auxiliary station in the
+	 * NAN configuration command. Otherwise, use the NAN dedicated station
+	 * types.
+	 */
+	return false;
+}
+
 int iwl_mld_nan_get_mgmt_queue(struct iwl_mld *mld, struct ieee80211_vif *vif)
 {
 	return 0;
@@ -287,6 +298,10 @@ iwl_mld_nan_find_link(struct iwl_mld_vif *mld_vif,
 	return NULL;
 }
 
+static void iwl_mld_nan_set_mcast_data_links(struct ieee80211_vif *vif)
+{
+}
+
 void iwl_mld_nan_vif_cfg_changed(struct iwl_mld *mld,
 				 struct ieee80211_vif *vif,
 				 u64 changes)
@@ -447,6 +462,17 @@ void iwl_mld_nan_vif_cfg_changed(struct iwl_mld *mld,
 			if (added_links &&
 			    mld_sta->sta_type == STATION_TYPE_NAN_PEER_NDI)
 				iwl_mld_config_tlc(mld, mld_sta->vif, sta);
+		}
+
+		/*
+		 * Iterate over all the NAN Data interfaces and update the links
+		 * for the internal multicast data station
+		 */
+		if (iwl_mld_nan_use_nan_stations(mld)) {
+			struct ieee80211_vif *iter;
+
+			for_each_active_interface(iter, mld->hw)
+				iwl_mld_nan_set_mcast_data_links(iter);
 		}
 	}
 
