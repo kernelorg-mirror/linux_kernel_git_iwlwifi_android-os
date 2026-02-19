@@ -1272,4 +1272,6 @@ static inline bool iwl_trans_is_top_reset_supported(struct iwl_trans *trans)
 	return true;
 }
 
+/* USB handling */
+
 #endif /* __iwl_trans_h__ */
