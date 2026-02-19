@@ -771,16 +771,19 @@ static void iwl_mld_config_tlc_nan(struct iwl_mld *mld,
 	for_each_mld_nan_valid_link(nan_mld_vif, nan_link) {
 		struct ieee80211_chanctx_conf *chan_ctx;
 		struct iwl_mld_tlc_sta_capa capa = {};
+		struct cfg80211_chan_def *chandef;
 
 		chan_ctx = nan_link->chanctx;
 		if (!chan_ctx)
 			continue;
 
+		chandef = iwl_mld_get_chandef_from_chanctx(mld, chan_ctx);
+
 		capa.smps_mode = IEEE80211_SMPS_OFF; /* always off */
 
 		/* Note these are irrelevant if there's no schedule */
 		capa.rx_nss = 2; /* maximum we support */
-		capa.bandwidth = IEEE80211_STA_RX_BW_MAX;
+		capa.bandwidth = ieee80211_chan_width_to_rx_bw(chandef->width);
 
 		for (int j = 0; j < (sched ? sched->n_channels : 0); j++) {
 			enum ieee80211_sta_rx_bandwidth rx_bw;
