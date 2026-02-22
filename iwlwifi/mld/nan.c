@@ -353,6 +353,18 @@ bool iwl_mld_cancel_nan_dw_end_notif(struct iwl_mld *mld,
 	return true;
 }
 
+bool iwl_mld_cancel_nan_ulw_attr_notif(struct iwl_mld *mld,
+				       struct iwl_rx_packet *pkt,
+				       u32 obj_id)
+{
+	return true;
+}
+
+void iwl_mld_handle_nan_ulw_attr_notif(struct iwl_mld *mld,
+				       struct iwl_rx_packet *pkt)
+{
+}
+
 void iwl_mld_handle_nan_dw_end_notif(struct iwl_mld *mld,
 				     struct iwl_rx_packet *pkt)
 {
