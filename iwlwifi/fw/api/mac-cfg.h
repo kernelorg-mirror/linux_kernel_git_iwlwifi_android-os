@@ -45,7 +45,7 @@ enum iwl_mac_conf_subcmd_ids {
 	LINK_CONFIG_CMD = 0x9,
 	/**
 	 * @STA_CONFIG_CMD: &struct iwl_sta_cfg_cmd_v1,
-	 *	&struct iwl_sta_cfg_cmd_v2, or struct iwl_sta_cfg_cmd
+	 *	&struct iwl_sta_cfg_cmd_v2, or &struct iwl_sta_cfg_cmd
 	 */
 	STA_CONFIG_CMD = 0xA,
 	/**
