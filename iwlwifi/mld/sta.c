@@ -430,6 +430,8 @@ static int iwl_mld_send_sta_cmd(struct iwl_mld *mld,
 		cmd_v2->link_id = cpu_to_le32(__ffs(le32_to_cpu(cmd->link_mask)));
 	} else if (WARN_ON(cmd->station_type != cpu_to_le32(STATION_TYPE_NAN_PEER_NMI) &&
 			   cmd->station_type != cpu_to_le32(STATION_TYPE_NAN_PEER_NDI) &&
+			   cmd->station_type != cpu_to_le32(STATION_TYPE_NAN_BCAST) &&
+			   cmd->station_type != cpu_to_le32(STATION_TYPE_NAN_MGMT) &&
 			   hweight32(le32_to_cpu(cmd->link_mask)) != 1)) {
 		return -EINVAL;
 	}
