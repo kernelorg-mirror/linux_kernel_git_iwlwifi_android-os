@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0 OR BSD-3-Clause
 /*
- * Copyright (C) 2025 Intel Corporation
+ * Copyright (C) 2025-2026 Intel Corporation
  */
 #include <linux/etherdevice.h>
 #include <linux/math64.h>
@@ -796,8 +796,7 @@ void iwl_mld_handle_lci_civic_notif(struct iwl_mld *mld,
 	struct iwl_mld_lci_civic_entry *entry;
 	const u8 *ies, *lci, *civic, *msr_ie;
 	size_t ies_len, lci_len = 0, civic_len = 0;
-	size_t baselen = IEEE80211_MIN_ACTION_SIZE +
-			 sizeof(mgmt->u.action.u.ftm);
+	size_t baselen = IEEE80211_MIN_ACTION_SIZE(ftm);
 	const u8 rprt_type_lci = IEEE80211_SPCT_MSR_RPRT_TYPE_LCI;
 	const u8 rprt_type_civic = IEEE80211_SPCT_MSR_RPRT_TYPE_CIVIC;
 
@@ -807,7 +806,7 @@ void iwl_mld_handle_lci_civic_notif(struct iwl_mld *mld,
 
 	lockdep_assert_wiphy(mld->wiphy);
 
-	ies = mgmt->u.action.u.ftm.variable;
+	ies = mgmt->u.action.ftm.variable;
 	ies_len = len - baselen;
 
 	msr_ie = cfg80211_find_ie_match(WLAN_EID_MEASURE_REPORT, ies, ies_len,
