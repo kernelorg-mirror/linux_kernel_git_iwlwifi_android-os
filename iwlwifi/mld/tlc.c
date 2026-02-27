@@ -647,6 +647,7 @@ static void _iwl_mld_config_tlc_link(struct iwl_mld *mld,
 {
 	struct iwl_mld_sta *mld_sta = iwl_mld_sta_from_mac80211(link_sta->sta);
 	struct ieee80211_supported_band *sband;
+	struct cfg80211_chan_def *chandef;
 	unsigned long rates_bitmap;
 	enum nl80211_band band;
 	int i;
@@ -661,7 +662,8 @@ static void _iwl_mld_config_tlc_link(struct iwl_mld *mld,
 	if (WARN_ON(!chan_ctx))
 		return;
 
-	band = chan_ctx->def.chan->band;
+	chandef = &iwl_mld_phy_from_mac80211(chan_ctx)->chandef;
+	band = chandef->chan->band;
 	sband = mld->hw->wiphy->bands[band];
 
 	/* Before we have information about a station, configure the A-MSDU RC
@@ -819,6 +821,7 @@ void iwl_mld_config_tlc_link(struct iwl_mld *mld,
 	struct ieee80211_chanctx_conf *chan_ctx;
 	struct ieee80211_supported_band *sband;
 	struct iwl_mld_tlc_sta_capa capa = {};
+	struct cfg80211_chan_def *chandef;
 	enum nl80211_band band;
 
 	if (fw_sta_id < 0)
@@ -839,12 +842,14 @@ void iwl_mld_config_tlc_link(struct iwl_mld *mld,
 	if (WARN_ON_ONCE(!chan_ctx))
 		return;
 
-	band = chan_ctx->def.chan->band;
+	chandef = &iwl_mld_phy_from_mac80211(chan_ctx)->chandef;
+	band = chandef->chan->band;
 	sband = mld->hw->wiphy->bands[band];
 
 	capa.smps_mode = link_sta->smps_mode;
 	capa.rx_nss = link_sta->rx_nss;
-	capa.bandwidth = link_sta->bandwidth;
+	capa.bandwidth = ieee80211_chan_width_to_rx_bw(chandef->width);
+	capa.bandwidth = min(capa.bandwidth, link_sta->bandwidth);
 	capa.own_he_cap = ieee80211_get_he_iftype_cap_vif(sband, vif);
 	capa.own_eht_cap = ieee80211_get_eht_iftype_cap_vif(sband, vif);
 	capa.own_uhr_cap = ieee80211_get_uhr_iftype_cap_vif(sband, vif);
