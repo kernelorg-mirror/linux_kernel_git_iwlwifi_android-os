@@ -1992,7 +1992,7 @@ enum ieee80211_offload_flags {
 	IEEE80211_OFFLOAD_DECAP_ENABLED		= BIT(2),
 };
 
-#define IEEE80211_NAN_AVAIL_BLOB_MAX_LEN	100
+#define IEEE80211_NAN_AVAIL_BLOB_MAX_LEN	54
 
 /**
  * struct ieee80211_nan_sched_cfg - NAN schedule configuration
