@@ -283,6 +283,10 @@ int ieee80211_nan_set_local_sched(struct ieee80211_sub_if_data *sdata,
 	       sizeof(backup_sched.avail_blob));
 	backup_sched.avail_blob_len = sched_cfg->avail_blob_len;
 
+	memcpy(sched_cfg->avail_blob, sched->nan_avail_blob,
+	       sched->nan_avail_blob_len);
+	sched_cfg->avail_blob_len = sched->nan_avail_blob_len;
+
 	/*
 	 * Remove channels that are no longer in the new schedule to free up
 	 * resources before adding new channels. For deferred schedule, channels
@@ -347,9 +351,6 @@ int ieee80211_nan_set_local_sched(struct ieee80211_sub_if_data *sdata,
 			sched_cfg->schedule[s] = NULL;
 	}
 
-	memcpy(sched_cfg->avail_blob, sched->nan_avail_blob,
-	       sched->nan_avail_blob_len);
-	sched_cfg->avail_blob_len = sched->nan_avail_blob_len;
 	sched_cfg->deferred = sched->deferred;
 
 	drv_vif_cfg_changed(sdata->local, sdata, BSS_CHANGED_NAN_LOCAL_SCHED);
