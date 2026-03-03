@@ -18,8 +18,8 @@
 
 /**
  * struct iwl_mld_link_chan_load_threshold - channel load thresholds
- * @high_lim: level up transition thresholds
- * @low_lim: level down transition thresholds
+ * @high_lim: level up transition thresholds, in percentage
+ * @low_lim: level down transition thresholds, in percentage
  */
 struct iwl_mld_link_chan_load_threshold {
 	u8 high_lim;
@@ -28,18 +28,9 @@ struct iwl_mld_link_chan_load_threshold {
 
 static const struct iwl_mld_link_chan_load_threshold
 link_chan_load_thresh_tbl[] = {
-	[LINK_CHAN_LOAD_LVL1] = {
-		.high_lim = NORMALIZE_PERCENT_TO_255(45),
-		.low_lim = NORMALIZE_PERCENT_TO_255(40)
-	},
-	[LINK_CHAN_LOAD_LVL2] = {
-		.high_lim = NORMALIZE_PERCENT_TO_255(70),
-		.low_lim = NORMALIZE_PERCENT_TO_255(65)
-	},
-	[LINK_CHAN_LOAD_LVL3] = {
-		.high_lim = NORMALIZE_PERCENT_TO_255(85),
-		.low_lim = NORMALIZE_PERCENT_TO_255(80)
-	},
+	[LINK_CHAN_LOAD_LVL1] = { .high_lim = 45, .low_lim = 40 },
+	[LINK_CHAN_LOAD_LVL2] = { .high_lim = 70, .low_lim = 65 },
+	[LINK_CHAN_LOAD_LVL3] = { .high_lim = 85, .low_lim = 80 },
 };
 
 int iwl_mld_send_link_cmd(struct iwl_mld *mld,
