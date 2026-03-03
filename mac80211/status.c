@@ -944,6 +944,9 @@ void ieee80211_tx_monitor(struct ieee80211_local *local, struct sk_buff *skb,
 			if (!ieee80211_sdata_running(sdata))
 				continue;
 
+			if (sdata->u.mntr.flags & MONITOR_FLAG_SKIP_TX)
+				continue;
+
 			if (prev_dev) {
 				skb2 = skb_clone(skb, GFP_ATOMIC);
 				if (skb2) {

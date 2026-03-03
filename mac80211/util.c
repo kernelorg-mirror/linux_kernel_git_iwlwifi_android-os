@@ -1786,14 +1786,14 @@ static int ieee80211_reconfig_nan(struct ieee80211_sub_if_data *sdata)
 	if (WARN_ON(res))
 		return res;
 
-	if (!(0 & WIPHY_NAN_FLAGS_USERSPACE_DE))
+	if (!(sdata->local->hw.wiphy->nan_capa.flags & WIPHY_NAN_FLAGS_USERSPACE_DE))
 		return ieee80211_reconfig_nan_offload_de(sdata);
 
 	drv_vif_cfg_changed(sdata->local, sdata, BSS_CHANGED_NAN_LOCAL_SCHED);
 
 	/* Now we can add all the NDIs to the driver */
 	list_for_each_entry(ndi_sdata, &local->interfaces, list) {
-		if (0) {
+		if (ndi_sdata->vif.type == NL80211_IFTYPE_NAN_DATA) {
 			res = drv_add_interface(local, ndi_sdata);
 			if (WARN_ON(res))
 				return res;
@@ -1829,7 +1829,7 @@ static int ieee80211_reconfig_nan(struct ieee80211_sub_if_data *sdata)
 		enum ieee80211_sta_state state;
 
 		if (!sta->uploaded ||
-		    1)
+		    sta->sdata->vif.type != NL80211_IFTYPE_NAN_DATA)
 			continue;
 
 		if (WARN_ON(!sta->sta.nmi))
@@ -1962,7 +1962,16 @@ int ieee80211_reconfig(struct ieee80211_local *local)
 	drv_set_frag_threshold(local, -1, hw->wiphy->frag_threshold);
 
 	/* setup RTS threshold */
-	drv_set_rts_threshold(local, -1, hw->wiphy->rts_threshold);
+	if (hw->wiphy->n_radio > 0) {
+		for (i = 0; i < hw->wiphy->n_radio; i++) {
+			u32 rts_threshold =
+				hw->wiphy->radio_cfg[i].rts_threshold;
+
+			drv_set_rts_threshold(local, i, rts_threshold);
+		}
+	} else {
+		drv_set_rts_threshold(local, -1, hw->wiphy->rts_threshold);
+	}
 
 	/* reset coverage class */
 	drv_set_coverage_class(local, -1, hw->wiphy->coverage_class);
@@ -1989,7 +1998,7 @@ int ieee80211_reconfig(struct ieee80211_local *local)
 		    !ieee80211_hw_check(&local->hw, NO_VIRTUAL_MONITOR))
 			continue;
 		/* These vifs can't be added before NAN was started */
-		if (0)
+		if (sdata->vif.type == NL80211_IFTYPE_NAN_DATA)
 			continue;
 		if (sdata->vif.type != NL80211_IFTYPE_AP_VLAN &&
 		    ieee80211_sdata_running(sdata)) {
@@ -2008,7 +2017,7 @@ int ieee80211_reconfig(struct ieee80211_local *local)
 			if (sdata->vif.type == NL80211_IFTYPE_MONITOR &&
 			    !ieee80211_hw_check(&local->hw, NO_VIRTUAL_MONITOR))
 				continue;
-			if (0)
+			if (sdata->vif.type == NL80211_IFTYPE_NAN_DATA)
 				continue;
 			if (sdata->vif.type != NL80211_IFTYPE_AP_VLAN &&
 			    ieee80211_sdata_running(sdata))
@@ -2094,7 +2103,7 @@ int ieee80211_reconfig(struct ieee80211_local *local)
 		case NL80211_IFTYPE_MONITOR:
 			break;
 		case NL80211_IFTYPE_NAN:
-		/* case NL80211_IFTYPE_NAN_DATA */
+		case NL80211_IFTYPE_NAN_DATA:
 			/* NAN stations are handled later */
 			break;
 		case NL80211_IFTYPE_ADHOC:
@@ -2197,7 +2206,7 @@ int ieee80211_reconfig(struct ieee80211_local *local)
 				return res;
 			}
 			break;
-		/* case NL80211_IFTYPE_NAN_DATA */
+		case NL80211_IFTYPE_NAN_DATA:
 		case NL80211_IFTYPE_AP_VLAN:
 		case NL80211_IFTYPE_MONITOR:
 		case NL80211_IFTYPE_P2P_DEVICE:
@@ -3366,12 +3375,15 @@ bool ieee80211_chandef_s1g_oper(struct ieee80211_local *local,
 		return false;
 	}
 
+	chandef->s1g_primary_2mhz = false;
+
 	switch (u8_get_bits(oper->ch_width, S1G_OPER_CH_WIDTH_PRIMARY)) {
 	case IEEE80211_S1G_PRI_CHANWIDTH_1MHZ:
 		pri_1mhz_khz = ieee80211_channel_to_freq_khz(
 			oper->primary_ch, NL80211_BAND_S1GHZ);
 		break;
 	case IEEE80211_S1G_PRI_CHANWIDTH_2MHZ:
+		chandef->s1g_primary_2mhz = true;
 		pri_2mhz_khz = ieee80211_channel_to_freq_khz(
 			oper->primary_ch, NL80211_BAND_S1GHZ);
 
@@ -4170,7 +4182,7 @@ bool ieee80211_is_radio_idx_in_scan_req(struct wiphy *wiphy,
 
 	for (i = 0; i < scan_req->n_channels; i++) {
 		chan = scan_req->channels[i];
-		chan_radio_idx = 0;
+		chan_radio_idx = cfg80211_get_radio_idx_by_chan(wiphy, chan);
 
 		/* The radio index either matched successfully, or an error
 		 * occurred. For example, if radio-level information is

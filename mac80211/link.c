@@ -46,10 +46,32 @@ static void ieee80211_update_apvlan_links(struct ieee80211_sub_if_data *sdata)
 
 void ieee80211_apvlan_link_setup(struct ieee80211_sub_if_data *sdata)
 {
+	struct ieee80211_sub_if_data *ap_bss = container_of(sdata->bss,
+					    struct ieee80211_sub_if_data, u.ap);
+	u16 new_links = ap_bss->vif.valid_links;
+	unsigned long add;
+	int link_id;
+
+	if (!ap_bss->vif.valid_links)
+		return;
+
+	add = new_links;
+	for_each_set_bit(link_id, &add, IEEE80211_MLD_MAX_NUM_LINKS) {
+		sdata->wdev.valid_links |= BIT(link_id);
+		ether_addr_copy(sdata->wdev.links[link_id].addr,
+				ap_bss->wdev.links[link_id].addr);
+	}
+
+	ieee80211_vif_set_links(sdata, new_links, 0);
 }
 
 void ieee80211_apvlan_link_clear(struct ieee80211_sub_if_data *sdata)
 {
+	if (!sdata->wdev.valid_links)
+		return;
+
+	sdata->wdev.valid_links = 0;
+	ieee80211_vif_clear_links(sdata);
 }
 
 void ieee80211_link_setup(struct ieee80211_link_data *link)

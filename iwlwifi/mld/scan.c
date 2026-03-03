@@ -1883,7 +1883,7 @@ int iwl_mld_regular_scan_start(struct iwl_mld *mld, struct ieee80211_vif *vif,
 			       struct ieee80211_scan_ies *ies)
 {
 	/* Clear survey data when starting the first part of a regular scan */
-	if (true && mld->channel_survey)
+	if (req->first_part && mld->channel_survey)
 		memset(mld->channel_survey->channels, 0,
 		       sizeof(mld->channel_survey->channels[0]) *
 		       mld->channel_survey->n_channels);

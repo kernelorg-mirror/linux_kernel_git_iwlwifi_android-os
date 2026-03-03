@@ -2039,6 +2039,14 @@ int ieee80211_mesh_csa_beacon(struct ieee80211_sub_if_data *sdata,
 int ieee80211_mesh_finish_csa(struct ieee80211_sub_if_data *sdata,
 			      u64 *changed);
 
+/* NAN code */
+int ieee80211_nan_set_local_sched(struct ieee80211_sub_if_data *sdata,
+				  struct cfg80211_nan_local_sched *sched);
+int ieee80211_nan_set_peer_sched(struct ieee80211_sub_if_data *sdata,
+				 struct cfg80211_nan_peer_sched *sched);
+void ieee80211_nan_free_peer_sched(struct ieee80211_nan_peer_sched *sched);
+void ieee80211_nan_update_ndi_carrier(struct ieee80211_sub_if_data *ndi_sdata);
+
 /* scan/BSS handling */
 void ieee80211_scan_work(struct wiphy *wiphy, struct wiphy_work *work);
 int ieee80211_request_ibss_scan(struct ieee80211_sub_if_data *sdata,
@@ -2894,6 +2902,12 @@ void ieee80211_process_epcs_ena_resp(struct ieee80211_sub_if_data *sdata,
 				     struct ieee80211_mgmt *mgmt, size_t len);
 void ieee80211_process_epcs_teardown(struct ieee80211_sub_if_data *sdata,
 				     struct ieee80211_mgmt *mgmt, size_t len);
+
+int ieee80211_mgd_assoc_ml_reconf(struct ieee80211_sub_if_data *sdata,
+				  struct cfg80211_ml_reconf_req *req);
+
+void ieee80211_process_ml_reconf_resp(struct ieee80211_sub_if_data *sdata,
+				      struct ieee80211_mgmt *mgmt, size_t len);
 void ieee80211_stop_mbssid(struct ieee80211_sub_if_data *sdata);
 
 void

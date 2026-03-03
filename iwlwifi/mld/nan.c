@@ -18,7 +18,36 @@
 
 bool iwl_mld_nan_supported(struct iwl_mld *mld)
 {
+	const struct iwl_fw *fw = mld->fw;
+
+	if (fw_has_capa(&fw->ucode_capa, IWL_UCODE_TLV_CAPA_NAN_SYNC_SUPPORT) &&
+	    iwl_fw_lookup_cmd_ver(fw, WIDE_ID(MAC_CONF_GROUP, NAN_SCHEDULE_CMD), 0) >= 1 &&
+	    iwl_fw_lookup_cmd_ver(fw, WIDE_ID(MAC_CONF_GROUP, NAN_PEER_CMD), 0) >= 1 &&
+	    iwl_fw_lookup_cmd_ver(fw, WIDE_ID(MAC_CONF_GROUP, STA_CONFIG_CMD), 0) >= 3 &&
+	    iwl_fw_lookup_cmd_ver(fw, WIDE_ID(MAC_CONF_GROUP, MAC_CONFIG_CMD), 0) >= 4 &&
+	    iwl_fw_lookup_cmd_ver(fw, WIDE_ID(DATA_PATH_GROUP, TLC_MNG_CONFIG_CMD), 0) >= 6)
+		return true;
 	return false;
+}
+
+static int iwl_mld_nan_send_config_cmd(struct iwl_mld *mld,
+				       struct iwl_nan_config_cmd *cmd,
+				       u8 *beacon_data, size_t beacon_data_len)
+{
+	struct iwl_host_cmd hcmd = {
+		.id = WIDE_ID(MAC_CONF_GROUP, NAN_CFG_CMD),
+	};
+
+	hcmd.len[0] = sizeof(*cmd);
+	hcmd.data[0] = cmd;
+
+	if (beacon_data_len) {
+		hcmd.len[1] = beacon_data_len;
+		hcmd.data[1] = beacon_data;
+		hcmd.dataflags[1] = IWL_HCMD_DFL_DUP;
+	}
+
+	return iwl_mld_send_cmd(mld, &hcmd);
 }
 
 bool iwl_mld_nan_use_nan_stations(struct iwl_mld *mld)
@@ -29,18 +58,207 @@ bool iwl_mld_nan_use_nan_stations(struct iwl_mld *mld)
 	 * NAN configuration command. Otherwise, use the NAN dedicated station
 	 * types.
 	 */
-	return false;
+	return iwl_fw_lookup_cmd_ver(mld->fw,
+				     WIDE_ID(MAC_CONF_GROUP,
+					     NAN_CFG_CMD), 1) != 1;
+}
+
+static const struct iwl_mld_int_sta *
+iwl_mld_nan_get_mgmt_sta(struct iwl_mld *mld, struct ieee80211_vif *vif)
+{
+	struct iwl_mld_vif *mld_vif = iwl_mld_vif_from_mac80211(vif);
+	const struct iwl_mld_int_sta *sta;
+
+	if (iwl_mld_nan_use_nan_stations(mld))
+		sta = &mld_vif->nan.mgmt_sta;
+	else
+		sta = &mld_vif->aux_sta;
+
+	if (WARN_ON(sta->sta_id == IWL_INVALID_STA))
+		return NULL;
+
+	return sta;
 }
 
 int iwl_mld_nan_get_mgmt_queue(struct iwl_mld *mld, struct ieee80211_vif *vif)
 {
-	return 0;
+	const struct iwl_mld_int_sta *sta = iwl_mld_nan_get_mgmt_sta(mld, vif);
+
+	if (!sta)
+		return IWL_MLD_INVALID_QUEUE;
+
+	return sta->queue_id;
+}
+
+static void iwl_mld_nan_flush(struct iwl_mld *mld, struct ieee80211_vif *vif)
+{
+	const struct iwl_mld_int_sta *sta = iwl_mld_nan_get_mgmt_sta(mld, vif);
+
+	if (!sta)
+		return;
+
+	if (WARN_ON(sta->queue_id == IWL_MLD_INVALID_QUEUE))
+		return;
+
+	IWL_DEBUG_INFO(mld, "NAN: flush queues for sta=%u\n",
+		       sta->sta_id);
+
+	iwl_mld_flush_link_sta_txqs(mld, sta->sta_id);
+}
+
+static void iwl_mld_nan_remove_stations(struct iwl_mld *mld,
+					struct ieee80211_vif *vif)
+{
+	struct iwl_mld_vif *mld_vif = iwl_mld_vif_from_mac80211(vif);
+
+	iwl_mld_nan_flush(mld, vif);
+
+	if (!iwl_mld_nan_use_nan_stations(mld)) {
+		iwl_mld_remove_aux_sta(mld, vif);
+		return;
+	}
+
+	iwl_mld_remove_nan_bcast_sta(mld, &mld_vif->nan.bcast_sta);
+	iwl_mld_remove_nan_mgmt_sta(mld, &mld_vif->nan.mgmt_sta);
+}
+
+static int iwl_mld_nan_add_stations(struct iwl_mld *mld,
+				    struct ieee80211_vif *vif)
+{
+	struct iwl_mld_vif *mld_vif = iwl_mld_vif_from_mac80211(vif);
+	int ret;
+
+	if (!iwl_mld_nan_use_nan_stations(mld))
+		return iwl_mld_add_aux_sta(mld, &mld_vif->aux_sta);
+
+	ret = iwl_mld_add_nan_bcast_sta(mld, &mld_vif->nan.bcast_sta);
+	if (ret)
+		return ret;
+
+	ret = iwl_mld_add_nan_mgmt_sta(mld, &mld_vif->nan.mgmt_sta);
+	if (ret)
+		iwl_mld_remove_nan_bcast_sta(mld, &mld_vif->nan.bcast_sta);
+
+	return ret;
+}
+
+static int iwl_mld_nan_config(struct iwl_mld *mld,
+			      struct ieee80211_vif *vif,
+			      struct cfg80211_nan_conf *conf,
+			      enum iwl_ctxt_action action)
+{
+	struct iwl_mld_vif *mld_vif = iwl_mld_vif_from_mac80211(vif);
+	struct iwl_nan_config_cmd cmd = {
+		.action = cpu_to_le32(action),
+	};
+	u8 *data __free(kfree) = NULL;
+
+	lockdep_assert_wiphy(mld->wiphy);
+
+	ether_addr_copy(cmd.nmi_addr, vif->addr);
+	cmd.master_pref = conf->master_pref;
+
+	memcpy(cmd.cluster_id, conf->cluster_id + 4,
+	       sizeof(cmd.cluster_id));
+
+	cmd.scan_period = conf->scan_period < 255 ? conf->scan_period : 255;
+	cmd.dwell_time =
+		conf->scan_dwell_time < 255 ? conf->scan_dwell_time : 255;
+
+	if (conf->discovery_beacon_interval)
+		cmd.discovery_beacon_interval =
+			cpu_to_le32(conf->discovery_beacon_interval);
+	else
+		cmd.discovery_beacon_interval =
+			cpu_to_le32(IWL_NAN_DISOVERY_BEACON_INTERNVAL_TU);
+
+	if (conf->enable_dw_notification)
+		cmd.flags = IWL_NAN_FLAG_DW_END_NOTIF_ENABLED;
+
+	/* 2 GHz band must be supported */
+	cmd.band_config[IWL_NAN_BAND_2GHZ].rssi_close =
+		abs(conf->band_cfgs[NL80211_BAND_2GHZ].rssi_close);
+	cmd.band_config[IWL_NAN_BAND_2GHZ].rssi_middle =
+		abs(conf->band_cfgs[NL80211_BAND_2GHZ].rssi_middle);
+	cmd.band_config[IWL_NAN_BAND_2GHZ].dw_interval =
+		conf->band_cfgs[NL80211_BAND_2GHZ].awake_dw_interval;
+
+	/* 5 GHz band operation is optional. Configure its operation if
+	 * supported. Note that conf->bands might be zero, so we need to check
+	 * the channel pointer, not the band mask.
+	 */
+	if (conf->band_cfgs[NL80211_BAND_5GHZ].chan) {
+		cmd.hb_channel =
+			conf->band_cfgs[NL80211_BAND_5GHZ].chan->hw_value;
+
+		cmd.band_config[IWL_NAN_BAND_5GHZ].rssi_close =
+			abs(conf->band_cfgs[NL80211_BAND_5GHZ].rssi_close);
+		cmd.band_config[IWL_NAN_BAND_5GHZ].rssi_middle =
+			abs(conf->band_cfgs[NL80211_BAND_5GHZ].rssi_middle);
+		cmd.band_config[IWL_NAN_BAND_5GHZ].dw_interval =
+			conf->band_cfgs[NL80211_BAND_5GHZ].awake_dw_interval;
+	}
+
+	if (conf->extra_nan_attrs_len || conf->vendor_elems_len) {
+		data = kmalloc(conf->extra_nan_attrs_len +
+			       conf->vendor_elems_len, GFP_KERNEL);
+		if (!data)
+			return -ENOMEM;
+
+		cmd.nan_attr_len = cpu_to_le32(conf->extra_nan_attrs_len);
+		cmd.nan_vendor_elems_len = cpu_to_le32(conf->vendor_elems_len);
+
+		if (conf->extra_nan_attrs_len)
+			memcpy(data, conf->extra_nan_attrs,
+			       conf->extra_nan_attrs_len);
+
+		if (conf->vendor_elems_len)
+			memcpy(data + conf->extra_nan_attrs_len,
+			       conf->vendor_elems,
+			       conf->vendor_elems_len);
+	}
+
+	/* FW needs to know about the station ID only with version 1 of the
+	 * NAN configuration command
+	 */
+	if (!iwl_mld_nan_use_nan_stations(mld))
+		cmd.sta_id = mld_vif->aux_sta.sta_id;
+
+	return iwl_mld_nan_send_config_cmd(mld, &cmd, data,
+					   conf->extra_nan_attrs_len +
+					   conf->vendor_elems_len);
 }
 
 int iwl_mld_start_nan(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
 		      struct cfg80211_nan_conf *conf)
 {
+	struct iwl_mld *mld = IWL_MAC80211_GET_MLD(hw);
+	int ret;
+
+	IWL_DEBUG_MAC80211(mld, "NAN: start: bands=0x%x\n", conf->bands);
+
+	ret = iwl_mld_update_emlsr_block(mld, true, IWL_MLD_EMLSR_BLOCKED_NAN);
+	if (ret)
+		return ret;
+
+	ret = iwl_mld_nan_add_stations(mld, vif);
+	if (ret)
+		goto unblock_emlsr;
+
+	ret = iwl_mld_nan_config(mld, vif, conf, FW_CTXT_ACTION_ADD);
+	if (ret) {
+		IWL_ERR(mld, "Failed to start NAN. ret=%d\n", ret);
+		goto remove_stas;
+	}
+
 	return 0;
+
+remove_stas:
+	iwl_mld_nan_remove_stations(mld, vif);
+unblock_emlsr:
+	iwl_mld_update_emlsr_block(mld, false, IWL_MLD_EMLSR_BLOCKED_NAN);
+
+	return ret;
 }
 
 int iwl_mld_nan_change_config(struct ieee80211_hw *hw,
@@ -48,18 +266,77 @@ int iwl_mld_nan_change_config(struct ieee80211_hw *hw,
 			      struct cfg80211_nan_conf *conf,
 			      u32 changes)
 {
-	return 0;
+	struct iwl_mld *mld = IWL_MAC80211_GET_MLD(hw);
+
+	IWL_DEBUG_MAC80211(mld, "NAN: change: changes=0x%x, bands=0x%x\n",
+			   changes, conf->bands);
+
+	/* Note that we do not use 'changes' as the FW always expects the
+	 * complete configuration, and mac80211 always provides the complete
+	 * configuration.
+	 */
+	return iwl_mld_nan_config(mld, vif, conf, FW_CTXT_ACTION_MODIFY);
 }
 
 int iwl_mld_stop_nan(struct ieee80211_hw *hw,
 		     struct ieee80211_vif *vif)
 {
+	struct iwl_mld *mld = IWL_MAC80211_GET_MLD(hw);
+	struct iwl_nan_config_cmd cmd = {
+		.action = cpu_to_le32(FW_CTXT_ACTION_REMOVE),
+	};
+	int ret;
+
+	lockdep_assert_wiphy(mld->wiphy);
+
+	ret = iwl_mld_send_cmd_pdu(mld,
+				   WIDE_ID(MAC_CONF_GROUP, NAN_CFG_CMD),
+				   &cmd);
+	if (ret)
+		IWL_ERR(mld, "NAN: Failed to stop NAN. ret=%d\n", ret);
+
+	/* assume that higher layer guarantees that no additional frames are
+	 * added before calling this callback
+	 */
+	iwl_mld_nan_remove_stations(mld, vif);
+
+	/* cancel based on object type being NAN, as the NAN objects do
+	 * not have a unique identifier associated with them
+	 */
+	iwl_mld_cancel_notifications_of_object(mld,
+					       IWL_MLD_OBJECT_TYPE_NAN,
+					       0);
+
+	iwl_mld_update_emlsr_block(mld, false, IWL_MLD_EMLSR_BLOCKED_NAN);
+
 	return 0;
 }
 
 void iwl_mld_handle_nan_cluster_notif(struct iwl_mld *mld,
 				      struct iwl_rx_packet *pkt)
 {
+	struct iwl_nan_cluster_notif *notif = (void *)pkt->data;
+	bool new_cluster = !!(notif->flags &
+			      IWL_NAN_CLUSTER_NOTIF_FLAG_NEW_CLUSTER);
+	u8 cluster_id[ETH_ALEN] = {
+		0x50, 0x6f, 0x9a, 0x01,
+		notif->cluster_id[0], notif->cluster_id[1]
+	};
+
+	IWL_DEBUG_INFO(mld,
+		       "NAN: cluster event: cluster_id=%pM, flags=0x%x\n",
+		       cluster_id, notif->flags);
+
+	if (IWL_FW_CHECK(mld, !mld->nan_device_vif,
+			 "NAN: cluster event without NAN vif\n"))
+		return;
+
+	if (IWL_FW_CHECK(mld, !ieee80211_vif_nan_started(mld->nan_device_vif),
+			 "NAN: cluster event without NAN started\n"))
+		return;
+
+	ieee80211_nan_cluster_joined(mld->nan_device_vif, cluster_id,
+				     new_cluster, GFP_KERNEL);
 }
 
 bool iwl_mld_cancel_nan_cluster_notif(struct iwl_mld *mld,
@@ -91,6 +368,48 @@ void iwl_mld_handle_nan_ulw_attr_notif(struct iwl_mld *mld,
 void iwl_mld_handle_nan_dw_end_notif(struct iwl_mld *mld,
 				     struct iwl_rx_packet *pkt)
 {
+	struct iwl_nan_dw_end_notif *notif = (void *)pkt->data;
+	struct iwl_mld_vif *mld_vif = mld->nan_device_vif ?
+		iwl_mld_vif_from_mac80211(mld->nan_device_vif) :
+		NULL;
+	struct wireless_dev *wdev;
+	struct ieee80211_channel *chan;
+
+	IWL_DEBUG_INFO(mld, "NAN: DW end: band=%u\n", notif->band);
+
+	if (IWL_FW_CHECK(mld, !mld_vif, "NAN: DW end without mld_vif\n"))
+		return;
+
+	if (IWL_FW_CHECK(mld, !ieee80211_vif_nan_started(mld->nan_device_vif),
+			 "NAN: DW end without NAN started\n"))
+		return;
+
+	iwl_mld_nan_flush(mld, mld->nan_device_vif);
+
+	/* TODO: currently the notification specified the band on which the DW
+	 * ended. Need to change that to the actual channel on which the next DW
+	 * will be started.
+	 */
+	switch (notif->band) {
+	case IWL_NAN_BAND_2GHZ:
+		chan = ieee80211_get_channel(mld->wiphy, 2437);
+		break;
+	case IWL_NAN_BAND_5GHZ:
+		/* TODO: use the actual channel */
+		chan = ieee80211_get_channel(mld->wiphy, 5745);
+		break;
+	default:
+		IWL_FW_CHECK(mld, false,
+			     "NAN: Invalid band %u in DW end notif\n",
+			     notif->band);
+		return;
+	}
+
+	if (WARN_ON_ONCE(!chan))
+		return;
+
+	wdev = ieee80211_vif_to_wdev(mld->nan_device_vif);
+	cfg80211_next_nan_dw_notif(wdev, chan, GFP_KERNEL);
 }
 
 static void iwl_mld_nan_fill_rates(struct iwl_link_config_cmd *cmd)
@@ -300,6 +619,16 @@ iwl_mld_nan_find_link(struct iwl_mld_vif *mld_vif,
 
 static void iwl_mld_nan_set_mcast_data_links(struct ieee80211_vif *vif)
 {
+	struct iwl_mld_vif *mld_vif = iwl_mld_vif_from_mac80211(vif);
+
+	if (vif->type != NL80211_IFTYPE_NAN_DATA)
+		return;
+
+	/* Note that all errors are handled internally so nothing to do
+	 * with the return value (used only to silence compilation warnings)
+	 */
+	iwl_mld_update_nan_mcast_data_sta(mld_vif->mld, vif->addr,
+					  &mld_vif->nan.mcast_data_sta);
 }
 
 void iwl_mld_nan_vif_cfg_changed(struct iwl_mld *mld,

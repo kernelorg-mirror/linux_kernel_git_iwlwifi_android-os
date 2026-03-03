@@ -568,7 +568,7 @@ ieee80211_get_width_of_link(struct ieee80211_link_data *link)
 	case NL80211_IFTYPE_P2P_CLIENT:
 	case NL80211_IFTYPE_P2P_GO:
 	case NL80211_IFTYPE_NAN:
-	/* case NL80211_IFTYPE_NAN_DATA */
+	case NL80211_IFTYPE_NAN_DATA:
 		WARN_ON_ONCE(1);
 		break;
 	}
@@ -926,7 +926,7 @@ bool ieee80211_is_radar_required(struct ieee80211_local *local,
 	for_each_sdata_link(local, link) {
 		if (link->radar_required) {
 			chan = link->conf->chanreq.oper.chan;
-			radio_idx = 0;
+			radio_idx = cfg80211_get_radio_idx_by_chan(wiphy, chan);
 
 			if (ieee80211_is_radio_idx_in_scan_req(wiphy, req,
 							       radio_idx))
@@ -1511,7 +1511,7 @@ int ieee80211_link_reserve_chanctx(struct ieee80211_link_data *link,
 	if (!new_ctx) {
 		if (ieee80211_can_create_new_chanctx(local, -1) &&
 		    ieee80211_find_available_radio(local, chanreq,
-						   0,
+						   sdata->wdev.radio_mask,
 						   &radio_idx))
 			new_ctx = ieee80211_new_chanctx(local, chanreq, mode,
 							false, radio_idx);
@@ -1555,7 +1555,7 @@ ieee80211_link_chanctx_reservation_complete(struct ieee80211_link_data *link)
 	case NL80211_IFTYPE_P2P_GO:
 	case NL80211_IFTYPE_P2P_DEVICE:
 	case NL80211_IFTYPE_NAN:
-	/* case NL80211_IFTYPE_NAN_DATA */
+	case NL80211_IFTYPE_NAN_DATA:
 	case NUM_NL80211_IFTYPES:
 		WARN_ON(1);
 		break;
@@ -2151,7 +2151,7 @@ ieee80211_find_or_create_chanctx(struct ieee80211_sub_if_data *sdata,
 	*reused_ctx = false;
 
 	if (!ieee80211_find_available_radio(local, chanreq,
-					    0,
+					    sdata->wdev.radio_mask,
 					    &radio_idx))
 		return ERR_PTR(-EBUSY);
 

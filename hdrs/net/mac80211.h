@@ -4827,6 +4827,10 @@ struct ieee80211_ops {
 			   s64 offset);
 	void (*reset_tsf)(struct ieee80211_hw *hw, struct ieee80211_vif *vif);
 	int (*tx_last_beacon)(struct ieee80211_hw *hw);
+	void (*link_sta_statistics)(struct ieee80211_hw *hw,
+				    struct ieee80211_vif *vif,
+				    struct ieee80211_link_sta *link_sta,
+				    struct link_station_info *link_sinfo);
 
 	/**
 	 * @ampdu_action:

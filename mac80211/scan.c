@@ -804,6 +804,7 @@ static int __ieee80211_start_scan(struct ieee80211_sub_if_data *sdata,
 		local->hw_scan_req->req.scan_6ghz_params =
 			req->scan_6ghz_params;
 		local->hw_scan_req->req.scan_6ghz = req->scan_6ghz;
+		local->hw_scan_req->req.first_part = req->first_part;
 
 		/*
 		 * After allocating local->hw_scan_req, we must
@@ -1002,6 +1003,7 @@ static void ieee80211_scan_state_set_channel(struct ieee80211_local *local,
 	/* For S1G, only scan the 1MHz primaries. */
 	if (chan->band == NL80211_BAND_S1GHZ) {
 		local->scan_chandef.width = NL80211_CHAN_WIDTH_1;
+		local->scan_chandef.s1g_primary_2mhz = false;
 		goto set_channel;
 	}
 
@@ -1226,7 +1228,8 @@ int ieee80211_request_ibss_scan(struct ieee80211_sub_if_data *sdata,
 
 				if (tmp_ch->flags & (IEEE80211_CHAN_NO_IR |
 						     IEEE80211_CHAN_DISABLED) ||
-				    !true)
+				    !cfg80211_wdev_channel_allowed(&sdata->wdev,
+								   tmp_ch))
 					continue;
 
 				local->int_scan_req->channels[n_ch] = tmp_ch;
@@ -1242,7 +1245,8 @@ int ieee80211_request_ibss_scan(struct ieee80211_sub_if_data *sdata,
 		for (i = 0; i < n_channels; i++) {
 			if (channels[i]->flags & (IEEE80211_CHAN_NO_IR |
 						  IEEE80211_CHAN_DISABLED) ||
-			    !true)
+			    !cfg80211_wdev_channel_allowed(&sdata->wdev,
+							   channels[i]))
 				continue;
 
 			local->int_scan_req->channels[n_ch] = channels[i];
