@@ -1076,7 +1076,7 @@ void iwl_mld_add_vif_debugfs(struct ieee80211_hw *hw,
 			    &mld_vif->ftm_unprotected);
 }
 
-#define LINK_DEBUGFS_WRITE_FILE_OPS(name, bufsz)			\
+#define LINK_DEBUGFS_WIPHY_WRITE_FILE_OPS(name, bufsz)			\
 	WIPHY_DEBUGFS_WRITE_FILE_OPS(link_##name, bufsz, bss_conf)
 
 #define LINK_DEBUGFS_ADD_FILE_ALIAS(alias, name, parent, mode)		\
