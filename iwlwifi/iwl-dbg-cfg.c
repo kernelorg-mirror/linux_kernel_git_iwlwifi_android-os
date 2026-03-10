@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: GPL-2.0 OR BSD-3-Clause
 /*
  * Copyright (C) 2013-2015 Intel Mobile Communications GmbH
- * Copyright (C) 2013-2015, 2019-2020, 2022-2024 Intel Corporation
+ * Copyright (C) 2013-2015, 2019-2020, 2022-2024, 2026 Intel Corporation
  * Copyright (C) 2016 Intel Deutschland GmbH
  */
 #include <linux/types.h>
 #include <linux/export.h>
 #include <linux/slab.h>
 #include <linux/firmware.h>
+#include <linux/hex.h>
 #include "iwl-dbg-cfg.h"
 #include "iwl-modparams.h"
 
