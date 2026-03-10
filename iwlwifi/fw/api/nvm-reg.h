@@ -532,11 +532,13 @@ struct iwl_tas_config_cmd_v2_v4 {
  * @BIOS_SOURCE_NONE: BIOS source is not defined
  * @BIOS_SOURCE_ACPI: BIOS source is ACPI
  * @BIOS_SOURCE_UEFI: BIOS source is UEFI
+ * @BIOS_SOURCE_DT: BIOS source is Device Tree
  */
 enum bios_source {
 	BIOS_SOURCE_NONE,
 	BIOS_SOURCE_ACPI,
 	BIOS_SOURCE_UEFI,
+	BIOS_SOURCE_DT,
 };
 
 /**
