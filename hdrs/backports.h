@@ -48,8 +48,6 @@ cfg80211_6ghz_power_type(u8 control, u32 client_flags)
 	}
 }
 
-#define WIPHY_NAN_FLAGS_USERSPACE_DE BIT(1)
-
 #define IEEE80211_CHAN_NO_UHR 0
 #define NL80211_RRF_NO_UHR 0
 #define ASSOC_REQ_DISABLE_UHR 0
@@ -67,6 +65,3 @@ ieee80211_get_uhr_iftype_cap(const struct ieee80211_supported_band *sband,
 	return NULL;
 }
 
-#define CFG80211_NAN_SCHED_NUM_TIME_SLOTS 32
-#define CFG80211_NAN_MAX_PEER_MAPS 2
-#define CFG80211_NAN_INVALID_MAP_ID 0xff
