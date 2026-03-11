@@ -188,20 +188,32 @@ ieee80211_chandef_he_6ghz_oper_bss(struct ieee80211_sub_if_data *sdata,
 	return ret;
 }
 
+struct ieee80211_determine_ap_chan_data {
+	/* input data */
+	struct ieee80211_channel *channel;
+	const struct ieee802_11_elems *elems;
+	const struct ieee80211_conn_settings *conn;
+	struct cfg80211_bss *cbss;
+	u32 vht_cap_info;
+	bool ignore_ht_channel_mismatch;
+
+	/* target chandef is filled in */
+	struct cfg80211_chan_def *chandef;
+};
+
 static enum ieee80211_conn_mode
 ieee80211_determine_ap_chan(struct ieee80211_sub_if_data *sdata,
-			    struct ieee80211_channel *channel,
-			    u32 vht_cap_info,
-			    const struct ieee802_11_elems *elems,
-			    bool ignore_ht_channel_mismatch,
-			    const struct ieee80211_conn_settings *conn,
-			    struct cfg80211_chan_def *chandef,
-			    struct cfg80211_bss *cbss)
+			    struct ieee80211_determine_ap_chan_data *data)
 {
+	bool ignore_ht_channel_mismatch = data->ignore_ht_channel_mismatch;
+	const struct ieee802_11_elems *elems = data->elems;
 	const struct ieee80211_ht_operation *ht_oper = elems->ht_operation;
 	const struct ieee80211_vht_operation *vht_oper = elems->vht_operation;
 	const struct ieee80211_he_operation *he_oper = elems->he_operation;
 	const struct ieee80211_eht_operation *eht_oper = elems->eht_operation;
+	const struct ieee80211_conn_settings *conn = data->conn;
+	struct ieee80211_channel *channel = data->channel;
+	struct cfg80211_chan_def *chandef = data->chandef;
 	struct ieee80211_supported_band *sband =
 		sdata->local->hw.wiphy->bands[channel->band];
 	struct cfg80211_chan_def vht_chandef;
@@ -258,7 +270,8 @@ ieee80211_determine_ap_chan(struct ieee80211_sub_if_data *sdata,
 			 * response. In such cases, try to use the HE operation
 			 * from beacon/probe response if possible.
 			 */
-			if (!ieee80211_chandef_he_6ghz_oper_bss(sdata, cbss,
+			if (!ieee80211_chandef_he_6ghz_oper_bss(sdata,
+								data->cbss,
 								chandef))
 				return IEEE80211_CONN_MODE_LEGACY;
 
@@ -340,7 +353,7 @@ ieee80211_determine_ap_chan(struct ieee80211_sub_if_data *sdata,
 		memcpy(&he_oper_vht_cap, he_oper->optional, 3);
 		he_oper_vht_cap.basic_mcs_set = cpu_to_le16(0);
 
-		if (!ieee80211_chandef_vht_oper(&sdata->local->hw, vht_cap_info,
+		if (!ieee80211_chandef_vht_oper(&sdata->local->hw, data->vht_cap_info,
 						&he_oper_vht_cap, ht_oper,
 						&vht_chandef)) {
 			sdata_info(sdata,
@@ -355,7 +368,7 @@ ieee80211_determine_ap_chan(struct ieee80211_sub_if_data *sdata,
 	} else if (sband->band == NL80211_BAND_2GHZ) {
 		no_vht = true;
 	} else if (!ieee80211_chandef_vht_oper(&sdata->local->hw,
-					       vht_cap_info,
+					       data->vht_cap_info,
 					       vht_oper, ht_oper,
 					       &vht_chandef)) {
 		sdata_info(sdata,
@@ -1083,6 +1096,14 @@ ieee80211_determine_chan_mode(struct ieee80211_sub_if_data *sdata,
 	enum ieee80211_conn_mode ap_mode;
 	unsigned long unknown_rates_selectors[BITS_TO_LONGS(128)] = {};
 	unsigned long sta_selectors[BITS_TO_LONGS(128)] = {};
+	struct ieee80211_determine_ap_chan_data ap_chan_data = {
+		.channel = channel,
+		.vht_cap_info = bss->vht_cap_info,
+		.ignore_ht_channel_mismatch = false,
+		.chandef = ap_chandef,
+		.cbss = cbss,
+		.conn = conn,
+	};
 	int ret;
 
 again:
@@ -1091,9 +1112,8 @@ again:
 	if (!elems)
 		return ERR_PTR(-ENOMEM);
 
-	ap_mode = ieee80211_determine_ap_chan(sdata, channel, bss->vht_cap_info,
-					      elems, false, conn, ap_chandef,
-					      cbss);
+	ap_chan_data.elems = elems;
+	ap_mode = ieee80211_determine_ap_chan(sdata, &ap_chan_data);
 
 	/* this should be impossible since parsing depends on our mode */
 	if (WARN_ON(ap_mode > conn->mode)) {
@@ -1323,13 +1343,21 @@ static int ieee80211_config_bw(struct ieee80211_link_data *link,
 			       struct cfg80211_bss *cbss)
 {
 	struct ieee80211_channel *channel = link->conf->chanreq.oper.chan;
+	struct cfg80211_chan_def ap_chandef;
+	struct ieee80211_determine_ap_chan_data ap_chan_data = {
+		.channel = channel,
+		.vht_cap_info = 0,
+		.ignore_ht_channel_mismatch = true,
+		.chandef = &ap_chandef,
+		.cbss = cbss,
+		.elems = elems,
+		.conn = &link->u.mgd.conn,
+	};
 	struct ieee80211_sub_if_data *sdata = link->sdata;
 	struct ieee80211_chanctx_conf *chanctx_conf;
 	struct ieee80211_chan_req chanreq = {};
-	struct cfg80211_chan_def ap_chandef;
 	enum ieee80211_conn_mode ap_mode;
 	const char *frame;
-	u32 vht_cap_info = 0;
 	u16 ht_opmode;
 	int ret;
 
@@ -1357,11 +1385,10 @@ static int ieee80211_config_bw(struct ieee80211_link_data *link,
 		return 0;
 
 	if (elems->vht_cap_elem)
-		vht_cap_info = le32_to_cpu(elems->vht_cap_elem->vht_cap_info);
+		ap_chan_data.vht_cap_info =
+			le32_to_cpu(elems->vht_cap_elem->vht_cap_info);
 
-	ap_mode = ieee80211_determine_ap_chan(sdata, channel, vht_cap_info,
-					      elems, true, &link->u.mgd.conn,
-					      &ap_chandef, cbss);
+	ap_mode = ieee80211_determine_ap_chan(sdata, &ap_chan_data);
 
 	if (ap_mode != link->u.mgd.conn.mode) {
 		link_info(link,
