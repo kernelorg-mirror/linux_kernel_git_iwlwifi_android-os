@@ -8,9 +8,6 @@
 #include "fw/api/alive.h"
 #include "fw/api/scan.h"
 #include "fw/api/rx.h"
-#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
-#include "fw/api/config.h"
-#endif
 #include "phy.h"
 #include "fw/dbg.h"
 #include "fw/pnvm.h"
@@ -22,6 +19,32 @@
 #include "regulatory.h"
 #include "thermal.h"
 #include "rfi.h"
+
+#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+#include "fw/api/system.h"
+#include "fw/api/config.h"
+
+static void iwl_mld_send_system_features_control(struct iwl_mld *mld)
+{
+	const struct iwl_dbg_cfg *dbg_cfg = &mld->trans->dbg_cfg;
+	struct iwl_system_features_control_cmd cmd = {
+		.features[0] = cpu_to_le32(dbg_cfg->system_features_control_1),
+		.features[1] = cpu_to_le32(dbg_cfg->system_features_control_2),
+		.features[2] = cpu_to_le32(dbg_cfg->system_features_control_3),
+		.features[3] = cpu_to_le32(dbg_cfg->system_features_control_4),
+	};
+
+	if (!dbg_cfg->system_features_control_1 &&
+	    !dbg_cfg->system_features_control_2 &&
+	    !dbg_cfg->system_features_control_3 &&
+	    !dbg_cfg->system_features_control_4)
+		return;
+
+	WARN_ON(iwl_mld_send_cmd_pdu(mld, WIDE_ID(SYSTEM_GROUP,
+						  SYSTEM_FEATURES_CONTROL_CMD),
+				     &cmd));
+}
+#endif
 
 static int iwl_mld_send_tx_ant_cfg(struct iwl_mld *mld)
 {
@@ -519,6 +542,10 @@ static int iwl_mld_config_fw(struct iwl_mld *mld)
 	iwl_mld_init_tas(mld);
 	iwl_mld_init_ap_type_tables(mld);
 	iwl_mld_rfi_send_config_cmd(mld);
+
+#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+	iwl_mld_send_system_features_control(mld);
+#endif
 
 	return 0;
 }
