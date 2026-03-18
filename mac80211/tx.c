@@ -1314,7 +1314,7 @@ static struct txq_info *ieee80211_get_txq(struct ieee80211_local *local,
 		     ieee80211_is_bufferable_mmpdu(skb) ||
 		     vif->type == NL80211_IFTYPE_STATION ||
 		     vif->type == NL80211_IFTYPE_NAN ||
-		     0) &&
+		     vif->type == NL80211_IFTYPE_NAN_DATA) &&
 		    sta && sta->uploaded) {
 			/*
 			 * This will be NULL if the driver didn't set the
@@ -1335,7 +1335,7 @@ static struct txq_info *ieee80211_get_txq(struct ieee80211_local *local,
 		txq = sta->sta.txq[tid];
 	} else {
 		WARN_ON_ONCE(vif->type == NL80211_IFTYPE_NAN ||
-			     0);
+			     vif->type == NL80211_IFTYPE_NAN_DATA);
 		txq = vif->txq;
 	}
 
@@ -2564,7 +2564,7 @@ int ieee80211_lookup_ra_sta(struct ieee80211_sub_if_data *sdata,
 		if (!sta)
 			return -ENOLINK;
 		break;
-	/* case NL80211_IFTYPE_NAN_DATA */
+	case NL80211_IFTYPE_NAN_DATA:
 		if (is_multicast_ether_addr(skb->data)) {
 			*sta_out = ERR_PTR(-ENOENT);
 			return 0;
@@ -2864,7 +2864,7 @@ static struct sk_buff *ieee80211_build_hdr(struct ieee80211_sub_if_data *sdata,
 		memcpy(hdr.addr3, sdata->u.ibss.bssid, ETH_ALEN);
 		hdrlen = 24;
 		break;
-	/* case NL80211_IFTYPE_NAN_DATA */ {
+	case NL80211_IFTYPE_NAN_DATA: {
 		struct ieee80211_sub_if_data *nmi;
 
 		/* DA SA Cluster ID */
@@ -2875,6 +2875,7 @@ static struct sk_buff *ieee80211_build_hdr(struct ieee80211_sub_if_data *sdata,
 			ret = -ENOTCONN;
 			goto free;
 		}
+		memcpy(hdr.addr3, nmi->u.nan.conf.cluster_id, ETH_ALEN);
 		hdrlen = 24;
 		break;
 	}
@@ -2884,7 +2885,7 @@ static struct sk_buff *ieee80211_build_hdr(struct ieee80211_sub_if_data *sdata,
 	}
 
 	if (!chanctx_conf) {
-		if (0) {
+		if (sdata->vif.type == NL80211_IFTYPE_NAN_DATA) {
 			 /* NAN operates on multiple bands */
 			band = NUM_NL80211_BANDS;
 		} else if (!ieee80211_vif_is_mld(&sdata->vif)) {
@@ -4460,7 +4461,7 @@ ieee80211_pack_mcast_in_amsdu(struct sk_buff *skb, struct net_device *dev,
 	struct ieee80211_qos_hdr hdr = {};
 	__be16 len;
 
-	if (WARN_ON_ONCE(1))
+	if (WARN_ON_ONCE(sdata->vif.type != NL80211_IFTYPE_NAN_DATA))
 		return -EINVAL;
 
 	guard(rcu)();
@@ -4479,6 +4480,7 @@ ieee80211_pack_mcast_in_amsdu(struct sk_buff *skb, struct net_device *dev,
 
 	/* addr1 will be set below for each station */
 	memcpy(hdr.addr2, eth->h_source, ETH_ALEN);
+	memcpy(hdr.addr3, nmi->u.nan.conf.cluster_id, ETH_ALEN);
 	hdr.qos_ctrl = cpu_to_le16(IEEE80211_QOS_CTL_A_MSDU_PRESENT);
 
 	len = htons(skb->len - sizeof(*eth) + sizeof(rfc1042_header) +
@@ -4698,7 +4700,7 @@ netdev_tx_t ieee80211_subif_start_xmit(struct sk_buff *skb,
 		return NETDEV_TX_OK;
 	}
 
-	if (unlikely(0)) {
+	if (unlikely(sdata->vif.type == NL80211_IFTYPE_NAN_DATA)) {
 		struct sk_buff_head queue;
 
 		__skb_queue_head_init(&queue);
@@ -6496,7 +6498,7 @@ void ieee80211_tx_skb_tid(struct ieee80211_sub_if_data *sdata,
 
 	rcu_read_lock();
 	if (sdata->vif.type == NL80211_IFTYPE_NAN ||
-	    0) {
+	    sdata->vif.type == NL80211_IFTYPE_NAN_DATA) {
 		band = NUM_NL80211_BANDS;
 	} else if (!ieee80211_vif_is_mld(&sdata->vif)) {
 		WARN_ON(link_id >= 0);
