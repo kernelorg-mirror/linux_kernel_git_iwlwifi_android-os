@@ -1690,17 +1690,11 @@ iwl_parse_mei_nvm_data(struct iwl_trans *trans, const struct iwl_rf_cfg *cfg,
 	u8 tx_chains = fw->valid_rx_ant;
 
 	if (cfg->unii9_supported)
-		data = kzalloc(struct_size(data, channels,
-					   IWL_NVM_NUM_CHANNELS_UNII9),
-					   GFP_KERNEL);
+		data = kzalloc_flex(*data, channels, IWL_NVM_NUM_CHANNELS_UNII9);
 	else if (cfg->uhb_supported)
-		data = kzalloc(struct_size(data, channels,
-					   IWL_NVM_NUM_CHANNELS_UHB),
-					   GFP_KERNEL);
+		data = kzalloc_flex(*data, channels, IWL_NVM_NUM_CHANNELS_UHB);
 	else
-		data = kzalloc(struct_size(data, channels,
-					   IWL_NVM_NUM_CHANNELS_EXT),
-					   GFP_KERNEL);
+		data = kzalloc_flex(*data, channels, IWL_NVM_NUM_CHANNELS_EXT);
 	if (!data)
 		return NULL;
 
@@ -1763,21 +1757,13 @@ iwl_parse_nvm_data(struct iwl_trans *trans, const struct iwl_rf_cfg *cfg,
 	const __le16 *ch_section;
 
 	if (cfg->unii9_supported)
-		data = kzalloc(struct_size(data, channels,
-					   IWL_NVM_NUM_CHANNELS_UNII9),
-					   GFP_KERNEL);
+		data = kzalloc_flex(*data, channels, IWL_NVM_NUM_CHANNELS_UNII9);
 	else if (cfg->uhb_supported)
-		data = kzalloc(struct_size(data, channels,
-					   IWL_NVM_NUM_CHANNELS_UHB),
-					   GFP_KERNEL);
+		data = kzalloc_flex(*data, channels, IWL_NVM_NUM_CHANNELS_UHB);
 	else if (cfg->nvm_type != IWL_NVM_EXT)
-		data = kzalloc(struct_size(data, channels,
-					   IWL_NVM_NUM_CHANNELS),
-					   GFP_KERNEL);
+		data = kzalloc_flex(*data, channels, IWL_NVM_NUM_CHANNELS);
 	else
-		data = kzalloc(struct_size(data, channels,
-					   IWL_NVM_NUM_CHANNELS_EXT),
-					   GFP_KERNEL);
+		data = kzalloc_flex(*data, channels, IWL_NVM_NUM_CHANNELS_EXT);
 	if (!data)
 		return NULL;
 
@@ -2042,8 +2028,7 @@ iwl_parse_nvm_mcc_info(struct iwl_trans *trans,
 	 * to allocate space for at least one rule to add a dummy
 	 * (unusable) rule in this case so we can init.
 	 */
-	regd = kzalloc(struct_size(regd, reg_rules, num_of_ch ?: 1),
-		       GFP_KERNEL);
+	regd = kzalloc_flex(*regd, reg_rules, num_of_ch ?: 1);
 	if (!regd)
 		return ERR_PTR(-ENOMEM);
 
@@ -2403,8 +2388,7 @@ struct iwl_nvm_data *iwl_get_nvm(struct iwl_trans *trans,
 	if (empty_otp)
 		IWL_INFO(trans, "OTP is empty\n");
 
-	nvm = kzalloc(struct_size(nvm, channels, IWL_NUM_CHANNELS_V3),
-		      GFP_KERNEL);
+	nvm = kzalloc_flex(*nvm, channels, IWL_NUM_CHANNELS_V3);
 	if (!nvm) {
 		ret = -ENOMEM;
 		goto out;

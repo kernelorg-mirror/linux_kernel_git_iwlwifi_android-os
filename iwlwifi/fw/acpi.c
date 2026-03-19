@@ -244,7 +244,7 @@ int iwl_acpi_get_dsm(struct iwl_fw_runtime *fwrt,
 	}
 
 	BUILD_BUG_ON(ARRAY_SIZE(fwrt->dsm_values) != DSM_FUNC_NUM_FUNCS);
-	BUILD_BUG_ON(DSM_FUNC_NUM_FUNCS > BITS_PER_TYPE(fwrt->dsm_funcs_valid));
+	BUILD_BUG_ON(BITS_PER_TYPE(fwrt->dsm_funcs_valid) < DSM_FUNC_NUM_FUNCS);
 
 	if (WARN_ON(func >= ARRAY_SIZE(fwrt->dsm_values) || !func))
 		return -EINVAL;
