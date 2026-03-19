@@ -1334,8 +1334,8 @@ static void iee80211_tdls_recalc_chanctx(struct ieee80211_sub_if_data *sdata,
 			enum ieee80211_sta_rx_bandwidth bw;
 
 			bw = ieee80211_chan_width_to_rx_bw(conf->def.width);
-			bw = min(bw, _ieee80211_sta_cap_rx_bw(&sta->deflink,
-							      &conf->def));
+			bw = min(bw, ieee80211_sta_cap_rx_bw(&sta->deflink,
+							     conf->def.chan->band));
 			if (bw != sta->sta.deflink.bandwidth) {
 				sta->sta.deflink.bandwidth = bw;
 				rate_control_rate_update(local, sband,
