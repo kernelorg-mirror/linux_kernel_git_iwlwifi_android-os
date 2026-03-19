@@ -222,7 +222,7 @@ struct iwl_fw_runtime {
 	enum bios_source dsm_source;
 	u8 dsm_revision;
 
-#if defined(CONFIG_ACPI) || defined (CONFIG_EFI)
+#if defined(CONFIG_ACPI) || defined(CONFIG_EFI)
 	u32 dsm_funcs_valid;
 	u32 dsm_values[DSM_FUNC_NUM_FUNCS];
 #endif

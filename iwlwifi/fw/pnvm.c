@@ -387,7 +387,7 @@ iwl_pnvm_load_pnvm_to_trans(struct iwl_trans *trans,
 		return;
 	}
 
-	pnvm_data = kzalloc(sizeof(*pnvm_data), GFP_KERNEL);
+	pnvm_data = kzalloc_obj(*pnvm_data);
 	if (!pnvm_data)
 		goto free;
 
@@ -433,7 +433,7 @@ iwl_pnvm_load_reduce_power_to_trans(struct iwl_trans *trans,
 		return;
 	}
 
-	pnvm_data = kzalloc(sizeof(*pnvm_data), GFP_KERNEL);
+	pnvm_data = kzalloc_obj(*pnvm_data);
 	if (!pnvm_data)
 		goto free;
 

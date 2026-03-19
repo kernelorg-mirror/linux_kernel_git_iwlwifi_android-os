@@ -268,15 +268,15 @@ iwl_mld_decode_vht_phy_data(struct iwl_mld_rx_phy_data *phy_data,
 
 		/* No MCS information in the a1/a2 data for MU frames */
 		nsts = le32_get_bits(phy_data->ntfy->sigs.vht.a1,
-				      OFDM_RX_FRAME_VHT_STS_USER0);
+				     OFDM_RX_FRAME_VHT_STS_USER0);
 		vht->mcs_nss[0] = (stbc ? nsts / 2 : nsts) | 0xf0;
 
 		nsts = le32_get_bits(phy_data->ntfy->sigs.vht.a1,
-				      OFDM_RX_FRAME_VHT_MU_STS_USER1);
+				     OFDM_RX_FRAME_VHT_MU_STS_USER1);
 		vht->mcs_nss[1] = (stbc ? nsts / 2 : nsts) | 0xf0;
 
 		nsts = le32_get_bits(phy_data->ntfy->sigs.vht.a1,
-				      OFDM_RX_FRAME_VHT_MU_STS_USER2);
+				     OFDM_RX_FRAME_VHT_MU_STS_USER2);
 		vht->mcs_nss[2] = (stbc ? nsts / 2 : nsts) | 0xf0;
 
 		nsts = le32_get_bits(phy_data->ntfy->sigs.vht.a1,
@@ -305,7 +305,7 @@ iwl_mld_decode_vht_phy_data(struct iwl_mld_rx_phy_data *phy_data,
 						  OFDM_RX_FRAME_VHT_PARTIAL_AID_OR_MU_STS));
 
 		nsts = le32_get_bits(phy_data->ntfy->sigs.vht.a1,
-				      OFDM_RX_FRAME_VHT_STS) + 1;
+				     OFDM_RX_FRAME_VHT_STS) + 1;
 		vht->mcs_nss[0] =
 			(stbc ? nsts / 2 : nsts) |
 			le32_get_bits(phy_data->ntfy->sigs.vht.a2,
@@ -320,7 +320,7 @@ iwl_mld_decode_vht_phy_data(struct iwl_mld_rx_phy_data *phy_data,
 }
 
 static void iwl_mld_rx_vht(struct sk_buff *skb,
-			  struct iwl_mld_rx_phy_data *phy_data)
+			   struct iwl_mld_rx_phy_data *phy_data)
 {
 	struct ieee80211_rx_status *rx_status = IEEE80211_SKB_RXCB(skb);
 	struct ieee80211_radiotap_vht *vht;
