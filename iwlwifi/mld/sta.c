@@ -1504,8 +1504,7 @@ int iwl_mld_add_nan_mcast_data_sta(struct iwl_mld *mld,
 	return iwl_mld_add_internal_sta(mld, sta,
 					STATION_TYPE_NAN_MCAST_DATA,
 					link_mask, ndi_addr,
-					IWL_MAX_TID_COUNT,
-					true);
+					0, true);
 }
 
 int iwl_mld_update_nan_mcast_data_sta(struct iwl_mld *mld,
@@ -1552,6 +1551,5 @@ void iwl_mld_remove_nan_mgmt_sta(struct iwl_mld *mld,
 void iwl_mld_remove_nan_mcast_data_sta(struct iwl_mld *mld,
 				       struct iwl_mld_int_sta *sta)
 {
-	iwl_mld_remove_internal_sta(mld, sta, true,
-				    IWL_MAX_TID_COUNT);
+	iwl_mld_remove_internal_sta(mld, sta, true, 0);
 }
