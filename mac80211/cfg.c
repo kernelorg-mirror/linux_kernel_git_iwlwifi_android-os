@@ -1560,10 +1560,10 @@ static int ieee80211_start_ap(struct wiphy *wiphy, struct net_device *dev,
 		link_conf->he_support = true;
 		link_conf->htc_trig_based_pkt_ext =
 			le32_get_bits(params->he_oper->he_oper_params,
-			      IEEE80211_HE_OPERATION_DFLT_PE_DURATION_MASK);
+				      IEEE80211_HE_OPERATION_DFLT_PE_DURATION_MASK);
 		link_conf->frame_time_rts_th =
 			le32_get_bits(params->he_oper->he_oper_params,
-			      IEEE80211_HE_OPERATION_RTS_THRESHOLD_MASK);
+				      IEEE80211_HE_OPERATION_RTS_THRESHOLD_MASK);
 		changed |= BSS_CHANGED_HE_OBSS_PD;
 
 		if (params->beacon.he_bss_color.enabled)
