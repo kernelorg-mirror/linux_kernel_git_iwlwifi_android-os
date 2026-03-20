@@ -1131,6 +1131,10 @@ struct ieee80211_link_data {
 
 	struct ieee80211_bss_conf *conf;
 
+	struct {
+		enum ieee80211_sta_rx_bandwidth he_and_lower;
+	} bss_bw;
+
 #ifdef CPTCFG_MAC80211_DEBUGFS
 	struct dentry *debugfs_dir;
 #endif

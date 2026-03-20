@@ -1323,6 +1323,52 @@ ieee80211_copy_rnr_beacon(u8 *pos, struct cfg80211_rnr_elems *dst,
 
 	return offset;
 }
+static enum ieee80211_sta_rx_bandwidth ieee80211_calc_ap_he_and_lower(struct cfg80211_beacon_data *params)
+	{
+	/*
+	 * iwlwifi doesn't expect WiFi7 SoftAP with puncturing,
+	 * which would be the only case to have lower bandwidth
+	 * for HE and lower - just use max since we don't have
+	 * the necessary information from cfg80211 here.
+	 */
+	return IEEE80211_STA_RX_BW_MAX;
+}
+
+static void ieee80211_update_ap_bandwidth(struct ieee80211_link_data *link,
+					  struct cfg80211_beacon_data *params)
+{
+	struct ieee80211_local *local = link->sdata->local;
+	struct ieee80211_chanctx_conf *chanctx_conf;
+	struct ieee80211_chanctx *chanctx;
+
+	/*
+	 * Updating the beacon might, without even changing the channel, cause
+	 * the usable bandwidth for some stations to be changed, for example
+	 * if the beacon configuration is EHT with 160 MHz, HE could change
+	 * between 20, 40, 80 and 160 MHz, and HE (or lower) clients need to
+	 * be handled accordingly.
+	 * Calculate the HE and lower bandwidth and apply that to all stations.
+	 *
+	 * In the future, this also needs to calculate EHT bandwidth and apply
+	 * it to all stations not using UHR DBE, since the chandef would then
+	 * include DBE.
+	 */
+
+	if (link->conf->chanreq.oper.chan->band == NL80211_BAND_S1GHZ)
+		return;
+
+	link->bss_bw.he_and_lower = ieee80211_calc_ap_he_and_lower(params);
+
+	chanctx_conf = sdata_dereference(link->conf->chanctx_conf, link->sdata);
+	chanctx = container_of(chanctx_conf, struct ieee80211_chanctx, conf);
+
+	/*
+	 * Note: this relies on ieee80211_recalc_chanctx_min_def() having
+	 * the side effect of updating all stations, if they changed; that
+	 * was normally for when the chandef changed but is used here too.
+	 */
+	ieee80211_recalc_chanctx_min_def(local, chanctx);
+}
 
 static int
 ieee80211_assign_beacon(struct ieee80211_sub_if_data *sdata,
@@ -1461,6 +1507,8 @@ ieee80211_assign_beacon(struct ieee80211_sub_if_data *sdata,
 
 	if (old)
 		kfree_rcu(old, rcu_head);
+
+	ieee80211_update_ap_bandwidth(link, params);
 
 	*changed |= _changed;
 	return 0;
