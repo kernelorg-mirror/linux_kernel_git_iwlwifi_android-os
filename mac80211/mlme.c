@@ -5733,9 +5733,9 @@ static bool ieee80211_assoc_config_link(struct ieee80211_link_data *link,
 	 */
 
 	/*
-	 * If an operating mode notification IE is present, override the
-	 * NSS calculation (that would be done in rate_control_rate_init())
-	 * and use the # of streams from that element.
+	 * If an operating mode notification element is present, set the opmode
+	 * NSS override to correct for the current number of spatial streams,
+	 * overriding the capabilities. ieee80211_sta_init_nss() uses this.
 	 */
 	if (elems->opmode_notif &&
 	    !(*elems->opmode_notif & IEEE80211_OPMODE_NOTIF_RX_NSS_TYPE_BF)) {
@@ -5744,8 +5744,10 @@ static bool ieee80211_assoc_config_link(struct ieee80211_link_data *link,
 		nss = *elems->opmode_notif & IEEE80211_OPMODE_NOTIF_RX_NSS_MASK;
 		nss >>= IEEE80211_OPMODE_NOTIF_RX_NSS_SHIFT;
 		nss += 1;
-		link_sta->pub->rx_nss = nss;
+		link_sta->op_mode_nss = nss;
 	}
+
+	ieee80211_sta_init_nss(link_sta);
 
 	/*
 	 * Always handle WMM once after association regardless
@@ -10603,7 +10605,6 @@ void ieee80211_process_ml_reconf_resp(struct ieee80211_sub_if_data *sdata,
 		if (add_links_data->link[link_id].status != WLAN_STATUS_SUCCESS)
 			goto disconnect;
 
-		ieee80211_sta_init_nss(link_sta);
 		if (ieee80211_sta_activate_link(sta, link_id))
 			goto disconnect;
 
