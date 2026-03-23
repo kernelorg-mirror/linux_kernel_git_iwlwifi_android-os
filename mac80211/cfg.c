@@ -1321,6 +1321,17 @@ static enum ieee80211_sta_rx_bandwidth ieee80211_calc_ap_he_and_lower(struct cfg
 	 */
 	return IEEE80211_STA_RX_BW_MAX;
 }
+static enum ieee80211_sta_rx_bandwidth ieee80211_calc_ap_eht_bw(struct cfg80211_beacon_data *params,
+								enum ieee80211_sta_rx_bandwidth he_and_lower)
+	{
+	/*
+	 * iwlwifi doesn't expect WiFi8 SoftAP with DBE, which
+	 * would be the only way to have lower bandwidth for EHT
+	 * and UHR-non-DBE clients - so just use max as we don't
+	 * have the necessary information from cfg80211 here.
+	 */
+	return IEEE80211_STA_RX_BW_MAX;
+}
 
 static void ieee80211_update_ap_bandwidth(struct ieee80211_link_data *link,
 					  struct cfg80211_beacon_data *params)
@@ -1346,6 +1357,8 @@ static void ieee80211_update_ap_bandwidth(struct ieee80211_link_data *link,
 		return;
 
 	link->bss_bw.he_and_lower = ieee80211_calc_ap_he_and_lower(params);
+	link->bss_bw.eht = ieee80211_calc_ap_eht_bw(params,
+						    link->bss_bw.he_and_lower);
 
 	chanctx_conf = sdata_dereference(link->conf->chanctx_conf, link->sdata);
 	chanctx = container_of(chanctx_conf, struct ieee80211_chanctx, conf);
@@ -4314,6 +4327,9 @@ static int __ieee80211_csa_finalize(struct ieee80211_link_data *link_data)
 		return err;
 
 	ieee80211_link_info_change_notify(sdata, link_data, changed);
+
+	if (sdata->vif.type == NL80211_IFTYPE_AP)
+		ieee80211_uhr_disable_dbe_all_stas(link_data);
 
 	ieee80211_vif_unblock_queues_csa(sdata);
 
