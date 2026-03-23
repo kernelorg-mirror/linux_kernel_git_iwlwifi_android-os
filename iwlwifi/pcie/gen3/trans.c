@@ -395,8 +395,7 @@ bool iwl_trans_pcie_gen3_grab_nic_access(struct iwl_trans *trans)
 	return true;
 }
 
-static void
-iwl_trans_pcie_gen3_resched_with_nic_access(struct iwl_trans *trans)
+void iwl_trans_pcie_gen3_resched_with_nic_access(struct iwl_trans *trans)
 {
 	struct iwl_pcie_gen3 *trans_pcie = IWL_GET_PCIE_GEN3(trans);
 

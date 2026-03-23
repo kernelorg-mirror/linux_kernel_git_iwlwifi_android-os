@@ -612,6 +612,14 @@ bool iwl_trans_grab_nic_access(struct iwl_trans *trans)
 }
 IWL_EXPORT_SYMBOL(iwl_trans_grab_nic_access);
 
+void iwl_trans_resched_with_nic_access(struct iwl_trans *trans)
+{
+	if (trans->mac_cfg->gen3)
+		iwl_trans_pcie_gen3_resched_with_nic_access(trans);
+	else
+		iwl_trans_pcie_resched_with_nic_access(trans);
+}
+
 void __releases(nic_access)
 iwl_trans_release_nic_access(struct iwl_trans *trans)
 {
