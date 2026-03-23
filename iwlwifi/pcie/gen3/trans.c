@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0 OR BSD-3-Clause
 /*
- * Copyright (C) 2025 Intel Corporation
+ * Copyright (C) 2025-2026 Intel Corporation
  */
 
 #include "fw/api/tx.h"
@@ -395,6 +395,16 @@ bool iwl_trans_pcie_gen3_grab_nic_access(struct iwl_trans *trans)
 	return true;
 }
 
+static void
+iwl_trans_pcie_gen3_resched_with_nic_access(struct iwl_trans *trans)
+{
+	struct iwl_pcie_gen3 *trans_pcie = IWL_GET_PCIE_GEN3(trans);
+
+	spin_unlock(&trans_pcie->reg_lock);
+	cond_resched();
+	spin_lock(&trans_pcie->reg_lock);
+}
+
 void __releases(nic_access)
 iwl_trans_pcie_gen3_release_nic_access(struct iwl_trans *trans)
 {
@@ -462,6 +472,52 @@ int iwl_trans_pcie_gen3_read_mem(struct iwl_trans *trans, u32 addr,
 		} else {
 			return -EBUSY;
 		}
+	}
+
+	return 0;
+}
+
+int iwl_trans_pcie_gen3_read_mem_no_grab(struct iwl_trans *trans, u32 addr,
+					 void *buf, u32 dwords)
+{
+	struct iwl_pcie_gen3 *trans_pcie = IWL_GET_PCIE_GEN3(trans);
+#define IWL_MAX_HW_ERRS 5
+	unsigned int num_consec_hw_errors = 0;
+	u32 offs = 0;
+	u32 *vals = buf;
+
+	lockdep_assert_held(&trans_pcie->reg_lock);
+
+	while (offs < dwords) {
+		/* limit the time we spin here under lock to 1/2s */
+		unsigned long end = jiffies + HZ / 2;
+		bool resched = false;
+
+		iwl_write32(trans, HBUS_TARG_MEM_RADDR,
+			    addr + 4 * offs);
+
+		while (offs < dwords) {
+			vals[offs] = iwl_read32(trans,
+						HBUS_TARG_MEM_RDAT);
+
+			if (iwl_trans_is_hw_error_value(vals[offs]))
+				num_consec_hw_errors++;
+			else
+				num_consec_hw_errors = 0;
+
+			if (num_consec_hw_errors >= IWL_MAX_HW_ERRS)
+				return -EIO;
+
+			offs++;
+
+			if (time_after(jiffies, end)) {
+				resched = true;
+				break;
+			}
+		}
+
+		if (resched)
+			iwl_trans_pcie_gen3_resched_with_nic_access(trans);
 	}
 
 	return 0;

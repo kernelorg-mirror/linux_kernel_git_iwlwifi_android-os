@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0 OR BSD-3-Clause
 /*
- * Copyright (C) 2025 Intel Corporation
+ * Copyright (C) 2025-2026 Intel Corporation
  */
 #ifndef __iwl_trans_pcie_gen3_h__
 #define __iwl_trans_pcie_gen3_h__
@@ -119,5 +119,7 @@ void __releases(nic_access)
 iwl_trans_pcie_gen3_release_nic_access(struct iwl_trans *trans);
 int iwl_trans_pcie_gen3_read_mem(struct iwl_trans *trans, u32 addr,
 				 void *buf, int dwords);
+int iwl_trans_pcie_gen3_read_mem_no_grab(struct iwl_trans *trans, u32 addr,
+					 void *buf, u32 dwords);
 
 #endif /* __iwl_trans_pcie_gen3_h__ */
