@@ -155,11 +155,6 @@ int iwl_mld_phy_fw_action(struct iwl_mld *mld,
 			iwl_mld_nl80211_width_to_fw(ctx->ap.width);
 		cmd.sbb_ctrl_channel_loc = iwl_mld_get_fw_ctrl_pos(&ctx->ap);
 	}
-
-	/*
-	 * Set NPCA channel if NPCA is used; if not used, just set it to an
-	 * arbitrary channel on the other side to help firmware.
-	 */
 	cmd.secondary_ctrl_chnl_loc =
 		cmd.ci.ctrl_pos ^ IWL_PHY_CTRL_POS_ABOVE;
 
