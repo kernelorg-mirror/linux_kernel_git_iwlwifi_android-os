@@ -379,9 +379,10 @@ static int ieee80211_nan_conf_copy(struct cfg80211_nan_conf *dst,
 		dst->vendor_elems = NULL;
 		dst->vendor_elems_len = 0;
 
-		if (is_zero_ether_addr(dst->cluster_id))
+		if (is_zero_ether_addr(dst->cluster_id)) {
 			ether_addr_copy((void *)dst->cluster_id,
 					src->cluster_id);
+		}
 
 		if (src->extra_nan_attrs && src->extra_nan_attrs_len) {
 			dst->extra_nan_attrs = kmemdup(src->extra_nan_attrs,
@@ -2131,7 +2132,6 @@ static int sta_link_apply_parameters(struct ieee80211_local *local,
 	 */
 	if (WARN_ON(0))
 		return -EINVAL;
-
 	sband = ieee80211_get_link_sband(link);
 	if (!sband)
 		return -EINVAL;

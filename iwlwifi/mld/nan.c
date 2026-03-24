@@ -52,12 +52,6 @@ static int iwl_mld_nan_send_config_cmd(struct iwl_mld *mld,
 
 bool iwl_mld_nan_use_nan_stations(struct iwl_mld *mld)
 {
-	/*
-	 * If the FW supports version 1 of the NAN config command, it means that
-	 * it needs to receive the station ID of the auxiliary station in the
-	 * NAN configuration command. Otherwise, use the NAN dedicated station
-	 * types.
-	 */
 	return false;
 }
 

@@ -77,7 +77,7 @@ iwl_mld_iface_combinations[] = {
 	},
 	{
 		.num_different_channels = 1, .max_interfaces = 4, .limits = iwl_mld_limits_ap, .n_limits = ARRAY_SIZE(iwl_mld_limits_ap),
-				},
+		},
 };
 
 static const u8 ext_capa_base[IWL_MLD_STA_EXT_CAPA_SIZE] = {

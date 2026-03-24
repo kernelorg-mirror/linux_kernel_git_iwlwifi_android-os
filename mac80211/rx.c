@@ -4651,7 +4651,8 @@ static bool ieee80211_accept_frame(struct ieee80211_rx_data *rx)
 			if (!nmi)
 				return false;
 
-			if (true)
+			if (true
+					      )
 				return false;
 
 			return multicast ||
