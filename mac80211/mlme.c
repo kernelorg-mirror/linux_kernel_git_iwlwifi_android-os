@@ -2610,8 +2610,8 @@ static void ieee80211_csa_switch_work(struct wiphy *wiphy,
 			return;
 
 		link_sta->pub->bandwidth =
-			_ieee80211_sta_cur_vht_bw(link_sta,
-						  &link->csa.chanreq.oper);
+			ieee80211_sta_cur_vht_bw(link_sta,
+						 &link->csa.chanreq.oper);
 		return;
 	}
 
