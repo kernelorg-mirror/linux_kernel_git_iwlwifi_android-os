@@ -476,8 +476,7 @@ ieee80211_get_sta_bw(struct sta_info *sta, struct ieee80211_link_data *link)
 	 * capabilities here. Calling it RX bandwidth capability is a bit
 	 * wrong though, since capabilities are in fact symmetric.
 	 */
-	width = ieee80211_sta_cap_rx_bw(link_sta,
-					link->conf->chanreq.oper.chan->band);
+	width = _ieee80211_sta_cap_rx_bw(link_sta, &link->conf->chanreq.oper);
 
 	if (width == IEEE80211_STA_RX_BW_20 &&
 	    !link_sta->pub->ht_cap.ht_supported &&
