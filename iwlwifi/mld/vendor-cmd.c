@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0 OR BSD-3-Clause
 /*
- * Copyright (C) 2024-2025 Intel Corporation
+ * Copyright (C) 2024-2026 Intel Corporation
  */
 #include <linux/etherdevice.h>
 #include <net/netlink.h>
@@ -313,7 +313,13 @@ static int iwl_mld_vendor_rfim_get_capa(struct wiphy *wiphy,
 	return cfg80211_vendor_cmd_reply(skb);
 }
 
-#define IWL_RFI_CNVI_NOT_MASTER 0x3
+enum iwl_mld_rfi_cnvi_master_conf {
+	IWL_MLD_RFI_CNVI_DLVR_NOT_MASTER	= BIT(0),
+	IWL_MLD_RFI_CNVI_DDR_NOT_MASTER		= BIT(1),
+};
+
+#define IWL_MLD_RFI_CNVI_NOT_MASTER	(IWL_MLD_RFI_CNVI_DLVR_NOT_MASTER |\
+					 IWL_MLD_RFI_CNVI_DDR_NOT_MASTER)
 
 static int iwl_mld_vendor_rfi_set_cnvi_master(struct wiphy *wiphy,
 					      struct wireless_dev *wdev,
@@ -322,6 +328,9 @@ static int iwl_mld_vendor_rfi_set_cnvi_master(struct wiphy *wiphy,
 	struct ieee80211_hw *hw = wiphy_to_ieee80211_hw(wiphy);
 	struct iwl_mld *mld = IWL_MAC80211_GET_MLD(hw);
 	bool old_rfi_wlan_master = mld->rfi.wlan_master;
+	u32 mac_type = CSR_HW_REV_TYPE(mld->trans->info.hw_rev);
+	bool is_sc2_type = (mac_type == IWL_CFG_MAC_TYPE_SC2 ||
+			    mac_type == IWL_CFG_MAC_TYPE_SC2F);
 	struct nlattr **tb __free(kfree) = NULL;
 	u32 rfi_master_conf;
 	int err = 0;
@@ -336,16 +345,19 @@ static int iwl_mld_vendor_rfi_set_cnvi_master(struct wiphy *wiphy,
 	rfi_master_conf = nla_get_u32(tb[IWL_MVM_VENDOR_ATTR_RFIM_CNVI_MASTER]);
 	IWL_DEBUG_INFO(mld, "rfi cnvi master conf is 0x%08x\n",
 		       rfi_master_conf);
-	rfi_master_conf &= IWL_RFI_CNVI_NOT_MASTER;
 
-	/* rfi_master_conf can be 0 or 3 only.
-	 * i.e 0 means CNVI is master. 3 means user-space application is master.
-	 * 1 and 2 are invalid configurations, which means there is no way for
-	 * the user space to take partial control.
+	/* SC2/SC2F devices: values 0 (CNVI master) or 2/3 (CNVI not master)
+	 * are valid.
+	 * Non SC2/SC2F devices: values 0 (CNVI master) or 3 (CNVI not master)
+	 * are valid.
 	 */
 	if (!rfi_master_conf)
 		mld->rfi.wlan_master = true;
-	else if (rfi_master_conf == IWL_RFI_CNVI_NOT_MASTER)
+	else if ((is_sc2_type &&
+		  (rfi_master_conf == IWL_MLD_RFI_CNVI_DDR_NOT_MASTER ||
+		   rfi_master_conf == IWL_MLD_RFI_CNVI_NOT_MASTER)) ||
+		 (!is_sc2_type &&
+		  rfi_master_conf == IWL_MLD_RFI_CNVI_NOT_MASTER))
 		mld->rfi.wlan_master = false;
 	else
 		return -EINVAL;
