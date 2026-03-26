@@ -618,6 +618,7 @@ static int ieee80211_add_key(struct wiphy *wiphy, struct wireless_dev *wdev,
 	struct ieee80211_sub_if_data *sdata = IEEE80211_WDEV_TO_SUB_IF(wdev);
 	struct ieee80211_link_data *link =
 		ieee80211_link_or_deflink(sdata, link_id, false);
+	bool cigtk = false;
 	struct ieee80211_local *local = sdata->local;
 	struct sta_info *sta = NULL;
 	struct ieee80211_key *key;
@@ -661,6 +662,9 @@ static int ieee80211_add_key(struct wiphy *wiphy, struct wireless_dev *wdev,
 		key->conf.link_id = -1;
 	} else {
 		key->conf.link_id = link->link_id;
+
+		if (cigtk)
+			key->conf.flags |= 0/* IEEE80211_KEY_FLAG_CIP */;
 	}
 
 	if (params->mode == NL80211_KEY_NO_TX)
@@ -742,6 +746,7 @@ ieee80211_lookup_key(struct ieee80211_sub_if_data *sdata, int link_id,
 {
 	struct ieee80211_local *local __maybe_unused = sdata->local;
 	struct ieee80211_link_data *link = &sdata->deflink;
+	bool cigtk = false;
 	struct ieee80211_key *key;
 
 	if (link_id >= 0) {
@@ -771,7 +776,11 @@ ieee80211_lookup_key(struct ieee80211_sub_if_data *sdata, int link_id,
 			return wiphy_dereference(local->hw.wiphy,
 						 sta->ptk[key_idx]);
 
-		if (!pairwise &&
+		if (cigtk && key_idx < NUM_CTRL_KEYS)
+			return wiphy_dereference(local->hw.wiphy,
+						 link_sta->cigtk[key_idx]);
+
+		if (!pairwise && !cigtk &&
 		    key_idx < NUM_DEFAULT_KEYS +
 			      NUM_DEFAULT_MGMT_KEYS +
 			      NUM_DEFAULT_BEACON_KEYS)
@@ -783,6 +792,9 @@ ieee80211_lookup_key(struct ieee80211_sub_if_data *sdata, int link_id,
 
 	if (pairwise && key_idx < NUM_DEFAULT_KEYS)
 		return wiphy_dereference(local->hw.wiphy, sdata->keys[key_idx]);
+
+	if (cigtk)
+		return wiphy_dereference(local->hw.wiphy, link->cigtk[key_idx]);
 
 	key = wiphy_dereference(local->hw.wiphy, link->gtk[key_idx]);
 	if (key)
