@@ -842,9 +842,11 @@ void iwl_mld_nan_vif_cfg_changed(struct iwl_mld *mld,
 
 		/*
 		 * Iterate over all the NAN Data interfaces and update the links
-		 * for the internal multicast data station
+		 * for the internal multicast data station.
+		 * In recovery - the station will be added later in
+		 * drv_add_interface
 		 */
-		if (iwl_mld_nan_use_nan_stations(mld)) {
+		if (iwl_mld_nan_use_nan_stations(mld) && !mld->fw_status.in_hw_restart) {
 			struct ieee80211_vif *iter;
 
 			for_each_active_interface(iter, mld->hw)
