@@ -704,6 +704,7 @@ struct iwl_scd_queue_cfg_cmd {
  * @IWL_SEC_KEY_FLAG_MFP: MFP is in used for this key
  * @IWL_SEC_KEY_FLAG_MCAST_KEY: this is a multicast key
  * @IWL_SEC_KEY_FLAG_SPP_AMSDU: SPP A-MSDU should be used
+ * @IWL_SEC_KEY_FLAG_CTRL_FRAME: key is used for CIP
  * @IWL_SEC_KEY_FLAG_ASSOC_ENC: use this key for (Re)Assoc Req/Resp encryption
  */
 enum iwl_sec_key_flags {
@@ -717,6 +718,7 @@ enum iwl_sec_key_flags {
 	IWL_SEC_KEY_FLAG_MFP		= 0x20,
 	IWL_SEC_KEY_FLAG_MCAST_KEY	= 0x40,
 	IWL_SEC_KEY_FLAG_SPP_AMSDU	= 0x80,
+	IWL_SEC_KEY_FLAG_CTRL_FRAME	= 0x100,
 	IWL_SEC_KEY_FLAG_ASSOC_ENC	= 0x200,
 };
 

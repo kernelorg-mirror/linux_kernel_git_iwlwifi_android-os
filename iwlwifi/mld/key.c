@@ -19,6 +19,9 @@ static u32 iwl_mld_get_key_flags(struct iwl_mld *mld,
 	if (!pairwise)
 		flags |= IWL_SEC_KEY_FLAG_MCAST_KEY;
 
+	if (key->flags & 0/* IEEE80211_KEY_FLAG_CIP */)
+		flags |= IWL_SEC_KEY_FLAG_CTRL_FRAME;
+
 	switch (key->cipher) {
 	case WLAN_CIPHER_SUITE_TKIP:
 		flags |= IWL_SEC_KEY_FLAG_CIPHER_TKIP;

@@ -2351,6 +2351,21 @@ static int iwl_mld_set_key_add(struct iwl_mld *mld,
 	/* Will be set to 0 if added successfully */
 	key->hw_key_idx = STA_KEY_IDX_INVALID;
 
+	/*
+	 * In AP mode (i.e. when there is no STA and the key is used for TX),
+	 * simply do not install CIGTK but claim we did. Currently the FW will
+	 * never generate frames that would be protected with the CIGTK, so the
+	 * key does not need to be installed. However, these keys require HW
+	 * crypto so we must return success to mac80211.
+	 *
+	 * Note that if we start to install it, we will also need to update the
+	 * bcast/mcast stations to set the correct CIP MIC delays when stations
+	 * join/leave.
+	 */
+	if (!sta && !(key->flags & IEEE80211_KEY_FLAG_PAIRWISE) &&
+	    (key->flags & 0/* IEEE80211_KEY_FLAG_CIP */))
+		return 0;
+
 	switch (key->cipher) {
 	case WLAN_CIPHER_SUITE_WEP40:
 	case WLAN_CIPHER_SUITE_WEP104:
