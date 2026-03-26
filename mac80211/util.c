@@ -4679,6 +4679,12 @@ int ieee80211_put_uhr_cap(struct sk_buff *skb,
 	return 0;
 }
 
+int ieee80211_put_cip_cap(struct sk_buff *skb,
+			  struct ieee80211_sub_if_data *sdata)
+{
+	return 0;
+}
+
 const char *ieee80211_conn_mode_str(enum ieee80211_conn_mode mode)
 {
 	static const char * const modes[] = {
