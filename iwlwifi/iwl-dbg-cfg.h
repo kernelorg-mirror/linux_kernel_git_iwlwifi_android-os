@@ -239,6 +239,9 @@ struct iwl_dbg_cfg {
 	IWL_DBG_CFG_NODEF(u32, MLD_FTM_RESP_FLAGS)
 	IWL_DBG_CFG_NODEF(u16, MLD_FTM_RESP_TOA_OFFSET)
 
+	IWL_DBG_CFG_NODEF(bool, MLD_CIP_ENABLED)
+	IWL_DBG_CFG_NODEF(bool, MLD_ICF_USE_TRIGGER)
+
 #endif /* CPTCFG_IWLMLD */
 	IWL_DBG_CFG_NODEF(u32, system_features_control_1)
 	IWL_DBG_CFG_NODEF(u32, system_features_control_2)

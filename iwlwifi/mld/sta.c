@@ -511,6 +511,14 @@ int iwl_mld_add_modify_sta_cmd(struct iwl_mld *mld,
 	if (sta->mfp || mld_sta->sta_state < IEEE80211_STA_AUTHORIZED)
 		cmd.mfp = cpu_to_le32(1);
 
+	if (sta->cip) {
+		cmd.mic_compute_pad_delay = link_sta->cip_mic_padding;
+		cmd.mic_prep_pad_delay = link_sta->cip_mic_padding;
+	}
+#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+	cmd.use_icf = mld->trans->dbg_cfg.MLD_ICF_USE_TRIGGER;
+#endif
+
 	switch (link_sta->rx_nss) {
 	case 1:
 		cmd.mimo = cpu_to_le32(0);
