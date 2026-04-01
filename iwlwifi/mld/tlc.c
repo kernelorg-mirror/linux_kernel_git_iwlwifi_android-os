@@ -774,6 +774,7 @@ static void iwl_mld_config_tlc_nan(struct iwl_mld *mld,
 		struct ieee80211_chanctx_conf *chan_ctx;
 		struct iwl_mld_tlc_sta_capa capa = {};
 		struct cfg80211_chan_def *chandef;
+		bool common_channel = false;
 
 		chan_ctx = nan_link->chanctx;
 		if (!chan_ctx)
@@ -783,7 +784,6 @@ static void iwl_mld_config_tlc_nan(struct iwl_mld *mld,
 
 		capa.smps_mode = IEEE80211_SMPS_OFF; /* always off */
 
-		/* Note these are irrelevant if there's no schedule */
 		capa.rx_nss = 2; /* maximum we support */
 		capa.bandwidth = ieee80211_chan_width_to_rx_bw(chandef->width);
 
@@ -795,12 +795,20 @@ static void iwl_mld_config_tlc_nan(struct iwl_mld *mld,
 			if (sched->channels[j].chanctx_conf != chan_ctx)
 				continue;
 
+			common_channel = true;
+
 			width = sched->channels[j].chanreq.oper.width;
 			rx_bw = ieee80211_chan_width_to_rx_bw(width);
 			capa.bandwidth = min(capa.bandwidth, rx_bw);
 
 			chains = sched->channels[j].needed_rx_chains;
 			capa.rx_nss = min(capa.rx_nss, chains);
+		}
+
+		/* Apply minimum parameters if there is no common channel */
+		if (!common_channel) {
+			capa.bandwidth = IEEE80211_STA_RX_BW_20;
+			capa.rx_nss = 1;
 		}
 
 		capa.own_he_cap = &mld->wiphy->nan_capa.phy.he;
