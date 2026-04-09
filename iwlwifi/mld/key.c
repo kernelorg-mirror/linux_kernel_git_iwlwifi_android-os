@@ -253,7 +253,7 @@ iwl_mld_get_igtk_ptr(struct ieee80211_vif *vif,
 			return &mld_sta->deflink.rx_igtk;
 		}
 
-		return &mld_vif->deflink.tx_igtk;
+		return &mld_vif->nan.tx_igtk;
 	case NL80211_IFTYPE_AP:
 		mld_link = iwl_mld_link_dereference_check(mld_vif, link_id);
 		if (WARN_ON(!mld_link))
