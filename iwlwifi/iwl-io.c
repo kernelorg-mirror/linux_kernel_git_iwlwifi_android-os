@@ -12,8 +12,6 @@
 #include "iwl-debug.h"
 #include "iwl-prph.h"
 #include "iwl-fh.h"
-#include "pcie/gen1_2/internal.h"
-#include "pcie/gen3/trans.h"
 
 void iwl_write8(struct iwl_trans *trans, u32 ofs, u8 val)
 {
@@ -412,15 +410,6 @@ int iwl_dump_fh(struct iwl_trans *trans, char **buf)
 
 	return 0;
 }
-
-int iwl_trans_activate_nic(struct iwl_trans *trans)
-{
-	if (trans->mac_cfg->gen3)
-		return iwl_pcie_gen3_activate_nic(trans);
-
-	return iwl_pcie_gen1_2_activate_nic(trans);
-}
-IWL_EXPORT_SYMBOL(iwl_trans_activate_nic);
 
 void iwl_trans_sync_nmi_with_addr(struct iwl_trans *trans, u32 inta_addr,
 				  u32 sw_err_bit)
