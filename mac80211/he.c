@@ -128,7 +128,7 @@ _ieee80211_he_cap_ie_to_sta_he_cap(struct ieee80211_sub_if_data *sdata,
 		return;
 
 	/* NDI station are using the capabilities from the NMI station */
-	if (WARN_ON_ONCE(0))
+	if (WARN_ON_ONCE(sdata->vif.type == NL80211_IFTYPE_NAN_DATA))
 		return;
 
 	own_he_cap = *own_he_cap_ptr;

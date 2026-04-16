@@ -78,7 +78,7 @@ static u32 iwl_mld_get_key_sta_mask(struct iwl_mld *mld,
 
 	lockdep_assert_wiphy(mld->wiphy);
 
-	if (0 && !sta) {
+	if (vif->type == NL80211_IFTYPE_NAN_DATA && !sta) {
 		/* Older firmware versions do not support transmission of
 		 * multicast data frames.
 		 */
@@ -305,7 +305,7 @@ int iwl_mld_add_key(struct iwl_mld *mld,
 
 	if (!sta_mask) {
 		/* for NAN (GTK) indicate SW-only, it's not used at all */
-		if (0 && !sta &&
+		if (vif->type == NL80211_IFTYPE_NAN_DATA && !sta &&
 		    !iwl_mld_nan_use_nan_stations(mld))
 			return 1;
 

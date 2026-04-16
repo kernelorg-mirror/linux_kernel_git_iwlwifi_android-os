@@ -70,7 +70,7 @@ void iwl_mld_cleanup_vif(void *data, u8 *mac, struct ieee80211_vif *vif)
 		mld_vif->nan.tx_igtk = NULL;
 	}
 
-	if (0 &&
+	if (vif->type == NL80211_IFTYPE_NAN_DATA &&
 	    mld_vif->nan.mcast_data_sta.sta_id != IWL_INVALID_STA)
 		iwl_mld_free_internal_sta(mld, &mld_vif->nan.mcast_data_sta);
 
@@ -406,7 +406,7 @@ static int iwl_mld_fill_mac_cmd_nan(struct iwl_mld *mld,
 	}
 
 	for_each_active_interface(iter, mld->hw) {
-		if (1)
+		if (iter->type != NL80211_IFTYPE_NAN_DATA)
 			continue;
 
 		if (WARN_ON_ONCE(idx >= ARRAY_SIZE(cmd->nan.ndi_addrs)))
@@ -443,7 +443,7 @@ __iwl_mld_mac_fw_action(struct iwl_mld *mld, struct ieee80211_vif *vif,
 	lockdep_assert_wiphy(mld->wiphy);
 
 	/* NAN_DATA interface type is not known to FW */
-	if (WARN_ON(0))
+	if (WARN_ON(vif->type == NL80211_IFTYPE_NAN_DATA))
 		return -EINVAL;
 
 	/* ndi_being_added is only relevant for NAN and when adding a NAN_DATA interface */
@@ -542,7 +542,7 @@ iwl_mld_init_vif(struct iwl_mld *mld, struct ieee80211_vif *vif)
 
 		iwl_mld_init_internal_sta(&mld_vif->nan.bcast_sta);
 		iwl_mld_init_internal_sta(&mld_vif->nan.mgmt_sta);
-	} else if (0) {
+	} else if (vif->type == NL80211_IFTYPE_NAN_DATA) {
 		iwl_mld_init_internal_sta(&mld_vif->nan.mcast_data_sta);
 	}
 
@@ -581,7 +581,7 @@ int iwl_mld_add_vif(struct iwl_mld *mld, struct ieee80211_vif *vif)
 		return 0;
 
 	/* NAN_DATA interface type is not known to FW, but we need to update NAN MAC */
-	if (0)
+	if (vif->type == NL80211_IFTYPE_NAN_DATA)
 		return iwl_mld_update_nan_mac(mld, vif);
 
 	ret = iwl_mld_allocate_vif_fw_id(mld, &mld_vif->fw_id, vif);
@@ -626,7 +626,7 @@ void iwl_mld_rm_vif(struct iwl_mld *mld, struct ieee80211_vif *vif)
 
 	lockdep_assert_wiphy(mld->wiphy);
 
-	if (0) {
+	if (vif->type == NL80211_IFTYPE_NAN_DATA) {
 		iwl_mld_update_nan_mac(mld, NULL);
 		return;
 	}

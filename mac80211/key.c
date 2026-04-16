@@ -157,7 +157,7 @@ static int ieee80211_key_enable_hw_accel(struct ieee80211_key *key)
 	 */
 	if (sta && !(key->conf.flags & IEEE80211_KEY_FLAG_PAIRWISE) &&
 	    !(ieee80211_hw_check(&key->local->hw, SUPPORTS_PER_STA_GTK) ||
-	      0))
+	      sdata->vif.type == NL80211_IFTYPE_NAN_DATA))
 		goto out_unsupported;
 
 	if (sta && !sta->uploaded)
@@ -882,7 +882,7 @@ int ieee80211_key_link(struct ieee80211_key *key,
 		 * requires upgrading the ND-TKSA when a new NDP negotiates a
 		 * stronger cipher suite.
 		 */
-		if (1 &&
+		if (sdata->vif.type != NL80211_IFTYPE_NAN_DATA &&
 		    ((alt_key && alt_key->conf.cipher != key->conf.cipher) ||
 		     (old_key && old_key->conf.cipher != key->conf.cipher))) {
 			ret = -EOPNOTSUPP;

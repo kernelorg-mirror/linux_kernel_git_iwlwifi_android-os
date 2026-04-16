@@ -58,7 +58,9 @@ bool iwl_mld_nan_use_nan_stations(struct iwl_mld *mld)
 	 * NAN configuration command. Otherwise, use the NAN dedicated station
 	 * types.
 	 */
-	return false;
+	return iwl_fw_lookup_cmd_ver(mld->fw,
+				     WIDE_ID(MAC_CONF_GROUP,
+					     NAN_CFG_CMD), 1) != 1;
 }
 
 static const struct iwl_mld_int_sta *
@@ -617,6 +619,16 @@ iwl_mld_nan_find_link(struct iwl_mld_vif *mld_vif,
 
 static void iwl_mld_nan_set_mcast_data_links(struct ieee80211_vif *vif)
 {
+	struct iwl_mld_vif *mld_vif = iwl_mld_vif_from_mac80211(vif);
+
+	if (vif->type != NL80211_IFTYPE_NAN_DATA)
+		return;
+
+	/* Note that all errors are handled internally so nothing to do
+	 * with the return value (used only to silence compilation warnings)
+	 */
+	iwl_mld_update_nan_mcast_data_sta(mld_vif->mld, vif->addr,
+					  &mld_vif->nan.mcast_data_sta);
 }
 
 void iwl_mld_nan_vif_cfg_changed(struct iwl_mld *mld,
