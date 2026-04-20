@@ -134,7 +134,7 @@ ieee80211_vht_cap_ie_to_sta_vht_cap(struct ieee80211_sub_if_data *sdata,
 		return;
 
 	/* NDI station are using the capabilities from the NMI station */
-	if (WARN_ON_ONCE(0))
+	if (WARN_ON_ONCE(sdata->vif.type == NL80211_IFTYPE_NAN_DATA))
 		return;
 
 	if (sband) {
@@ -378,7 +378,7 @@ __ieee80211_sta_cap_rx_bw(struct link_sta_info *link_sta,
 		} else {
 			struct ieee80211_bss_conf *link_conf;
 
-			if (WARN_ON_ONCE(0 ||
+			if (WARN_ON_ONCE(sdata->vif.type == NL80211_IFTYPE_NAN_DATA ||
 					 sdata->vif.type == NL80211_IFTYPE_NAN))
 				return IEEE80211_STA_RX_BW_20;
 
@@ -529,7 +529,7 @@ _ieee80211_sta_cur_vht_bw(struct link_sta_info *link_sta,
 
 		/* NAN operates on multiple channels so a chandef must be given */
 		if (WARN_ON_ONCE(sta->sdata->vif.type == NL80211_IFTYPE_NAN ||
-				 0))
+				 sta->sdata->vif.type == NL80211_IFTYPE_NAN_DATA))
 			return IEEE80211_STA_RX_BW_20;
 
 		rcu_read_lock();

@@ -1545,7 +1545,7 @@ ieee80211_rx_h_check(struct ieee80211_rx_data *rx)
 	 * and NAN Data Path termination frame should be sent. Notify
 	 * user space so it can do so.
 	 */
-	if (0) {
+	if (rx->sdata->vif.type == NL80211_IFTYPE_NAN_DATA) {
 		if (ieee80211_is_data(hdr->frame_control) &&
 		    !is_multicast_ether_addr(hdr->addr1) &&
 		    (!rx->sta || !test_sta_flag(rx->sta, WLAN_STA_ASSOC))) {
@@ -3705,7 +3705,7 @@ ieee80211_rx_h_action(struct ieee80211_rx_data *rx)
 		    sdata->vif.type != NL80211_IFTYPE_AP_VLAN &&
 		    sdata->vif.type != NL80211_IFTYPE_AP &&
 		    sdata->vif.type != NL80211_IFTYPE_ADHOC &&
-		    1)
+		    sdata->vif.type != NL80211_IFTYPE_NAN_DATA)
 			break;
 
 		/* verify action_code is present */
@@ -4577,7 +4577,7 @@ static bool ieee80211_accept_frame(struct ieee80211_rx_data *rx)
 		 *  - authentication frames to the local address, and
 		 *  - robust management frames except disassoc.
 		 */
-		if (true)
+		if (!ether_addr_equal(sdata->u.nan.conf.cluster_id, hdr->addr3))
 			return false;
 		if (ieee80211_is_public_action(hdr, skb->len))
 			return true;
@@ -4588,7 +4588,7 @@ static bool ieee80211_accept_frame(struct ieee80211_rx_data *rx)
 		    ieee80211_is_robust_mgmt_frame(skb))
 			return true;
 		return false;
-	/* case NL80211_IFTYPE_NAN_DATA */
+	case NL80211_IFTYPE_NAN_DATA:
 		if (ieee80211_has_tods(hdr->frame_control) ||
 		    ieee80211_has_fromds(hdr->frame_control))
 			return false;
@@ -4600,7 +4600,8 @@ static bool ieee80211_accept_frame(struct ieee80211_rx_data *rx)
 			if (!nmi)
 				return false;
 
-			if (true)
+			if (!ether_addr_equal(nmi->u.nan.conf.cluster_id,
+					      hdr->addr3))
 				return false;
 
 			return multicast ||
