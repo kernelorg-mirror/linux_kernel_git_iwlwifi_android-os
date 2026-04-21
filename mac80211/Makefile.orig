@@ -35,7 +35,7 @@ mac80211-y := \
 	key.o \
 	util.o parse.o \
 	wme.o \
-	chan.o \
+	chan.o ap.o \
 	trace.o mlme.o \
 	tdls.o \
 	ocb.o \
