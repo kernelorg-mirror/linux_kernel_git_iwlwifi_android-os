@@ -42,23 +42,25 @@ DRIVER_CONFIG = [
     "CONFIG_IWL7000_VENDOR_CMDS=1",
     "CONFIG_IWL7000_MLD_MODULE=1",
     "CONFIG_IWL7000_DEBUGFS=1",
+    "CONFIG_CFG80211_DEBUGFS=1",
 ]
 
 ddk_module(
     name = "iwl7000_mac80211",
     srcs = glob([
-        "mac80211/*.c"
+        "mac80211/*.c",
     ]),
     out = "iwl7000_mac80211.ko",
     copts = [
         "-include",
         "hdrs/iwl-chrome.h",
     ],
-    kernel_build = "//private/devices/google/common:desktop_kernel_build",
+    kernel_build = "//private/devices/google/x86-64/intel/common:kernel",
     local_defines = DRIVER_CONFIG,
     deps = [
         ":mac80211_hdrs",
-        "//private/desktop-google/net/wireless:cfg80211_x86_64",
+        "//private/desktop-google:main80211_hdrs",
+        "//private/desktop-google/net/wireless:cfg80211",
     ],
 )
 
@@ -90,11 +92,12 @@ ddk_module(
         "-include",
         "hdrs/iwl-chrome.h",
     ],
-    kernel_build = "//private/devices/google/common:desktop_kernel_build",
+    kernel_build = "//private/devices/google/x86-64/intel/common:kernel",
     local_defines = DRIVER_CONFIG,
     deps = [
         ":iwlwifi_hdrs",
-        "//private/desktop-google/net/wireless:cfg80211_x86_64",
+        "//private/desktop-google:main80211_hdrs",
+        "//private/desktop-google/net/wireless:cfg80211",
     ],
 )
 
@@ -108,13 +111,14 @@ ddk_module(
         "-include",
         "hdrs/iwl-chrome.h",
     ],
-    kernel_build = "//private/devices/google/common:desktop_kernel_build",
+    kernel_build = "//private/devices/google/x86-64/intel/common:kernel",
     local_defines = DRIVER_CONFIG,
     deps = [
         ":iwl7000_mac80211",
         ":iwlwifi",
         ":iwlwifi_hdrs",
-        "//private/desktop-google/net/wireless:cfg80211_x86_64",
+        "//private/desktop-google:main80211_hdrs",
+        "//private/desktop-google/net/wireless:cfg80211",
     ],
 )
 
@@ -128,13 +132,14 @@ ddk_module(
         "-include",
         "hdrs/iwl-chrome.h",
     ],
-    kernel_build = "//private/devices/google/common:desktop_kernel_build",
+    kernel_build = "//private/devices/google/x86-64/intel/common:kernel",
     local_defines = DRIVER_CONFIG,
     deps = [
         ":iwl7000_mac80211",
         ":iwlwifi",
         ":iwlwifi_hdrs",
-        "//private/desktop-google/net/wireless:cfg80211_x86_64",
+        "//private/desktop-google:main80211_hdrs",
+        "//private/desktop-google/net/wireless:cfg80211",
     ],
 )
 
@@ -148,12 +153,12 @@ ddk_module(
         "-include",
         "hdrs/iwl-chrome.h",
     ],
-    kernel_build = "//private/devices/google/common:desktop_kernel_build",
+    kernel_build = "//private/devices/google/x86-64/intel/common:kernel",
     local_defines = DRIVER_CONFIG,
     deps = [
         ":iwl7000_mac80211",
         ":iwlwifi",
         ":iwlwifi_hdrs",
-        "//private/desktop-google/net/wireless:cfg80211_x86_64",
+        "//private/desktop-google/net/wireless:cfg80211",
     ],
 )

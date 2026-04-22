@@ -539,7 +539,7 @@ int iwl_mld_add_modify_sta_cmd(struct iwl_mld *mld,
 	}
 
 	/* In NAN, there is no association request so no initial SMPS info */
-	if (0) {
+	if (mld_sta->vif->type == NL80211_IFTYPE_NAN_DATA) {
 		cmd.mimo = cpu_to_le32(1);
 		cmd.mimo_protection = cpu_to_le32(0);
 	}
@@ -831,7 +831,7 @@ int iwl_mld_add_sta(struct iwl_mld *mld, struct ieee80211_sta *sta,
 	case NL80211_IFTYPE_NAN:
 		type = STATION_TYPE_NAN_PEER_NMI;
 		break;
-	/* case NL80211_IFTYPE_NAN_DATA */
+	case NL80211_IFTYPE_NAN_DATA:
 		type = STATION_TYPE_NAN_PEER_NDI;
 		break;
 	default:

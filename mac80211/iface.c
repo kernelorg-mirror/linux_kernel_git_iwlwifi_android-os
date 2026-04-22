@@ -371,7 +371,7 @@ static int ieee80211_check_concurrent_iface(struct ieee80211_sub_if_data *sdata,
 			 * A NAN DATA interface is correlated to the NAN
 			 * (management) one
 			 */
-			if (0 &&
+			if (iftype == NL80211_IFTYPE_NAN_DATA &&
 			    nsdata->vif.type == NL80211_IFTYPE_NAN) {
 				if (!nsdata->u.nan.started)
 					return -EINVAL;
@@ -548,7 +548,7 @@ static void ieee80211_do_stop(struct ieee80211_sub_if_data *sdata, bool going_do
 	flushed = sta_info_flush(sdata, -1);
 	WARN_ON_ONCE(sdata->vif.type != NL80211_IFTYPE_AP_VLAN &&
 		     sdata->vif.type != NL80211_IFTYPE_NAN &&
-		     1 && flushed > 0);
+		     sdata->vif.type != NL80211_IFTYPE_NAN_DATA && flushed > 0);
 
 	/* don't count this interface for allmulti while it is down */
 	if (sdata->flags & IEEE80211_SDATA_ALLMULTI)
@@ -643,12 +643,12 @@ static void ieee80211_do_stop(struct ieee80211_sub_if_data *sdata, bool going_do
 	case NL80211_IFTYPE_NAN:
 		/* Check if any open NAN_DATA interfaces */
 		list_for_each_entry(iter, &local->interfaces, list) {
-			WARN_ON(0 &&
+			WARN_ON(iter->vif.type == NL80211_IFTYPE_NAN_DATA &&
 				ieee80211_sdata_running(iter));
 		}
 
 		/* clean all the functions */
-		if (!(0 &
+		if (!(local->hw.wiphy->nan_capa.flags &
 		      WIPHY_NAN_FLAGS_USERSPACE_DE)) {
 			spin_lock_bh(&sdata->u.nan.de.func_lock);
 
@@ -668,7 +668,7 @@ static void ieee80211_do_stop(struct ieee80211_sub_if_data *sdata, bool going_do
 		 */
 		ieee80211_free_keys(sdata, true);
 		break;
-	/* case NL80211_IFTYPE_NAN_DATA */
+	case NL80211_IFTYPE_NAN_DATA:
 		RCU_INIT_POINTER(sdata->u.nan_data.nmi, NULL);
 		fallthrough;
 	default:
@@ -1449,7 +1449,7 @@ int ieee80211_do_open(struct wireless_dev *wdev, bool coming_up)
 	case NL80211_IFTYPE_NAN:
 		/* no special treatment */
 		break;
-	/* case NL80211_IFTYPE_NAN_DATA */
+	case NL80211_IFTYPE_NAN_DATA:
 		if (WARN_ON(!rcu_access_pointer(sdata->u.nan_data.nmi)))
 			return -ENOLINK;
 		break;
@@ -1590,7 +1590,7 @@ int ieee80211_do_open(struct wireless_dev *wdev, bool coming_up)
 		case NL80211_IFTYPE_AP:
 		case NL80211_IFTYPE_MESH_POINT:
 		case NL80211_IFTYPE_OCB:
-		/* case NL80211_IFTYPE_NAN_DATA */
+		case NL80211_IFTYPE_NAN_DATA:
 			netif_carrier_off(dev);
 			break;
 		case NL80211_IFTYPE_P2P_DEVICE:
@@ -1637,7 +1637,7 @@ int ieee80211_do_open(struct wireless_dev *wdev, bool coming_up)
  err_stop:
 	if (!local->open_count)
 		drv_stop(local, false);
-	if (0)
+	if (sdata->vif.type == NL80211_IFTYPE_NAN_DATA)
 		RCU_INIT_POINTER(sdata->u.nan_data.nmi, NULL);
 	if (sdata->vif.type == NL80211_IFTYPE_AP_VLAN)
 		list_del(&sdata->u.vlan.list);
@@ -2028,7 +2028,7 @@ static void ieee80211_setup_sdata(struct ieee80211_sub_if_data *sdata,
 				      MONITOR_FLAG_OTHER_BSS;
 		break;
 	case NL80211_IFTYPE_NAN:
-		if (!(0 &
+		if (!(sdata->local->hw.wiphy->nan_capa.flags &
 		      WIPHY_NAN_FLAGS_USERSPACE_DE)) {
 			idr_init(&sdata->u.nan.de.function_inst_ids);
 			spin_lock_init(&sdata->u.nan.de.func_lock);
@@ -2039,7 +2039,7 @@ static void ieee80211_setup_sdata(struct ieee80211_sub_if_data *sdata,
 	case NL80211_IFTYPE_P2P_DEVICE:
 		sdata->vif.bss_conf.bssid = sdata->vif.addr;
 		break;
-	/* case NL80211_IFTYPE_NAN_DATA */
+	case NL80211_IFTYPE_NAN_DATA:
 		break;
 	case NL80211_IFTYPE_UNSPECIFIED:
 	case NL80211_IFTYPE_WDS:

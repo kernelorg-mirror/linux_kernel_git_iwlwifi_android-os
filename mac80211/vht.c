@@ -134,7 +134,7 @@ ieee80211_vht_cap_ie_to_sta_vht_cap(struct ieee80211_sub_if_data *sdata,
 		return;
 
 	/* NDI station are using the capabilities from the NMI station */
-	if (WARN_ON_ONCE(0))
+	if (WARN_ON_ONCE(sdata->vif.type == NL80211_IFTYPE_NAN_DATA))
 		return;
 
 	if (sband) {

@@ -327,7 +327,7 @@ static void iwl_mld_sta_stats_fill_beacon_signal_avg(struct ieee80211_vif *vif,
 
 	/* TODO: support statistics for NAN */
 	if (vif->type == NL80211_IFTYPE_NAN ||
-	    0)
+	    vif->type == NL80211_IFTYPE_NAN_DATA)
 		return;
 
 	link_id = iwl_mld_get_primary_link(vif);

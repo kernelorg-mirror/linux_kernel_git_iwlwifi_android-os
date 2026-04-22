@@ -231,6 +231,8 @@ static inline bool iwl_mld_vif_fw_id_valid(struct iwl_mld_vif *mld_vif)
 	struct ieee80211_vif *vif = iwl_mld_vif_to_mac80211(mld_vif);
 
 	switch (vif->type) {
+	case NL80211_IFTYPE_NAN_DATA:
+		return false;
 	case NL80211_IFTYPE_NAN:
 		if (!mld_vif->nan.mac_added)
 			return false;

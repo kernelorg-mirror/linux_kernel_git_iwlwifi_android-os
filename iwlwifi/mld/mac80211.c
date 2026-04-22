@@ -68,16 +68,41 @@ static const struct ieee80211_iface_limit iwl_mld_limits_ap[] = {
 };
 
 static const struct ieee80211_iface_limit iwl_mld_limits_nan[] = {
+	{
+		.max = 1,
+		.types = BIT(NL80211_IFTYPE_STATION),
+	},
+	{
+		.max = 1,
+		.types = BIT(NL80211_IFTYPE_NAN),
+	},
+	{
+		.max = 2,
+		.types = BIT(NL80211_IFTYPE_NAN_DATA),
+	},
 };
 
 static const struct ieee80211_iface_combination
 iwl_mld_iface_combinations[] = {
 	{
-		.num_different_channels = 2, .max_interfaces = 4, .limits = iwl_mld_limits, .n_limits = ARRAY_SIZE(iwl_mld_limits),
+		.num_different_channels = 2,
+		.max_interfaces = 4,
+		.limits = iwl_mld_limits,
+		.n_limits = ARRAY_SIZE(iwl_mld_limits),
 	},
 	{
-		.num_different_channels = 1, .max_interfaces = 4, .limits = iwl_mld_limits_ap, .n_limits = ARRAY_SIZE(iwl_mld_limits_ap),
-		},
+		.num_different_channels = 1,
+		.max_interfaces = 4,
+		.limits = iwl_mld_limits_ap,
+		.n_limits = ARRAY_SIZE(iwl_mld_limits_ap),
+	},
+	/* NAN combination follow, this excludes P2P and AP */
+	{
+		.num_different_channels = 3,
+		.max_interfaces = 4,
+		.limits = iwl_mld_limits_nan,
+		.n_limits = ARRAY_SIZE(iwl_mld_limits_nan),
+	},
 };
 
 static const u8 ext_capa_base[IWL_MLD_STA_EXT_CAPA_SIZE] = {
@@ -289,6 +314,42 @@ static void iwl_mac_hw_set_flags(struct iwl_mld *mld)
 	ieee80211_hw_set(hw, TDLS_WIDER_BW);
 }
 
+static void iwl_mld_hw_set_nan(struct iwl_mld *mld)
+{
+	struct ieee80211_hw *hw = mld->hw;
+
+	hw->wiphy->interface_modes |= BIT(NL80211_IFTYPE_NAN);
+	hw->wiphy->interface_modes |= BIT(NL80211_IFTYPE_NAN_DATA);
+
+	wiphy_ext_feature_set(hw->wiphy, NL80211_EXT_FEATURE_SECURE_NAN);
+
+	hw->wiphy->nan_supported_bands = BIT(NL80211_BAND_2GHZ);
+	if (mld->nvm_data->bands[NL80211_BAND_5GHZ].n_channels)
+		hw->wiphy->nan_supported_bands |=
+			BIT(NL80211_BAND_5GHZ);
+
+	hw->wiphy->nan_capa.flags = WIPHY_NAN_FLAGS_CONFIGURABLE_SYNC |
+				    WIPHY_NAN_FLAGS_USERSPACE_DE;
+
+	hw->wiphy->nan_capa.op_mode = NAN_OP_MODE_PHY_MODE_VHT |
+				      NAN_OP_MODE_PHY_MODE_HE |
+				      NAN_OP_MODE_160MHZ;
+
+	hw->wiphy->nan_capa.n_antennas =
+		(hweight32(hw->wiphy->available_antennas_tx) &
+		 NAN_DEV_CAPA_NUM_TX_ANT_MASK) |
+		((hweight32(hw->wiphy->available_antennas_rx) <<
+		  NAN_DEV_CAPA_NUM_RX_ANT_POS) &
+		 NAN_DEV_CAPA_NUM_RX_ANT_MASK);
+
+	/* Maximal channel switch time is 4 msec */
+	hw->wiphy->nan_capa.max_channel_switch_time = 4;
+
+	hw->wiphy->nan_capa.phy.ht = mld->nvm_data->nan_phy_capa.ht;
+	hw->wiphy->nan_capa.phy.vht = mld->nvm_data->nan_phy_capa.vht;
+	hw->wiphy->nan_capa.phy.he = mld->nvm_data->nan_phy_capa.he;
+}
+
 static void iwl_mac_hw_set_wiphy(struct iwl_mld *mld)
 {
 	struct ieee80211_hw *hw = mld->hw;
@@ -356,6 +417,7 @@ static void iwl_mac_hw_set_wiphy(struct iwl_mld *mld)
 	if (iwl_mld_nan_supported(mld)) {
 		wiphy->n_iface_combinations =
 			ARRAY_SIZE(iwl_mld_iface_combinations);
+		iwl_mld_hw_set_nan(mld);
 	} else {
 		/* Do not include NAN combination */
 		wiphy->n_iface_combinations =
@@ -728,7 +790,7 @@ int iwl_mld_mac80211_add_interface(struct ieee80211_hw *hw,
 	if (ret)
 		return ret;
 
-	if (0) {
+	if (vif->type == NL80211_IFTYPE_NAN_DATA) {
 		if (WARN_ON(!mld->nan_device_vif)) {
 			ret = -EINVAL;
 			goto err;
@@ -818,7 +880,7 @@ void iwl_mld_mac80211_remove_interface(struct ieee80211_hw *hw,
 
 	if (vif->type == NL80211_IFTYPE_NAN) {
 		mld->nan_device_vif = NULL;
-	} else if (1) {
+	} else if (vif->type != NL80211_IFTYPE_NAN_DATA) {
 		iwl_mld_remove_link(mld, &vif->bss_conf);
 	} else if (iwl_mld_nan_use_nan_stations(mld)) {
 		struct iwl_mld_vif *mld_vif = iwl_mld_vif_from_mac80211(vif);
@@ -1438,7 +1500,7 @@ iwl_mld_mac80211_link_info_changed(struct ieee80211_hw *hw,
 			iwl_mld_update_mu_groups(mld, link_conf);
 		break;
 	case NL80211_IFTYPE_NAN:
-	/* case NL80211_IFTYPE_NAN_DATA */
+	case NL80211_IFTYPE_NAN_DATA:
 		/* NAN has no links */
 		break;
 	default:
@@ -1692,7 +1754,7 @@ iwl_mld_mac80211_conf_tx(struct ieee80211_hw *hw,
 
 	lockdep_assert_wiphy(mld->wiphy);
 
-	if (vif->type == NL80211_IFTYPE_NAN || 0)
+	if (vif->type == NL80211_IFTYPE_NAN || vif->type == NL80211_IFTYPE_NAN_DATA)
 		return 0;
 
 	link = iwl_mld_link_dereference_check(mld_vif, link_id);
@@ -2742,7 +2804,7 @@ static bool iwl_mld_can_activate_links(struct ieee80211_hw *hw,
 		if (iwl_mld_chanctx_used_by_other_vif(hw, vif, chanctx_conf))
 			continue;
 
-		if (false) {
+		if (ieee80211_nan_try_evacuate(hw, chanctx_conf)) {
 			free_link_ids = iwl_mld_count_free_link_ids(mld);
 			/*
 			 * Evacuation of one channel should do the job. If not,
@@ -2753,7 +2815,7 @@ static bool iwl_mld_can_activate_links(struct ieee80211_hw *hw,
 	}
 
 	/* Couldn't find/evacuate any channel going to go unused, try any */
-	if (false) {
+	if (ieee80211_nan_try_evacuate(hw, NULL)) {
 		free_link_ids = iwl_mld_count_free_link_ids(mld);
 		if (free_link_ids >= n_add)
 			return true;

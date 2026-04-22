@@ -52,7 +52,15 @@ static int iwl_mld_nan_send_config_cmd(struct iwl_mld *mld,
 
 bool iwl_mld_nan_use_nan_stations(struct iwl_mld *mld)
 {
-	return false;
+	/*
+	 * If the FW supports version 1 of the NAN config command, it means that
+	 * it needs to receive the station ID of the auxiliary station in the
+	 * NAN configuration command. Otherwise, use the NAN dedicated station
+	 * types.
+	 */
+	return iwl_fw_lookup_cmd_ver(mld->fw,
+				     WIDE_ID(MAC_CONF_GROUP,
+					     NAN_CFG_CMD), 1) != 1;
 }
 
 static const struct iwl_mld_int_sta *
@@ -355,6 +363,27 @@ bool iwl_mld_cancel_nan_ulw_attr_notif(struct iwl_mld *mld,
 void iwl_mld_handle_nan_ulw_attr_notif(struct iwl_mld *mld,
 				       struct iwl_rx_packet *pkt)
 {
+	struct iwl_nan_ulw_attr_notif *notif = (void *)pkt->data;
+	struct wireless_dev *wdev;
+
+	IWL_DEBUG_INFO(mld, "NAN: ULW attr update: len=%u\n", notif->attr_len);
+
+	if (IWL_FW_CHECK(mld, !mld->nan_device_vif,
+			 "NAN: ULW attr update without NAN vif\n"))
+		return;
+
+	if (IWL_FW_CHECK(mld, !ieee80211_vif_nan_started(mld->nan_device_vif),
+			 "NAN: ULW attr update without NAN started\n"))
+		return;
+
+	if (IWL_FW_CHECK(mld,
+			 notif->attr_len > IWL_NAN_MAX_ENDLESS_ULW_ATTR_LEN,
+			 "NAN: ULW attr update invalid len %u\n",
+			 notif->attr_len))
+		return;
+
+	wdev = ieee80211_vif_to_wdev(mld->nan_device_vif);
+	cfg80211_nan_ulw_update(wdev, notif->attr, notif->attr_len, GFP_KERNEL);
 }
 
 void iwl_mld_handle_nan_dw_end_notif(struct iwl_mld *mld,
@@ -611,6 +640,16 @@ iwl_mld_nan_find_link(struct iwl_mld_vif *mld_vif,
 
 static void iwl_mld_nan_set_mcast_data_links(struct ieee80211_vif *vif)
 {
+	struct iwl_mld_vif *mld_vif = iwl_mld_vif_from_mac80211(vif);
+
+	if (vif->type != NL80211_IFTYPE_NAN_DATA)
+		return;
+
+	/* Note that all errors are handled internally so nothing to do
+	 * with the return value (used only to silence compilation warnings)
+	 */
+	iwl_mld_update_nan_mcast_data_sta(mld_vif->mld, vif->addr,
+					  &mld_vif->nan.mcast_data_sta);
 }
 
 void iwl_mld_nan_vif_cfg_changed(struct iwl_mld *mld,
@@ -861,6 +900,8 @@ void iwl_mld_handle_nan_sched_update_completed_notif(struct iwl_mld *mld,
 
 	if (WARN_ON(!vif->cfg.nan_sched.deferred))
 		return;
+
+	ieee80211_nan_sched_update_done(vif);
 }
 
 int iwl_mld_mac802111_nan_peer_sched_changed(struct ieee80211_hw *hw,

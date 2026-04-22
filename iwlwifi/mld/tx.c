@@ -76,7 +76,7 @@ static int iwl_mld_allocate_txq(struct iwl_mld *mld, struct ieee80211_txq *txq)
 
 	switch (txq->vif->type) {
 	case NL80211_IFTYPE_AP:		/* STA might go to PS */
-	/* case NL80211_IFTYPE_NAN_DATA */	/* peer might ULW/break schedule */
+	case NL80211_IFTYPE_NAN_DATA:	/* peer might ULW/break schedule */
 		watchdog_timeout = IWL_WATCHDOG_DISABLED;
 		break;
 	default:
@@ -352,7 +352,7 @@ u8 iwl_mld_get_lowest_rate(struct iwl_mld *mld,
 
 	if (band >= NUM_NL80211_BANDS) {
 		WARN_ON(vif->type != NL80211_IFTYPE_NAN &&
-			1);
+			vif->type != NL80211_IFTYPE_NAN_DATA);
 		return IWL_FIRST_OFDM_RATE;
 	}
 
@@ -683,7 +683,7 @@ iwl_mld_get_tx_queue_id(struct iwl_mld *mld, struct ieee80211_txq *txq,
 	case NL80211_IFTYPE_NAN:
 		WARN_ON(!ieee80211_is_mgmt(fc));
 		return iwl_mld_nan_get_mgmt_queue(mld, info->control.vif);
-	/* case NL80211_IFTYPE_NAN_DATA */
+	case NL80211_IFTYPE_NAN_DATA:
 		WARN_ON(!ieee80211_is_data(fc));
 
 		if (!iwl_mld_nan_use_nan_stations(mld))
