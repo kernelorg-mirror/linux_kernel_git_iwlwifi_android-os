@@ -224,7 +224,8 @@ int iwl_pci_gen3_probe(struct pci_dev *pdev,
 		       u32 hw_rev)
 {
 	const struct iwl_dev_info *dev_info;
-	struct iwl_trans_info info;
+	struct iwl_trans_info info = {
+	};
 	struct iwl_trans *trans;
 	int ret;
 
