@@ -478,6 +478,8 @@ void ieee80211_nan_sched_update_done(struct ieee80211_vif *vif)
 	}
 
 	bitmap_zero(sdata->u.nan.removed_channels, IEEE80211_NAN_MAX_CHANNELS);
+	cfg80211_nan_sched_update_done(ieee80211_vif_to_wdev(vif), true,
+				       GFP_KERNEL);
 }
 EXPORT_SYMBOL(ieee80211_nan_sched_update_done);
 

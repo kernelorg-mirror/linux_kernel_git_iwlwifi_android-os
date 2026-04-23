@@ -1869,7 +1869,8 @@ static int ieee80211_vif_use_reserved_switch(struct ieee80211_local *local)
 				return -EAGAIN;
 
 			if (n_assigned == n_reserved + 1 &&
-			    false)
+			    ieee80211_nan_try_evacuate(&local->hw,
+						       &ctx->replace_ctx->conf))
 				goto use_reserved;
 
 			wiphy_info(local->hw.wiphy,
@@ -2188,7 +2189,7 @@ int _ieee80211_link_use_channel(struct ieee80211_link_data *link,
 					       assign_on_failure, &reused_ctx);
 	if (IS_ERR(ctx)) {
 		/* Try to evacuate a NAN channel to free up a chanctx */
-		if (false)
+		if (ieee80211_nan_try_evacuate(&local->hw, NULL))
 			ctx = ieee80211_find_or_create_chanctx(sdata, chanreq,
 							       mode,
 							       assign_on_failure,

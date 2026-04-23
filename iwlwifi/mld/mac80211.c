@@ -2798,7 +2798,7 @@ static bool iwl_mld_can_activate_links(struct ieee80211_hw *hw,
 		if (iwl_mld_chanctx_used_by_other_vif(hw, vif, chanctx_conf))
 			continue;
 
-		if (false) {
+		if (ieee80211_nan_try_evacuate(hw, chanctx_conf)) {
 			free_link_ids = iwl_mld_count_free_link_ids(mld);
 			/*
 			 * Evacuation of one channel should do the job. If not,
@@ -2809,7 +2809,7 @@ static bool iwl_mld_can_activate_links(struct ieee80211_hw *hw,
 	}
 
 	/* Couldn't find/evacuate any channel going to go unused, try any */
-	if (false) {
+	if (ieee80211_nan_try_evacuate(hw, NULL)) {
 		free_link_ids = iwl_mld_count_free_link_ids(mld);
 		if (free_link_ids >= n_add)
 			return true;
