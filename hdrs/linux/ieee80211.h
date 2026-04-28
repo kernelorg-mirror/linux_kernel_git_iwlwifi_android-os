@@ -1362,6 +1362,7 @@ struct ieee80211_tdls_data {
 #define WLAN_AUTH_FILS_SK 4
 #define WLAN_AUTH_FILS_SK_PFS 5
 #define WLAN_AUTH_FILS_PK 6
+#define WLAN_AUTH_IEEE8021X 8
 #define WLAN_AUTH_EPPKE 9
 #define WLAN_AUTH_LEAP 128
 
@@ -1504,6 +1505,8 @@ enum ieee80211_statuscode {
 	WLAN_STATUS_REJECT_DSE_BAND = 96,
 	WLAN_STATUS_DENIED_WITH_SUGGESTED_BAND_AND_CHANNEL = 99,
 	WLAN_STATUS_DENIED_DUE_TO_SPECTRUM_MANAGEMENT = 103,
+	/* 802.11ah */
+	WLAN_STATUS_REJECTED_NDP_BLOCK_ACK_SUGGESTED = 109,
 	/* 802.11ai */
 	WLAN_STATUS_FILS_AUTHENTICATION_FAILURE = 112,
 	WLAN_STATUS_UNKNOWN_AUTHENTICATION_SERVER = 113,
@@ -1511,6 +1514,7 @@ enum ieee80211_statuscode {
 	WLAN_STATUS_SAE_PK = 127,
 	WLAN_STATUS_DENIED_TID_TO_LINK_MAPPING = 133,
 	WLAN_STATUS_PREF_TID_TO_LINK_MAPPING_SUGGESTED = 134,
+	WLAN_STATUS_8021X_AUTH_SUCCESS = 153,
 };
 
 
@@ -1933,6 +1937,11 @@ enum ieee80211_radio_measurement_actioncode {
 
 #define PMK_MAX_LEN			64
 #define SAE_PASSWORD_MAX_LEN		128
+
+#define MICHAEL_MIC_LEN			8
+
+void michael_mic(const u8 *key, struct ieee80211_hdr *hdr,
+		 const u8 *data, size_t data_len, u8 *mic);
 
 /* Public action codes (IEEE Std 802.11-2016, 9.6.8.1, Table 9-307) */
 enum ieee80211_pub_actioncode {

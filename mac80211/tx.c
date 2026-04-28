@@ -287,10 +287,7 @@ ieee80211_tx_h_check_assoc(struct ieee80211_tx_data *tx)
 		 * active scan) are allowed, all other frames should not be
 		 * sent and we should not get here, but if we do
 		 * nonetheless, drop them to avoid sending them
-		 * off-channel. See the link below and
-		 * ieee80211_start_scan() for more.
-		 *
-		 * http://article.gmane.org/gmane.linux.kernel.wireless.general/30089
+		 * off-channel. See __ieee80211_start_scan() for more.
 		 */
 		return TX_DROP;
 
@@ -1912,8 +1909,10 @@ bool ieee80211_tx_prepare_skb(struct ieee80211_hw *hw,
 	struct ieee80211_tx_data tx;
 	struct sk_buff *skb2;
 
-	if (ieee80211_tx_prepare(sdata, &tx, NULL, skb) == TX_DROP)
+	if (ieee80211_tx_prepare(sdata, &tx, NULL, skb) == TX_DROP) {
+		kfree_skb(skb);
 		return false;
+	}
 
 	info->band = band;
 	info->control.vif = vif;
@@ -5381,6 +5380,45 @@ static int ieee80211_beacon_protect(struct sk_buff *skb,
 	return 0;
 }
 
+int ieee80211_encrypt_tx_skb(struct sk_buff *skb)
+{
+	struct ieee80211_tx_info *info = IEEE80211_SKB_CB(skb);
+	struct ieee80211_sub_if_data *sdata = NULL;
+	struct sk_buff *check_skb;
+	struct ieee80211_tx_data tx;
+	ieee80211_tx_result res;
+
+	if (!info->control.hw_key)
+		return 0;
+
+	memset(&tx, 0, sizeof(tx));
+	tx.key = container_of(info->control.hw_key, struct ieee80211_key, conf);
+	/* NULL it out now so we do full SW crypto */
+	info->control.hw_key = NULL;
+	__skb_queue_head_init(&tx.skbs);
+	__skb_queue_tail(&tx.skbs, skb);
+
+	if (skb->dev)
+		sdata = IEEE80211_DEV_TO_SUB_IF(skb->dev);
+	else if (info->control.vif)
+		sdata = vif_to_sdata(info->control.vif);
+
+	if (WARN_ON(!sdata))
+		return -EINVAL;
+
+	tx.sdata = sdata;
+	tx.local = sdata->local;
+	res = ieee80211_tx_h_encrypt(&tx);
+	check_skb = __skb_dequeue(&tx.skbs);
+	/* we may crash after this, but it'd be a bug in crypto */
+	WARN_ON(check_skb != skb);
+	if (WARN_ON_ONCE(res != TX_CONTINUE))
+		return -EINVAL;
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(ieee80211_encrypt_tx_skb);
+
 static void
 ieee80211_beacon_get_finish(struct ieee80211_hw *hw,
 			    struct ieee80211_vif *vif,
@@ -5903,21 +5941,28 @@ out:
 EXPORT_SYMBOL(ieee80211_proberesp_get);
 
 struct sk_buff *ieee80211_get_fils_discovery_tmpl(struct ieee80211_hw *hw,
-						  struct ieee80211_vif *vif)
+						  struct ieee80211_vif *vif,
+						  unsigned int link_id)
 {
 	struct sk_buff *skb = NULL;
 	struct fils_discovery_data *tmpl = NULL;
 	struct ieee80211_sub_if_data *sdata = vif_to_sdata(vif);
+	struct ieee80211_link_data *link;
 
 	if (sdata->vif.type != NL80211_IFTYPE_AP)
 		return NULL;
 
-	rcu_read_lock();
-	tmpl = rcu_dereference(sdata->deflink.u.ap.fils_discovery);
-	if (!tmpl) {
-		rcu_read_unlock();
+	if (link_id >= IEEE80211_MLD_MAX_NUM_LINKS)
 		return NULL;
-	}
+
+	guard(rcu)();
+	link = rcu_dereference(sdata->link[link_id]);
+	if (!link)
+		return NULL;
+
+	tmpl = rcu_dereference(link->u.ap.fils_discovery);
+	if (!tmpl)
+		return NULL;
 
 	skb = dev_alloc_skb(sdata->local->hw.extra_tx_headroom + tmpl->len);
 	if (skb) {
@@ -5925,28 +5970,34 @@ struct sk_buff *ieee80211_get_fils_discovery_tmpl(struct ieee80211_hw *hw,
 		skb_put_data(skb, tmpl->data, tmpl->len);
 	}
 
-	rcu_read_unlock();
 	return skb;
 }
 EXPORT_SYMBOL(ieee80211_get_fils_discovery_tmpl);
 
 struct sk_buff *
 ieee80211_get_unsol_bcast_probe_resp_tmpl(struct ieee80211_hw *hw,
-					  struct ieee80211_vif *vif)
+					  struct ieee80211_vif *vif,
+					  unsigned int link_id)
 {
 	struct sk_buff *skb = NULL;
 	struct unsol_bcast_probe_resp_data *tmpl = NULL;
 	struct ieee80211_sub_if_data *sdata = vif_to_sdata(vif);
+	struct ieee80211_link_data *link;
 
 	if (sdata->vif.type != NL80211_IFTYPE_AP)
 		return NULL;
 
-	rcu_read_lock();
-	tmpl = rcu_dereference(sdata->deflink.u.ap.unsol_bcast_probe_resp);
-	if (!tmpl) {
-		rcu_read_unlock();
+	if (link_id >= IEEE80211_MLD_MAX_NUM_LINKS)
 		return NULL;
-	}
+
+	guard(rcu)();
+	link = rcu_dereference(sdata->link[link_id]);
+	if (!link)
+		return NULL;
+
+	tmpl = rcu_dereference(link->u.ap.unsol_bcast_probe_resp);
+	if (!tmpl)
+		return NULL;
 
 	skb = dev_alloc_skb(sdata->local->hw.extra_tx_headroom + tmpl->len);
 	if (skb) {
@@ -5954,7 +6005,6 @@ ieee80211_get_unsol_bcast_probe_resp_tmpl(struct ieee80211_hw *hw,
 		skb_put_data(skb, tmpl->data, tmpl->len);
 	}
 
-	rcu_read_unlock();
 	return skb;
 }
 EXPORT_SYMBOL(ieee80211_get_unsol_bcast_probe_resp_tmpl);

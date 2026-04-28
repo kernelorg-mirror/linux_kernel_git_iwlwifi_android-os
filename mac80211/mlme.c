@@ -314,6 +314,24 @@ ieee80211_determine_ap_chan(struct ieee80211_sub_if_data *sdata,
 			}
 		}
 
+		if (eht_oper && ieee80211_hw_check(&sdata->local->hw, STRICT)) {
+			struct cfg80211_chan_def he_chandef = *chandef;
+
+			if (!ieee80211_chandef_he_6ghz_oper(sdata->local,
+							    he_oper, NULL,
+							    &he_chandef)) {
+				sdata_info(sdata,
+					   "bad HE operation in EHT AP\n");
+				return IEEE80211_CONN_MODE_LEGACY;
+			}
+
+			if (!cfg80211_chandef_compatible(chandef,
+							 &he_chandef)) {
+				sdata_info(sdata, "HE/EHT incompatible\n");
+				return IEEE80211_CONN_MODE_LEGACY;
+			}
+		}
+
 		if (mode <= IEEE80211_CONN_MODE_EHT)
 			return mode;
 		goto check_uhr;
@@ -2552,9 +2570,9 @@ void ieee80211_send_4addr_nullfunc(struct ieee80211_local *local,
 	fc = cpu_to_le16(IEEE80211_FTYPE_DATA | IEEE80211_STYPE_NULLFUNC |
 			 IEEE80211_FCTL_FROMDS | IEEE80211_FCTL_TODS);
 	nullfunc->frame_control = fc;
-	memcpy(nullfunc->addr1, sdata->deflink.u.mgd.bssid, ETH_ALEN);
+	memcpy(nullfunc->addr1, sdata->vif.cfg.ap_addr, ETH_ALEN);
 	memcpy(nullfunc->addr2, sdata->vif.addr, ETH_ALEN);
-	memcpy(nullfunc->addr3, sdata->deflink.u.mgd.bssid, ETH_ALEN);
+	memcpy(nullfunc->addr3, sdata->vif.cfg.ap_addr, ETH_ALEN);
 	memcpy(nullfunc->addr4, sdata->vif.addr, ETH_ALEN);
 
 	IEEE80211_SKB_CB(skb)->flags |= IEEE80211_TX_INTFL_DONT_ENCRYPT;
@@ -4979,7 +4997,7 @@ static void ieee80211_rx_mgmt_auth(struct ieee80211_sub_if_data *sdata,
 				   struct ieee80211_mgmt *mgmt, size_t len)
 {
 	struct ieee80211_if_managed *ifmgd = &sdata->u.mgd;
-	u16 auth_alg, auth_transaction, status_code;
+	u16 auth_alg, auth_transaction, status_code, encap_len;
 	struct ieee80211_event event = {
 		.type = MLME_EVENT,
 		.u.mlme.data = AUTH_EVENT,
@@ -4988,6 +5006,7 @@ static void ieee80211_rx_mgmt_auth(struct ieee80211_sub_if_data *sdata,
 		.subtype = IEEE80211_STYPE_AUTH,
 	};
 	bool sae_need_confirm = false;
+	bool auth_fail = false;
 
 	lockdep_assert_wiphy(sdata->local->hw.wiphy);
 
@@ -5004,6 +5023,15 @@ static void ieee80211_rx_mgmt_auth(struct ieee80211_sub_if_data *sdata,
 	auth_transaction = le16_to_cpu(mgmt->u.auth.auth_transaction);
 	status_code = le16_to_cpu(mgmt->u.auth.status_code);
 
+	/*
+	 * IEEE 802.1X Authentication:
+	 * Header + Authentication Algorithm Number(2 byte) + Authentication
+	 * Transaction Sequence Number(2 byte) + Status Code(2 byte) +
+	 * Encapsulation Length(2 byte).
+	 */
+	if (auth_alg == WLAN_AUTH_IEEE8021X && len < 24 + 8)
+		return;
+
 	info.link_id = ifmgd->auth_data->link_id;
 
 	if (auth_alg != ifmgd->auth_data->algorithm ||
@@ -5019,7 +5047,24 @@ static void ieee80211_rx_mgmt_auth(struct ieee80211_sub_if_data *sdata,
 		goto notify_driver;
 	}
 
-	if (status_code != WLAN_STATUS_SUCCESS) {
+	switch (auth_alg) {
+	case WLAN_AUTH_IEEE8021X:
+		if (status_code != WLAN_STATUS_SUCCESS &&
+		    status_code != WLAN_STATUS_8021X_AUTH_SUCCESS)
+			auth_fail = true;
+
+		if (!auth_fail) {
+			/* Indicates length of encapsulated EAPOL PDU */
+			encap_len = get_unaligned_le16(mgmt->u.auth.variable);
+		}
+		break;
+	default:
+		if (status_code != WLAN_STATUS_SUCCESS)
+			auth_fail = true;
+		break;
+	}
+
+	if (auth_fail) {
 		cfg80211_rx_mlme_mgmt(sdata->dev, (u8 *)mgmt, len);
 
 		if (auth_alg == WLAN_AUTH_SAE &&
@@ -5056,6 +5101,7 @@ static void ieee80211_rx_mgmt_auth(struct ieee80211_sub_if_data *sdata,
 	case WLAN_AUTH_FILS_SK_PFS:
 	case WLAN_AUTH_FILS_PK:
 	case WLAN_AUTH_EPPKE:
+	case WLAN_AUTH_IEEE8021X:
 		break;
 	case WLAN_AUTH_SHARED_KEY:
 		if (ifmgd->auth_data->expected_transaction != 4) {
@@ -5076,8 +5122,37 @@ static void ieee80211_rx_mgmt_auth(struct ieee80211_sub_if_data *sdata,
 	if (ifmgd->auth_data->algorithm != WLAN_AUTH_SAE ||
 	    (auth_transaction == 2 &&
 	     ifmgd->auth_data->expected_transaction == 2)) {
-		if (!ieee80211_mark_sta_auth(sdata))
-			return; /* ignore frame -- wait for timeout */
+		switch (ifmgd->auth_data->algorithm) {
+		case WLAN_AUTH_IEEE8021X:
+			/*
+			 * IEEE 802.1X authentication:
+			 * - When the full EAP handshake completes over the
+			 *   Authentication process, the responder sets the
+			 *   Status Code to WLAN_STATUS_8021X_AUTH_SUCCESS as
+			 *   specified in "IEEE P802.11bi/D4.0, 12.16.5".
+			 *
+			 * - In the PMKSA caching case, only two Authentication
+			 *   frames are exchanged if the responder (e.g., AP)
+			 *   identifies a valid PMKSA, then as specified in
+			 *   "IEEE P802.11bi/D4.0, 12.16.8.3", the responder
+			 *   shall set the Status Code to SUCCESS in the final
+			 *   Authentication frame and must not include an
+			 *   encapsulated EAPOL PDU.
+			 *
+			 * Both conditions are treated as successful
+			 * authentication, so mark the state to Authenticated.
+			 */
+			if (status_code != WLAN_STATUS_8021X_AUTH_SUCCESS &&
+			    !(status_code == WLAN_STATUS_SUCCESS &&
+			      encap_len == 0))
+				break;
+			fallthrough;
+		default:
+			if (!ieee80211_mark_sta_auth(sdata))
+				return; /* ignore frame -- wait for timeout */
+
+			break;
+		}
 	} else if (ifmgd->auth_data->algorithm == WLAN_AUTH_SAE &&
 		   auth_transaction == 1) {
 		sae_need_confirm = true;
@@ -6062,7 +6137,8 @@ ieee80211_determine_our_sta_mode(struct ieee80211_sub_if_data *sdata,
 
 	if (is_5ghz &&
 	    !(vht_cap.cap & (IEEE80211_VHT_CAP_SUPP_CHAN_WIDTH_160MHZ |
-			     IEEE80211_VHT_CAP_SUPP_CHAN_WIDTH_160_80PLUS80MHZ))) {
+			     IEEE80211_VHT_CAP_SUPP_CHAN_WIDTH_160_80PLUS80MHZ |
+			     IEEE80211_VHT_CAP_EXT_NSS_BW_MASK))) {
 		conn->bw_limit = IEEE80211_CONN_BW_LIMIT_80;
 		mlme_link_id_dbg(sdata, link_id,
 				 "no VHT 160 MHz capability on 5 GHz, limiting to 80 MHz");
@@ -8385,7 +8461,8 @@ static int ieee80211_auth(struct ieee80211_sub_if_data *sdata)
 		return -ETIMEDOUT;
 	}
 
-	if (auth_data->algorithm == WLAN_AUTH_SAE)
+	if (auth_data->algorithm == WLAN_AUTH_SAE ||
+	    auth_data->algorithm == WLAN_AUTH_EPPKE)
 		info.duration = jiffies_to_msecs(IEEE80211_AUTH_TIMEOUT_SAE);
 
 	info.link_id = auth_data->link_id;
@@ -8404,6 +8481,10 @@ static int ieee80211_auth(struct ieee80211_sub_if_data *sdata)
 	} else if (auth_data->algorithm == WLAN_AUTH_EPPKE) {
 		trans = auth_data->trans;
 		status = auth_data->status;
+	} else if (auth_data->algorithm == WLAN_AUTH_IEEE8021X) {
+		trans = auth_data->trans;
+		status = auth_data->status;
+		auth_data->expected_transaction = trans + 1;
 	}
 
 	if (ieee80211_hw_check(&local->hw, REPORTS_TX_ACK_STATUS))
@@ -9060,7 +9141,8 @@ static int ieee80211_prep_connection(struct ieee80211_sub_if_data *sdata,
 		}
 
 		if (ifmgd->auth_data &&
-		    ifmgd->auth_data->algorithm == WLAN_AUTH_EPPKE)
+		    (ifmgd->auth_data->algorithm == WLAN_AUTH_EPPKE ||
+		     ifmgd->auth_data->algorithm == WLAN_AUTH_IEEE8021X))
 			new_sta->sta.epp_peer = true;
 
 		new_sta->sta.mlo = mlo;
@@ -9322,6 +9404,9 @@ int ieee80211_mgd_auth(struct ieee80211_sub_if_data *sdata,
 	/* case NL80211_AUTHTYPE_EPPKE */
 		auth_alg = WLAN_AUTH_EPPKE;
 		break;
+	/* case NL80211_AUTHTYPE_IEEE8021X */
+		auth_alg = WLAN_AUTH_IEEE8021X;
+		break;
 	default:
 		return -EOPNOTSUPP;
 	}
@@ -9347,6 +9432,7 @@ int ieee80211_mgd_auth(struct ieee80211_sub_if_data *sdata,
 
 	if (req->auth_data_len >= 4) {
 		if (req->auth_type == NL80211_AUTHTYPE_SAE ||
+		    false ||
 		    false) {
 			__le16 *pos = (__le16 *) req->auth_data;
 
@@ -9713,10 +9799,6 @@ int ieee80211_mgd_assoc(struct ieee80211_sub_if_data *sdata,
 
 	for (i = 0; i < IEEE80211_MLD_MAX_NUM_LINKS; i++)
 		size += req->links[i].elems_len;
-
-	/* FIXME: no support for 4-addr MLO yet */
-	if (sdata->u.mgd.use_4addr && req->link_id >= 0)
-		return -EOPNOTSUPP;
 
 	assoc_data = kzalloc(size, GFP_KERNEL);
 	if (!assoc_data)
@@ -10318,7 +10400,7 @@ ieee80211_process_ml_reconf_resp(struct ieee80211_sub_if_data *sdata,
 	if (!ieee80211_vif_is_mld(&sdata->vif) ||
 	    len < IEEE80211_MIN_ACTION_SIZE(ml_reconf_resp) ||
 	    mgmt->u.action.ml_reconf_resp.dialog_token !=
-	    sdata->u.mgd.reconf.dialog_token ||
+		sdata->u.mgd.reconf.dialog_token ||
 	    !sta_changed_links)
 		return;
 

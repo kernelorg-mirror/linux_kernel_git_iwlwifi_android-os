@@ -431,7 +431,6 @@ err:
 
 	drv_vif_cfg_changed(sdata->local, sdata, BSS_CHANGED_NAN_LOCAL_SCHED);
 	ieee80211_nan_update_all_ndi_carriers(sdata->local);
-
 	return ret;
 }
 

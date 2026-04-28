@@ -140,3 +140,166 @@ ieee80211_get_uhr_iftype_cap(const struct ieee80211_supported_band *sband,
 	return NULL;
 }
 
+
+#include <crypto/aes.h>
+#include <linux/string.h>
+#include <crypto/utils.h>
+
+/*
+ * Compat: provide struct aes_enckey wrapping the old struct crypto_aes_ctx.
+ */
+struct aes_enckey {
+	struct crypto_aes_ctx ctx;
+};
+
+static inline int aes_prepareenckey(struct aes_enckey *key,
+				    const u8 *in_key, size_t key_len)
+{
+	return aes_expandkey(&key->ctx, in_key, key_len);
+}
+
+/**
+ * struct aes_cmac_key - Prepared key for AES-CMAC
+ */
+struct aes_cmac_key {
+	struct aes_enckey aes;
+	union {
+		u8 b[AES_BLOCK_SIZE];
+		__be64 w[2];
+	} k_final[2];
+};
+
+/**
+ * struct aes_cmac_ctx - Context for computing an AES-CMAC value
+ */
+struct aes_cmac_ctx {
+	const struct aes_cmac_key *key;
+	size_t partial_len;
+	u8 h[AES_BLOCK_SIZE];
+};
+
+static inline void _bp_aes_enc(const struct aes_enckey *key,
+			       u8 out[AES_BLOCK_SIZE],
+			       const u8 in[AES_BLOCK_SIZE])
+{
+	aes_encrypt(&key->ctx, out, in);
+}
+
+static inline int aes_cmac_preparekey(struct aes_cmac_key *key,
+				      const u8 *in_key, size_t key_len)
+{
+	u64 hi, lo, mask;
+	int err;
+	int i;
+
+	err = aes_prepareenckey(&key->aes, in_key, key_len);
+	if (err)
+		return err;
+
+	memset(key->k_final[0].b, 0, AES_BLOCK_SIZE);
+	_bp_aes_enc(&key->aes, key->k_final[0].b, key->k_final[0].b);
+	hi = be64_to_cpu(key->k_final[0].w[0]);
+	lo = be64_to_cpu(key->k_final[0].w[1]);
+	for (i = 0; i < 2; i++) {
+		mask = ((s64)hi >> 63) & 0x87;
+		hi = (hi << 1) ^ (lo >> 63);
+		lo = (lo << 1) ^ mask;
+		key->k_final[i].w[0] = cpu_to_be64(hi);
+		key->k_final[i].w[1] = cpu_to_be64(lo);
+	}
+	return 0;
+}
+
+static inline void aes_cmac_init(struct aes_cmac_ctx *ctx,
+				 const struct aes_cmac_key *key)
+{
+	memset(ctx, 0, sizeof(*ctx));
+	ctx->key = key;
+}
+
+static inline void aes_cmac_update(struct aes_cmac_ctx *ctx,
+				   const u8 *data, size_t data_len)
+{
+	size_t nblocks;
+
+	if (ctx->partial_len) {
+		size_t l = min(data_len, AES_BLOCK_SIZE - ctx->partial_len);
+
+		crypto_xor(&ctx->h[ctx->partial_len], data, l);
+		data += l;
+		data_len -= l;
+		ctx->partial_len += l;
+		if (data_len == 0)
+			return;
+		_bp_aes_enc(&ctx->key->aes, ctx->h, ctx->h);
+	}
+
+	nblocks = data_len / AES_BLOCK_SIZE;
+	data_len %= AES_BLOCK_SIZE;
+
+	if (nblocks == 0) {
+		crypto_xor(ctx->h, data, data_len);
+		ctx->partial_len = data_len;
+	} else if (data_len != 0) {
+		while (nblocks-- > 0) {
+			crypto_xor(ctx->h, data, AES_BLOCK_SIZE);
+			data += AES_BLOCK_SIZE;
+			_bp_aes_enc(&ctx->key->aes, ctx->h, ctx->h);
+		}
+		crypto_xor(ctx->h, data, data_len);
+		ctx->partial_len = data_len;
+	} else {
+		while (nblocks-- > 1) {
+			crypto_xor(ctx->h, data, AES_BLOCK_SIZE);
+			data += AES_BLOCK_SIZE;
+			_bp_aes_enc(&ctx->key->aes, ctx->h, ctx->h);
+		}
+		crypto_xor(ctx->h, data, AES_BLOCK_SIZE);
+		ctx->partial_len = AES_BLOCK_SIZE;
+	}
+}
+
+static inline void aes_cmac_final(struct aes_cmac_ctx *ctx,
+				  u8 out[AES_BLOCK_SIZE])
+{
+	if (ctx->partial_len == AES_BLOCK_SIZE) {
+		crypto_xor(ctx->h, ctx->key->k_final[0].b, AES_BLOCK_SIZE);
+	} else {
+		ctx->h[ctx->partial_len] ^= 0x80;
+		crypto_xor(ctx->h, ctx->key->k_final[1].b, AES_BLOCK_SIZE);
+	}
+	_bp_aes_enc(&ctx->key->aes, out, ctx->h);
+	memzero_explicit(ctx, sizeof(*ctx));
+}
+
+static inline void aes_cmac(const struct aes_cmac_key *key, const u8 *data,
+			    size_t data_len, u8 out[AES_BLOCK_SIZE])
+{
+	struct aes_cmac_ctx ctx;
+
+	aes_cmac_init(&ctx, key);
+	aes_cmac_update(&ctx, data, data_len);
+	aes_cmac_final(&ctx, out);
+}
+
+#define system_dfl_wq system_wq
+#define system_percpu_wq system_wq
+
+#define NL80211_EXT_FEATURE_ASSOC_FRAME_ENCRYPTION -1
+#define NL80211_EXT_FEATURE_EPPKE -1
+#define NL80211_EXT_FEATURE_IEEE8021X_AUTH -1
+
+/*
+ * 2-arg strscpy_pad compat: newer kernels infer size from sizeof(dest),
+ * but this kernel requires the explicit 3-arg form.
+ */
+static inline ssize_t __bp_strscpy_pad(char *dst, const char *src, size_t cnt)
+{
+	return strscpy_pad(dst, src, cnt);
+}
+#undef strscpy_pad
+#define __bp_strscpy_pad3(dst, src, cnt) __bp_strscpy_pad(dst, src, cnt)
+#define __bp_strscpy_pad2(dst, src) __bp_strscpy_pad(dst, src, sizeof(dst))
+#define __bp_strscpy_pad_pick(dst, src, cnt, fn, ...) fn
+#define strscpy_pad(dst, ...) \
+	__bp_strscpy_pad_pick(dst, ##__VA_ARGS__, __bp_strscpy_pad3, __bp_strscpy_pad2)(dst, __VA_ARGS__)

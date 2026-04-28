@@ -1,16 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-only
-/*
- * FILS AEAD for (Re)Association Request/Response frames
- * Copyright 2016, Qualcomm Atheros, Inc.
- */
-
-#include <crypto/aes.h>
-#include <crypto/hash.h>
 #include <crypto/skcipher.h>
 #include <crypto/utils.h>
 
 #include "ieee80211_i.h"
-#include "aes_cmac.h"
 #include "fils_aead.h"
 
 static void gf_mulx(u8 *pad)
@@ -22,41 +14,35 @@ static void gf_mulx(u8 *pad)
 	put_unaligned_be64((b << 1) ^ ((a >> 63) ? 0x87 : 0), pad + 8);
 }
 
-static int aes_s2v(struct crypto_shash *tfm,
+static int aes_s2v(const u8 *in_key, size_t key_len,
 		   size_t num_elem, const u8 *addr[], size_t len[], u8 *v)
 {
 	u8 d[AES_BLOCK_SIZE], tmp[AES_BLOCK_SIZE] = {};
-	SHASH_DESC_ON_STACK(desc, tfm);
+	struct aes_cmac_key key;
+	struct aes_cmac_ctx ctx;
 	size_t i;
-	int err;
+	int res;
 
-	desc->tfm = tfm;
+	res = aes_cmac_preparekey(&key, in_key, key_len);
+	if (res)
+		return res;
 
 	/* D = AES-CMAC(K, <zero>) */
-	err = crypto_shash_digest(desc, tmp, AES_BLOCK_SIZE, d);
-	if (err)
-		return err;
+	aes_cmac(&key, tmp, AES_BLOCK_SIZE, d);
 
 	for (i = 0; i < num_elem - 1; i++) {
 		/* D = dbl(D) xor AES_CMAC(K, Si) */
 		gf_mulx(d); /* dbl */
-		err = crypto_shash_digest(desc, addr[i], len[i], tmp);
-		if (err)
-			return err;
+		aes_cmac(&key, addr[i], len[i], tmp);
 		crypto_xor(d, tmp, AES_BLOCK_SIZE);
 	}
 
-	err = crypto_shash_init(desc);
-	if (err)
-		return err;
+	aes_cmac_init(&ctx, &key);
 
 	if (len[i] >= AES_BLOCK_SIZE) {
 		/* len(Sn) >= 128 */
 		/* T = Sn xorend D */
-		err = crypto_shash_update(desc, addr[i],
-					  len[i] - AES_BLOCK_SIZE);
-		if (err)
-			return err;
+		aes_cmac_update(&ctx, addr[i], len[i] - AES_BLOCK_SIZE);
 		crypto_xor(d, addr[i] + len[i] - AES_BLOCK_SIZE,
 			   AES_BLOCK_SIZE);
 	} else {
@@ -67,7 +53,11 @@ static int aes_s2v(struct crypto_shash *tfm,
 		d[len[i]] ^= 0x80;
 	}
 	/* V = AES-CMAC(K, T) */
-	return crypto_shash_finup(desc, d, AES_BLOCK_SIZE, v);
+	aes_cmac_update(&ctx, d, AES_BLOCK_SIZE);
+	aes_cmac_final(&ctx, v);
+
+	memzero_explicit(&key, sizeof(key));
+	return 0;
 }
 
 /* Note: addr[] and len[] needs to have one extra slot at the end. */
@@ -77,7 +67,6 @@ static int aes_siv_encrypt(const u8 *key, size_t key_len,
 			   size_t len[], u8 *out)
 {
 	u8 v[AES_BLOCK_SIZE];
-	struct crypto_shash *tfm;
 	struct crypto_skcipher *tfm2;
 	struct skcipher_request *req;
 	int res;
@@ -91,15 +80,7 @@ static int aes_siv_encrypt(const u8 *key, size_t key_len,
 	num_elem++;
 
 	/* S2V */
-
-	tfm = crypto_alloc_shash("cmac(aes)", 0, 0);
-	if (IS_ERR(tfm))
-		return PTR_ERR(tfm);
-	/* K1 for S2V */
-	res = crypto_shash_setkey(tfm, key, key_len);
-	if (!res)
-		res = aes_s2v(tfm, num_elem, addr, len, v);
-	crypto_free_shash(tfm);
+	res = aes_s2v(key /* K1 */, key_len, num_elem, addr, len, v);
 	if (res)
 		return res;
 
@@ -154,7 +135,6 @@ static int aes_siv_decrypt(const u8 *key, size_t key_len,
 			   size_t num_elem, const u8 *addr[], size_t len[],
 			   u8 *out)
 {
-	struct crypto_shash *tfm;
 	struct crypto_skcipher *tfm2;
 	struct skcipher_request *req;
 	struct scatterlist src[1], dst[1];
@@ -206,15 +186,7 @@ static int aes_siv_decrypt(const u8 *key, size_t key_len,
 		return res;
 
 	/* S2V */
-
-	tfm = crypto_alloc_shash("cmac(aes)", 0, 0);
-	if (IS_ERR(tfm))
-		return PTR_ERR(tfm);
-	/* K1 for S2V */
-	res = crypto_shash_setkey(tfm, key, key_len);
-	if (!res)
-		res = aes_s2v(tfm, num_elem, addr, len, check);
-	crypto_free_shash(tfm);
+	res = aes_s2v(key /* K1 */, key_len, num_elem, addr, len, check);
 	if (res)
 		return res;
 	if (memcmp(check, frame_iv, AES_BLOCK_SIZE) != 0)
