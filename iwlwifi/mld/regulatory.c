@@ -131,7 +131,7 @@ int iwl_mld_config_sar_profile(struct iwl_mld *mld, int prof_a, int prof_b)
 		break;
 	case 11:
 		cmd.v11.flags = cpu_to_le32(mld->fwrt.reduced_power_flags);
-		cmd_size= sizeof(cmd.common) + sizeof(cmd.v11);
+		cmd_size = sizeof(cmd.common) + sizeof(cmd.v11);
 		num_subbands = IWL_NUM_SUB_BANDS_V3;
 		break;
 	default:
@@ -278,7 +278,8 @@ static int iwl_mld_ppag_send_cmd(struct iwl_mld *mld)
 	}
 
 	if (cmd_bios_rev < fwrt->ppag_bios_rev) {
-		IWL_ERR(mld, "BIOS revision compatibility check failed - Supported: %d, Current: %d\n",
+		IWL_ERR(mld,
+			"BIOS revision compatibility check failed - Supported: %d, Current: %d\n",
 			cmd_bios_rev, fwrt->ppag_bios_rev);
 		return 0;
 	}

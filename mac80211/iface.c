@@ -415,13 +415,6 @@ static int ieee80211_check_concurrent_iface(struct ieee80211_sub_if_data *sdata,
 							nsdata->vif.type))
 				return -ENOTUNIQ;
 
-			/* No support for VLAN with MLO yet */
-			if (iftype == NL80211_IFTYPE_AP_VLAN &&
-			    sdata->wdev.use_4addr &&
-			    nsdata->vif.type == NL80211_IFTYPE_AP &&
-			    nsdata->vif.valid_links)
-				return -EOPNOTSUPP;
-
 			/*
 			 * can only add VLANs to enabled APs
 			 */
@@ -1678,14 +1671,17 @@ static void ieee80211_iface_process_skb(struct ieee80211_local *local,
 		if (sta) {
 			switch (mgmt->u.action.action_code) {
 			case WLAN_ACTION_ADDBA_REQ:
+			case WLAN_ACTION_NDP_ADDBA_REQ:
 				ieee80211_process_addba_request(local, sta,
 								mgmt, len);
 				break;
 			case WLAN_ACTION_ADDBA_RESP:
+			case WLAN_ACTION_NDP_ADDBA_RESP:
 				ieee80211_process_addba_resp(local, sta,
 							     mgmt, len);
 				break;
 			case WLAN_ACTION_DELBA:
+			case WLAN_ACTION_NDP_DELBA:
 				ieee80211_process_delba(sdata, sta,
 							mgmt, len);
 				break;
