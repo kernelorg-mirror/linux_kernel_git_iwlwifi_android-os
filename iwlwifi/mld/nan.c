@@ -933,6 +933,15 @@ int iwl_mld_mac802111_nan_peer_sched_changed(struct ieee80211_hw *hw,
 		.len[1] = sched->ulw_size,
 		.dataflags[1] = IWL_HCMD_DFL_DUP,
 	};
+	struct ieee80211_sta *iter;
+
+	/* Update TLC in case peer channels were added/removed/updated */
+	for_each_station(iter, mld->hw) {
+		struct iwl_mld_sta *tmp = iwl_mld_sta_from_mac80211(iter);
+
+		if (tmp->sta_type == STATION_TYPE_NAN_PEER_NDI)
+			iwl_mld_config_tlc(mld, tmp->vif, iter);
+	}
 
 	for (int i = 0; i < ARRAY_SIZE(sched->maps); i++) {
 		if (sched->maps[i].map_id == CFG80211_NAN_INVALID_MAP_ID)
