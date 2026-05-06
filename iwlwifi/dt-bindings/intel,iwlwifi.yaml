@@ -1,0 +1,285 @@
+# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
+# Copyright (c) 2026 Intel Corporation
+%YAML 1.2
+---
+$id: http://devicetree.org/schemas/net/wireless/intel,iwlwifi.yaml#
+$schema: http://devicetree.org/meta-schemas/core.yaml#
+
+title: Intel Wi-Fi 7 BE200 PCIe adapter
+
+maintainers:
+  - Avinash Bhatt <avinash.bhatt@intel.com>
+  - Miri Korenblit <miriam.rachel.korenblit@intel.com>
+
+description:
+  Intel Wi-Fi 7 BE200 (BE200NGW) IEEE 802.11be discrete PCIe adapter.
+
+allOf:
+  - $ref: /schemas/net/wireless/ieee80211.yaml#
+
+properties:
+  compatible:
+    enum:
+      - pci8086,272b
+
+  reg:
+    maxItems: 1
+
+  intel,wrds:
+    description: |
+      SAR (Specific Absorption Rate) transmit power limits per antenna chain
+      and frequency subband, in units of 0.125 dBm.
+
+      First cell is the mode word: bit 0 set enables SAR limiting, bit 0
+      clear disables it (device uses its certified maximum).
+
+      Followed by 48 limit values for four antenna chains in order:
+      chain A, chain B, CDB chain A, CDB chain B. Each chain has 12
+      subband values covering the following frequency ranges:
+
+        [0]  2.4 GHz  ch  1-13   (2412-2472 MHz)
+        [1]  5 GHz    ch 36-64   (5180-5320 MHz)
+        [2]  5 GHz    ch 68-96   (5340-5480 MHz)
+        [3]  5 GHz    ch 100-144 (5500-5720 MHz)
+        [4]  5 GHz    ch 149-177 (5745-5885 MHz)
+        [5]  6 GHz    ch  1-45   (5955-6175 MHz)
+        [6]  6 GHz    ch 49-93   (6195-6415 MHz)
+        [7]  6 GHz    ch 97-115  (6435-6525 MHz)
+        [8]  6 GHz    ch 117-151 (6535-6705 MHz)
+        [9]  6 GHz    ch 153-183 (6715-6865 MHz)
+        [10] 6 GHz    ch 185-233 (6875-7115 MHz)
+        [11] 6 GHz    ch 237-253 (7135-7215 MHz)
+    $ref: /schemas/types.yaml#/definitions/uint32-array
+    minItems: 49
+    maxItems: 49
+
+  intel,uats:
+    description: |
+      Per-country enablement matrix for 6 GHz AP types. 338-byte array
+      encoding which AP types (AFC, VLP, LPI) are permitted per country.
+
+      Countries are identified by ISO 3166-1 alpha-2 code. The matrix
+      covers all 26x26 = 676 two-letter combinations (AA..ZZ), stored
+      column-major (all second-letter variants for first letter A first,
+      then B, and so on). 26 columns x 13 bytes = 338 bytes total.
+
+      Each country occupies 4 bits (a nibble); two countries are packed
+      per byte, low nibble first:
+        bit 0: AFC (Standard Power AP) permitted
+        bit 1: VLP (Very Low Power AP) permitted
+        bit 2: LPI (Low Power Indoor AP) permitted
+
+      A bit is only effective when the corresponding control bit in
+      intel,6e-uhb is also set (bit 30 for AFC, bit 29 for VLP,
+      bit 31 for LPI per-country mode).
+    $ref: /schemas/types.yaml#/definitions/uint8-array
+    minItems: 338
+    maxItems: 338
+
+  intel,srd:
+    description: |
+      ETSI 5.8 GHz SRD (Short Range Device) channel behaviour in the
+      5725-5875 MHz band for ETSI regulatory domains.
+
+        active-scan  - active scanning permitted (default)
+        passive-scan - device may associate and transfer data but must
+                       not transmit probe requests on SRD channels
+        disabled     - device must not scan, associate, or operate on
+                       any SRD channel
+    enum:
+      - active-scan
+      - passive-scan
+      - disabled
+
+  intel,6e-uhb:
+    description: |
+      6-7 GHz Ultra-High Band (UHB) per-country enable bitmask.
+
+        bit 0:     override control; 0 = use device defaults,
+                   1 = force-disable all countries not explicitly
+                   enabled in bits 1-25
+        bit  1:    USA
+        bit  2:    Rest of World (ROW)
+        bit  3:    EU
+        bit  4:    South Korea
+        bit  5:    Brazil
+        bit  6:    Chile
+        bit  7:    Japan
+        bit  8:    Canada
+        bit  9:    Morocco
+        bit 10:    Mongolia
+        bit 11:    Malaysia
+        bit 12:    Saudi Arabia
+        bit 13:    Mexico
+        bit 14:    Nigeria
+        bit 15:    Thailand
+        bit 16:    Singapore
+        bit 17:    Taiwan
+        bit 18:    South Africa
+        bit 19:    Philippines
+        bit 20:    Serbia
+        bit 21:    Indonesia
+        bit 22:    Azerbaijan
+        bit 23:    Paraguay
+        bit 24:    Vietnam
+        bit 25:    India
+        bit 27:    enable VLP active scan, SoftAP, and P2P-GO in Japan
+        bit 29:    enable VLP mode per intel,uats country table
+        bit 30:    enable AFC mode per intel,uats country table
+        bit 31:    use intel,uats country table for LPI (0 = group mode)
+    $ref: /schemas/types.yaml#/definitions/uint32
+
+  intel,regulatory-special:
+    description: |
+      Special regulatory configuration flags.
+
+        bit 4:    enable Australia UHB band extension
+        bit 5:    Bangladesh 6 GHz UHB enablement
+    $ref: /schemas/types.yaml#/definitions/uint32
+
+  intel,activate-channel:
+    description: |
+      Indoor channel activation bitmask. Enables specific frequency bands
+      for active use when the platform is operating indoors.
+
+        bit 0:    EU U-NII-1 (5150-5250 MHz)
+        bit 1:    Japan U-NII-1 (5150-5250 MHz)
+        bit 2:    China Mainland U-NII-1 (5150-5250 MHz)
+        bit 3:    USA U-NII-4 (5850-5925 MHz)
+        bit 4:    Worldwide U-NII-1 (5150-5250 MHz) for any country
+                  where the band is permitted indoors
+        bit 5:    Canada U-NII-4 (5850-5925 MHz)
+    $ref: /schemas/types.yaml#/definitions/uint32
+
+  intel,force-disable-channels:
+    description: |
+      Per-band force-disable bitmask. Permanently disables specific
+      frequency bands regardless of regulatory domain.
+
+        bit  0:    2.4 GHz  (ch   1-13,  2412-2472 MHz)
+        bit  1:    5.2 GHz  (ch  36-48,  5180-5240 MHz)
+        bit  2:    5.3 GHz  (ch  52-64,  5260-5320 MHz)
+        bit  3:    5.5 GHz  (ch 100-144, 5500-5720 MHz)
+        bit  4:    5.8 GHz  (ch 149-165, 5745-5825 MHz)
+        bit  5:    5.9 GHz  (ch 169-177, 5845-5885 MHz)
+        bit  6:    6.2 GHz  (ch   1-93,  5955-6415 MHz)
+        bit  7:    6.5 GHz  (ch  97-113, 6435-6525 MHz)
+        bit  8:    6.6 GHz  (ch 117-153, 6535-6705 MHz)
+        bit  9:    6.8 GHz  (ch 157-185, 6715-6885 MHz)
+        bit 10:    7.0 GHz  (ch 185-233, 6875-7115 MHz)
+    $ref: /schemas/types.yaml#/definitions/uint32
+
+  intel,11be:
+    description: |
+      802.11be (Wi-Fi 7) per-country enable bitmask.
+
+        bit 0:    China (CN)
+        bit 1:    South Korea
+    $ref: /schemas/types.yaml#/definitions/uint32
+
+  intel,splc:
+    description:
+      Platform thermal power limit for the Wi-Fi core in mW. The device
+      will not exceed this limit regardless of regulatory maximums.
+    $ref: /schemas/types.yaml#/definitions/uint32
+    minimum: 1
+
+  intel,wcpe:
+    description: |
+      802.11be channel puncturing enable bitmask. When set, allows the
+      device to puncture (skip) sub-channels within a wide channel for
+      coexistence with incumbents, subject to country certification.
+
+        bit 0:    USA
+        bit 1:    Canada
+    $ref: /schemas/types.yaml#/definitions/uint32
+
+  intel,wbem:
+    description: |
+      320 MHz channel bandwidth enable bitmask per country. Each bit
+      takes effect only if the installed module is certified for 320 MHz
+      in that country.
+
+        bit 0:    Japan
+        bit 1:    South Korea
+    $ref: /schemas/types.yaml#/definitions/uint32
+
+required:
+  - compatible
+  - reg
+
+additionalProperties: false
+
+examples:
+  - |
+    pcie {
+        #address-cells = <3>;
+        #size-cells = <2>;
+
+        pcie@0 {
+            device_type = "pci";
+            reg = <0x0 0x0 0x0 0x0 0x0>;
+            #address-cells = <3>;
+            #size-cells = <2>;
+            ranges;
+            bus-range = <0x01 0xff>;
+
+            wifi@0 {
+                compatible = "pci8086,272b";
+                reg = <0x10000 0x0 0x0 0x0 0x0>;
+
+                /* SAR power limits: mode + 4 chains x 12 subbands */
+                intel,wrds = <
+                    0x01
+                    0x38 0x38 0x38 0x38 0x38 0x38 0x38 0x38 0x38 0x38 0x38 0x38
+                    0x38 0x38 0x38 0x38 0x38 0x38 0x38 0x38 0x38 0x38 0x38 0x38
+                    0x3c 0x3c 0x3c 0x3c 0x3c 0x3c 0x3c 0x3c 0x3c 0x3c 0x3c 0x3c
+                    0x3c 0x3c 0x3c 0x3c 0x3c 0x3c 0x3c 0x3c 0x3c 0x3c 0x3c 0x3c
+                >;
+
+                /*
+                 * Per-country 6 GHz AP type matrix: 338 bytes stored
+                 * column-major (26 columns x 13 bytes).  All zeros
+                 * shown here; set bits to permit AFC/VLP/LPI per country.
+                 */
+                intel,uats = /bits/ 8 <
+                    0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00
+                    0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00
+                    0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00
+                    0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00
+                    0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00
+                    0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00
+                    0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00
+                    0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00
+                    0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00
+                    0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00
+                    0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00
+                    0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00
+                    0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00
+                    0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00
+                    0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00
+                    0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00
+                    0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00
+                    0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00
+                    0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00
+                    0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00
+                    0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00
+                    0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00
+                    0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00
+                    0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00
+                    0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00
+                    0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00
+                >;
+
+                intel,splc = <4500>;
+                intel,wcpe = <0x03>;
+                intel,wbem = <0x03>;
+                intel,srd = "passive-scan";
+                intel,6e-uhb = <0x06>;
+                intel,regulatory-special = <0x00>;
+                intel,activate-channel = <0x01>;
+                intel,force-disable-channels = <0x00>;
+                intel,11be = <0x03>;
+            };
+        };
+    };
