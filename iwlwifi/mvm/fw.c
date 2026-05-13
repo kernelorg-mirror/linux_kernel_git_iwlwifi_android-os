@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0 OR BSD-3-Clause
 /*
- * Copyright (C) 2012-2014, 2018-2025 Intel Corporation
+ * Copyright (C) 2012-2014, 2018-2026 Intel Corporation
  * Copyright (C) 2013-2015 Intel Mobile Communications GmbH
  * Copyright (C) 2016-2017 Intel Deutschland GmbH
  */
@@ -483,6 +483,12 @@ static void iwl_mvm_uats_init(struct iwl_mvm *mvm)
 	int cmd_id = WIDE_ID(REGULATORY_AND_NVM_GROUP,
 			     MCC_ALLOWED_AP_TYPE_CMD);
 	struct iwl_mcc_allowed_ap_type_cmd_v1 cmd = {};
+	struct iwl_host_cmd hcmd = {
+		.id = cmd_id,
+		.data[0] = &cmd,
+		.len[0] = sizeof(cmd),
+		.dataflags[0] = IWL_HCMD_DFL_NOCOPY,
+	};
 	u8 cmd_ver;
 	int ret;
 
@@ -513,7 +519,7 @@ static void iwl_mvm_uats_init(struct iwl_mvm *mvm)
 	       mvm->fwrt.ap_type_cmd.mcc_to_ap_type_map,
 	       sizeof(mvm->fwrt.ap_type_cmd.mcc_to_ap_type_map));
 
-	ret = iwl_mvm_send_cmd_pdu(mvm, cmd_id, 0, sizeof(cmd), &cmd);
+	ret = iwl_mvm_send_cmd(mvm, &hcmd);
 	if (ret < 0)
 		IWL_ERR(mvm, "failed to send MCC_ALLOWED_AP_TYPE_CMD (%d)\n",
 			ret);
