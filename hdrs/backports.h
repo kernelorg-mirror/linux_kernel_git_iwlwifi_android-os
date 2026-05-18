@@ -145,6 +145,11 @@ ieee80211_get_uhr_iftype_cap(const struct ieee80211_supported_band *sband,
 #include <linux/string.h>
 #include <crypto/utils.h>
 
+int iwl7000_aes_expandkey(struct crypto_aes_ctx *ctx, const u8 *in_key,
+			  unsigned int key_len);
+void iwl7000_aes_encrypt(const struct crypto_aes_ctx *ctx, u8 *out,
+			 const u8 *in);
+
 /*
  * Compat: provide struct aes_enckey wrapping the old struct crypto_aes_ctx.
  */
@@ -155,7 +160,7 @@ struct aes_enckey {
 static inline int aes_prepareenckey(struct aes_enckey *key,
 				    const u8 *in_key, size_t key_len)
 {
-	return aes_expandkey(&key->ctx, in_key, key_len);
+	return iwl7000_aes_expandkey(&key->ctx, in_key, key_len);
 }
 
 /**
@@ -182,7 +187,7 @@ static inline void _bp_aes_enc(const struct aes_enckey *key,
 			       u8 out[AES_BLOCK_SIZE],
 			       const u8 in[AES_BLOCK_SIZE])
 {
-	aes_encrypt(&key->ctx, out, in);
+	iwl7000_aes_encrypt(&key->ctx, out, in);
 }
 
 static inline int aes_cmac_preparekey(struct aes_cmac_key *key,
