@@ -4909,6 +4909,13 @@ struct ieee80211_ops {
 	void (*rfkill_poll)(struct ieee80211_hw *hw);
 	void (*set_coverage_class)(struct ieee80211_hw *hw, int radio_idx,
 				   s16 coverage_class);
+#ifdef CPTCFG_NL80211_TESTMODE
+	int (*testmode_cmd)(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
+			    void *data, int len);
+	int (*testmode_dump)(struct ieee80211_hw *hw, struct sk_buff *skb,
+			     struct netlink_callback *cb,
+			     void *data, int len);
+#endif
 	void (*flush)(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
 		      u32 queues, bool drop);
 	void (*flush_sta)(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
