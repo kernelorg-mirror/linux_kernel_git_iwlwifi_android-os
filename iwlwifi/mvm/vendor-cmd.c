@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0 OR BSD-3-Clause
 /*
- * Copyright (C) 2012-2014, 2018-2025 Intel Corporation
+ * Copyright (C) 2012-2014, 2018-2026 Intel Corporation
  * Copyright (C) 2013-2015 Intel Mobile Communications GmbH
  * Copyright (C) 2016-2017 Intel Deutschland GmbH
  */
@@ -1353,6 +1353,8 @@ static int iwl_mvm_vendor_validate_aes_vector(struct nlattr **tb)
 	     FIPS_KEY_LEN_128 &&
 	     nla_len(tb[IWL_VENDOR_FIPS_TEST_VECTOR_HW_KEY]) !=
 	     FIPS_KEY_LEN_256))
+		return -EINVAL;
+	if (tb[IWL_VENDOR_FIPS_TEST_VECTOR_HW_NONCE])
 		return -EINVAL;
 
 	return 0;
