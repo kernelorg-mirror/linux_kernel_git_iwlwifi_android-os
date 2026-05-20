@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0 OR BSD-3-Clause
 /*
- * Copyright (C) 2010-2014, 2018-2023, 2025 Intel Corporation
+ * Copyright (C) 2010-2014, 2018-2023, 2025-2026 Intel Corporation
  * Copyright (C) 2013-2014 Intel Mobile Communications GmbH
  * Copyright (C) 2016-2017 Intel Deutschland GmbH
  */
@@ -973,21 +973,22 @@ static int iwl_tm_gnl_cmd_subscribe(struct sk_buff *skb, struct genl_info *info)
  */
 static const struct genl_ops iwl_tm_gnl_ops[] = {
 	{
-	  .cmd = IWL_TM_GNL_CMD_EXECUTE,
+		.cmd = IWL_TM_GNL_CMD_EXECUTE,
 #if LINUX_VERSION_IS_GEQ(5,2,0)
-	  .validate = GENL_DONT_VALIDATE_STRICT | GENL_DONT_VALIDATE_DUMP,
+		.validate = GENL_DONT_VALIDATE_STRICT | GENL_DONT_VALIDATE_DUMP,
 #endif
 
-	  .doit = iwl_tm_gnl_cmd_do,
-	  .dumpit = iwl_tm_gnl_dump,
-	  .done = iwl_tm_gnl_done,
+		.doit = iwl_tm_gnl_cmd_do,
+		.flags = GENL_UNS_ADMIN_PERM,
+		.dumpit = iwl_tm_gnl_dump,
+		.done = iwl_tm_gnl_done,
 	},
 	{
 		.cmd = IWL_TM_GNL_CMD_SUBSCRIBE_EVENTS,
 #if LINUX_VERSION_IS_GEQ(5,2,0)
 		.validate = GENL_DONT_VALIDATE_STRICT | GENL_DONT_VALIDATE_DUMP,
 #endif
-
+		.flags = GENL_UNS_ADMIN_PERM,
 		.doit = iwl_tm_gnl_cmd_subscribe,
 	},
 };
