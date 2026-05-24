@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0 OR BSD-3-Clause
 /*
- * Copyright (C) 2024-2025 Intel Corporation
+ * Copyright (C) 2024-2026 Intel Corporation
  */
 
 #include <linux/dmi.h>
@@ -589,12 +589,21 @@ int iwl_mld_get_sar_geo_profile(struct iwl_mld *mld)
 	}
 
 	resp = (void *)hcmd.resp_pkt->data;
+	if (IWL_FW_CHECK(mld,
+			 iwl_rx_packet_payload_len(hcmd.resp_pkt) !=
+			 sizeof(*resp),
+			 "Wrong size for iwl_geo_tx_power_profiles_resp: %d\n",
+			 iwl_rx_packet_payload_len(hcmd.resp_pkt))) {
+		ret = -EIO;
+		goto out;
+	}
 	ret = le32_to_cpu(resp->profile_idx);
 
 	if (IWL_FW_CHECK(mld, ret > BIOS_GEO_MAX_PROFILE_NUM,
 			 "Wrong profile idx: %d\n", ret))
 		ret = -EIO;
 
+out:
 	iwl_free_resp(&hcmd);
 	return ret;
 }
