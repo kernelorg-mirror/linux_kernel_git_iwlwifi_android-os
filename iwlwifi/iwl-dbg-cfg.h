@@ -180,10 +180,6 @@ struct iwl_dbg_cfg {
 	IWL_DBG_CFG(bool, MVM_DISABLE_AP_FILS)
 	IWL_DBG_CFG(u32, MVM_6GHZ_PASSIVE_SCAN_TIMEOUT)
 	IWL_DBG_CFG(u32, MVM_6GHZ_PASSIVE_SCAN_ASSOC_TIMEOUT)
-	IWL_DBG_CFG_NODEF(u32, system_features_control_1)
-	IWL_DBG_CFG_NODEF(u32, system_features_control_2)
-	IWL_DBG_CFG_NODEF(u32, system_features_control_3)
-	IWL_DBG_CFG_NODEF(u32, system_features_control_4)
 	IWL_DBG_CFG(bool, MVM_MEI_REPORT_RFKILL)
 	IWL_DBG_CFG(u8, MVM_MIN_BEACON_INTERVAL_TU)
 	IWL_DBG_CFG_RANGE(u8, MVM_ADAPTIVE_DWELL_NUM_APS_OVERRIDE, 0, 10)
@@ -244,6 +240,10 @@ struct iwl_dbg_cfg {
 	IWL_DBG_CFG_NODEF(u16, MLD_FTM_RESP_TOA_OFFSET)
 
 #endif /* CPTCFG_IWLMLD */
+	IWL_DBG_CFG_NODEF(u32, system_features_control_1)
+	IWL_DBG_CFG_NODEF(u32, system_features_control_2)
+	IWL_DBG_CFG_NODEF(u32, system_features_control_3)
+	IWL_DBG_CFG_NODEF(u32, system_features_control_4)
 	IWL_DBG_CFG_BIN(hw_address)
 	IWL_DBG_CFG_STR(fw_dbg_conf)
 	IWL_DBG_CFG_STR(nvm_file)
