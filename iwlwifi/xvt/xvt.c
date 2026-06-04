@@ -302,6 +302,7 @@ static struct iwl_op_mode *iwl_xvt_start(struct iwl_trans *trans,
 	IWL_INFO(xvt, "xVT operation mode\n");
 
 	iwl_xvt_dbgfs_register(xvt, dbgfs_dir);
+	iwl_uefi_get_puncturing(&xvt->fwrt);
 
 	return op_mode;
 
@@ -941,8 +942,12 @@ static size_t iwl_xvt_get_lari_config_cmd_size(u8 cmd_ver)
 	size_t cmd_size;
 
 	switch (cmd_ver) {
-	case 13:
+	case 14:
 		cmd_size = sizeof(struct iwl_lari_config_change_cmd);
+		break;
+	case 13:
+		cmd_size = offsetof(struct iwl_lari_config_change_cmd,
+				    oem_uhb_allow_extension_bitmap);
 		break;
 	case 12:
 		cmd_size = offsetof(struct iwl_lari_config_change_cmd,
@@ -1099,6 +1104,9 @@ static int iwl_xvt_fill_lari_config(struct iwl_fw_runtime *fwrt,
 	if (!ret)
 		cmd->oem_320mhz_allow_bitmap = cpu_to_le32(value);
 
+	cmd->bios_wbem_hdr.table_source = fwrt->wbem_source;
+	cmd->bios_wbem_hdr.table_revision = fwrt->wbem_revision;
+
 	ret = iwl_bios_get_dsm(fwrt, DSM_FUNC_ENABLE_11BE, &value);
 	if (!ret)
 		cmd->oem_11be_allow_bitmap = cpu_to_le32(value);
@@ -1114,8 +1122,17 @@ static int iwl_xvt_fill_lari_config(struct iwl_fw_runtime *fwrt,
 	cmd->bios_hdr.table_source = fwrt->dsm_source;
 	cmd->bios_hdr.table_revision = fwrt->dsm_revision;
 
+	ret = iwl_bios_get_dsm(fwrt, DSM_FUNC_REGULATORY_CONFIG, &value);
+	if (!ret)
+		cmd->oem_uhb_allow_extension_bitmap = cpu_to_le32(value);
+
+	cmd->bios_wcpe_hdr.table_source = fwrt->puncturing_source;
+	cmd->bios_wcpe_hdr.table_revision = fwrt->puncturing_revision;
+	cmd->wcpe_bitmap = cpu_to_le32(fwrt->bios_puncturing);
+
 	if (cmd->config_bitmap ||
 	    cmd->oem_uhb_allow_bitmap ||
+	    cmd->oem_uhb_allow_extension_bitmap ||
 	    cmd->oem_11ax_allow_bitmap ||
 	    cmd->oem_unii4_allow_bitmap ||
 	    cmd->chan_state_active_bitmap ||
@@ -1124,7 +1141,8 @@ static int iwl_xvt_fill_lari_config(struct iwl_fw_runtime *fwrt,
 	    cmd->oem_320mhz_allow_bitmap ||
 	    cmd->oem_11be_allow_bitmap ||
 	    cmd->oem_11bn_allow_bitmap ||
-	    cmd->oem_unii9_enable) {
+	    cmd->oem_unii9_enable ||
+	    cmd->wcpe_bitmap) {
 		IWL_DEBUG_RADIO(fwrt,
 				"sending LARI_CONFIG_CHANGE, config_bitmap=0x%x, oem_11ax_allow_bitmap=0x%x\n",
 				le32_to_cpu(cmd->config_bitmap),
@@ -1139,6 +1157,9 @@ static int iwl_xvt_fill_lari_config(struct iwl_fw_runtime *fwrt,
 				le32_to_cpu(cmd->oem_uhb_allow_bitmap),
 				le32_to_cpu(cmd->force_disable_channels_bitmap));
 		IWL_DEBUG_RADIO(fwrt,
+				"sending LARI_CONFIG_CHANGE, oem_uhb_allow_extension_bitmap=0x%x\n",
+				le32_to_cpu(cmd->oem_uhb_allow_extension_bitmap));
+		IWL_DEBUG_RADIO(fwrt,
 				"sending LARI_CONFIG_CHANGE, edt_bitmap=0x%x, oem_320mhz_allow_bitmap=0x%x\n",
 				le32_to_cpu(cmd->edt_bitmap),
 				le32_to_cpu(cmd->oem_320mhz_allow_bitmap));
@@ -1151,6 +1172,9 @@ static int iwl_xvt_fill_lari_config(struct iwl_fw_runtime *fwrt,
 		IWL_DEBUG_RADIO(fwrt,
 				"sending LARI_CONFIG_CHANGE, oem_unii9_enable=0x%x\n",
 				le32_to_cpu(cmd->oem_unii9_enable));
+		IWL_DEBUG_RADIO(fwrt,
+				"sending LARI_CONFIG_CHANGE, wcpe_bitmap=0x%x\n",
+				le32_to_cpu(cmd->wcpe_bitmap));
 	} else {
 		return 1;
 	}
