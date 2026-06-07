@@ -490,7 +490,8 @@ int iwl_mvm_power_update_device(struct iwl_mvm *mvm)
 		.flags = 0,
 	};
 
-	if (iwlmvm_mod_params.power_scheme == IWL_POWER_SCHEME_CAM)
+	if (iwlmvm_mod_params.power_scheme == IWL_POWER_SCHEME_CAM ||
+	    mvm->device_powered_off)
 		mvm->ps_disabled = true;
 
 	if (!mvm->ps_disabled)
@@ -890,6 +891,8 @@ static int iwl_mvm_power_set_ps(struct iwl_mvm *mvm)
 
 	/* disable PS if CAM */
 	disable_ps = (iwlmvm_mod_params.power_scheme == IWL_POWER_SCHEME_CAM);
+	/* ...or if the device was powered off and state was lost */
+	disable_ps |= mvm->device_powered_off;
 	/* ...or if any of the vifs require PS to be off */
 	ieee80211_iterate_active_interfaces_atomic(mvm->hw,
 					IEEE80211_IFACE_ITER_NORMAL,
