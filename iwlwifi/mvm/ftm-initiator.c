@@ -121,7 +121,7 @@ int iwl_mvm_ftm_add_pasn_sta(struct iwl_mvm *mvm, struct ieee80211_vif *vif,
 	}
 
 	if (tk && tk_len)
-		memcpy(pasn->tk, tk, sizeof(pasn->tk));
+		memcpy(pasn->tk, tk, tk_len);
 
 	list_add_tail(&pasn->list, &mvm->ftm_initiator.pasn_list);
 	return 0;
