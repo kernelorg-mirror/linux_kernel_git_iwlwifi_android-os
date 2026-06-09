@@ -173,7 +173,7 @@ iwl_mld_ftm_responder_dyn_cfg_cmd(struct iwl_mld *mld,
 				  struct ieee80211_ftm_responder_params *params,
 				  struct iwl_mld_pasn_hltk_data *hltk_data)
 {
-	struct iwl_tof_responder_dyn_config_cmd cmd;
+	struct iwl_tof_responder_dyn_config_cmd cmd = {0};
 	struct iwl_host_cmd hcmd = {
 		.id = WIDE_ID(LOCATION_GROUP, TOF_RESPONDER_DYN_CONFIG_CMD),
 		.data[0] = &cmd,
@@ -183,8 +183,6 @@ iwl_mld_ftm_responder_dyn_cfg_cmd(struct iwl_mld *mld,
 	};
 
 	lockdep_assert_wiphy(mld->wiphy);
-
-	cmd.valid_flags = 0;
 
 	if (params) {
 		if (params->lci_len + 2 > sizeof(cmd.lci_buf) ||
