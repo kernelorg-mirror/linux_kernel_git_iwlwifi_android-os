@@ -1375,8 +1375,8 @@ int iwl_pcie_enqueue_hcmd(struct iwl_trans *trans,
 	u8 group_id = iwl_cmd_groupid(cmd->id);
 	int i, ret;
 	u32 cmd_pos;
-	const u8 *cmddata[IWL_MAX_CMD_TBS_PER_TFD];
-	u16 cmdlen[IWL_MAX_CMD_TBS_PER_TFD];
+	const u8 *cmddata[IWL_MAX_CMD_CHUNKS_PER_HCMD];
+	u16 cmdlen[IWL_MAX_CMD_CHUNKS_PER_HCMD];
 	unsigned long flags;
 
 	if (WARN(!trans->conf.wide_cmd_header &&
@@ -1393,9 +1393,9 @@ int iwl_pcie_enqueue_hcmd(struct iwl_trans *trans,
 	}
 
 	/* need one for the header if the first is NOCOPY */
-	BUILD_BUG_ON(IWL_MAX_CMD_TBS_PER_TFD > IWL_NUM_OF_TBS - 1);
+	BUILD_BUG_ON(IWL_MAX_CMD_CHUNKS_PER_HCMD > IWL_NUM_OF_TBS - 1);
 
-	for (i = 0; i < IWL_MAX_CMD_TBS_PER_TFD; i++) {
+	for (i = 0; i < IWL_MAX_CMD_CHUNKS_PER_HCMD; i++) {
 		cmddata[i] = cmd->data[i];
 		cmdlen[i] = cmd->len[i];
 
@@ -1510,7 +1510,7 @@ int iwl_pcie_enqueue_hcmd(struct iwl_trans *trans,
 	}
 
 	/* and copy the data that needs to be copied */
-	for (i = 0; i < IWL_MAX_CMD_TBS_PER_TFD; i++) {
+	for (i = 0; i < IWL_MAX_CMD_CHUNKS_PER_HCMD; i++) {
 		int copy;
 
 		if (!cmd->len[i])
@@ -1579,7 +1579,7 @@ int iwl_pcie_enqueue_hcmd(struct iwl_trans *trans,
 	}
 
 	/* map the remaining (adjusted) nocopy/dup fragments */
-	for (i = 0; i < IWL_MAX_CMD_TBS_PER_TFD; i++) {
+	for (i = 0; i < IWL_MAX_CMD_CHUNKS_PER_HCMD; i++) {
 		void *data = (void *)(uintptr_t)cmddata[i];
 
 		if (!cmdlen[i])

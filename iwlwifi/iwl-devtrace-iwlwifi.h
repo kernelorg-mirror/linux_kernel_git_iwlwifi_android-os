@@ -4,7 +4,7 @@
  * Copyright(c) 2009 - 2014 Intel Corporation. All rights reserved.
  * Copyright(c) 2015 Intel Mobile Communications GmbH
  * Copyright(c) 2016 - 2017 Intel Deutschland GmbH
- * Copyright(c) 2018, 2023-2025 Intel Corporation
+ * Copyright(c) 2018, 2023-2026 Intel Corporation
  *****************************************************************************/
 
 #if !defined(__IWLWIFI_DEVICE_TRACE_IWLWIFI) || defined(TRACE_HEADER_MULTI_READ)
@@ -35,7 +35,7 @@ TRACE_EVENT(iwlwifi_dev_hcmd,
 		__entry->flags = cmd->flags;
 		memcpy(__get_dynamic_array(hcmd), hdr, offset);
 
-		for (i = 0; i < IWL_MAX_CMD_TBS_PER_TFD; i++) {
+		for (i = 0; i < IWL_MAX_CMD_CHUNKS_PER_HCMD; i++) {
 			if (!cmd->len[i])
 				continue;
 			memcpy((u8 *)__get_dynamic_array(hcmd) + offset,
