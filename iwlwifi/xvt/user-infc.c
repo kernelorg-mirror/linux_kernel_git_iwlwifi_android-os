@@ -1632,12 +1632,19 @@ static int iwl_xvt_start_tx(struct iwl_xvt *xvt,
 }
 
 static int iwl_xvt_set_tx_payload(struct iwl_xvt *xvt,
-				  struct iwl_xvt_driver_command_req *req)
+				  struct iwl_xvt_driver_command_req *req,
+				  u32 req_data_len)
 {
 	struct iwl_xvt_set_tx_payload *input =
 		(struct iwl_xvt_set_tx_payload *)req->input_data;
-	u32 size = sizeof(struct tx_payload) + input->length;
 	struct tx_payload *payload_struct;
+	u32 size;
+
+	if (req_data_len < sizeof(*input) ||
+	    input->length > req_data_len - sizeof(*input))
+		return -EINVAL;
+
+	size = sizeof(struct tx_payload) + input->length;
 
 	if (WARN(input->index >= IWL_XVT_MAX_PAYLOADS_AMOUNT,
 		 "invalid payload index\n"))
@@ -2207,10 +2214,16 @@ static int iwl_xvt_handle_driver_cmd(struct iwl_xvt *xvt,
 				     struct iwl_tm_data *data_in,
 				     struct iwl_tm_data *data_out)
 {
-	struct iwl_xvt_driver_command_req *req = data_in->data;
 	struct iwl_xvt_driver_command_resp *resp = NULL;
-	__u32 cmd_id = req->command_id;
+	struct iwl_xvt_driver_command_req *req;
+	__u32 cmd_id;
 	int err = 0;
+
+	if (!data_in->data || data_in->len < sizeof(*req))
+		return -EINVAL;
+
+	req = data_in->data;
+	cmd_id = req->command_id;
 
 	IWL_DEBUG_INFO(xvt, "handle driver command 0x%X\n", cmd_id);
 
@@ -2226,7 +2239,8 @@ static int iwl_xvt_handle_driver_cmd(struct iwl_xvt *xvt,
 		err = iwl_xvt_config_txq(xvt, data_in->len, req, resp);
 		break;
 	case IWL_DRV_CMD_SET_TX_PAYLOAD:
-		err = iwl_xvt_set_tx_payload(xvt, req);
+		err = iwl_xvt_set_tx_payload(xvt, req,
+					     data_in->len - sizeof(*req));
 		break;
 	case IWL_DRV_CMD_TX_START:
 		err = iwl_xvt_start_tx(xvt, req, data_in->len -
