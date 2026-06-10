@@ -1515,9 +1515,16 @@ static int iwl_xvt_modulated_tx_handler(void *data)
 static int iwl_xvt_modulated_tx_infinite_stop(struct iwl_xvt *xvt,
 					      struct iwl_tm_data *data_in)
 {
-	u32 lmac_id = ((struct iwl_xvt_tx_mod_stop *)data_in->data)->lmac_id;
+	struct iwl_xvt_tx_mod_stop *stop;
 
-	return _iwl_xvt_modulated_tx_infinite_stop(&xvt->tx_meta_data[lmac_id]);
+	if (!data_in->data || data_in->len < sizeof(*stop))
+		return -EINVAL;
+
+	stop = (struct iwl_xvt_tx_mod_stop *)data_in->data;
+	if (stop->lmac_id >= ARRAY_SIZE(xvt->tx_meta_data))
+		return -EINVAL;
+
+	return _iwl_xvt_modulated_tx_infinite_stop(&xvt->tx_meta_data[stop->lmac_id]);
 }
 
 static inline int map_sta_to_lmac(struct iwl_xvt *xvt, u8 sta_id)
