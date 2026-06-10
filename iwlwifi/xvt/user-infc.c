@@ -1578,6 +1578,25 @@ static int iwl_xvt_start_tx(struct iwl_xvt *xvt,
 		 "TX is already in progress\n"))
 		return -EINVAL;
 
+	for (u32 i = 0; i < tx_start->num_of_different_frames; i++) {
+		u8 payload_index = tx_start->frames_data[i].payload_index;
+		u8 queue = tx_start->frames_data[i].queue;
+
+		if (payload_index >= ARRAY_SIZE(xvt->payloads) ||
+		    !xvt->payloads[payload_index]) {
+			IWL_ERR(xvt,
+				"invalid payload index %u for frame %u\n",
+				payload_index, i);
+			return -EINVAL;
+		}
+
+		if (queue >= ARRAY_SIZE(xvt->queue_data)) {
+			IWL_ERR(xvt, "invalid queue %u for frame %u\n",
+				queue, i);
+			return -EINVAL;
+		}
+	}
+
 	xvt->is_enhanced_tx = true;
 
 	task_data = kzalloc(struct_size(task_data, tx_start_data.frames_data,
