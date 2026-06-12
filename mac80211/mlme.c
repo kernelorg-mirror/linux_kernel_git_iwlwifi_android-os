@@ -5491,7 +5491,7 @@ static void ieee80211_rx_mgmt_deauth(struct ieee80211_sub_if_data *sdata,
 
 	lockdep_assert_wiphy(sdata->local->hw.wiphy);
 
-	if (len < IEEE80211_DEAUTH_FRAME_LEN)
+	if (len < offsetofend(struct ieee80211_mgmt, u.deauth.reason_code))
 		return;
 
 	reason_code = le16_to_cpu(mgmt->u.deauth.reason_code);
