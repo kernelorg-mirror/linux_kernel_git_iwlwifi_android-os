@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0 OR BSD-3-Clause
 /*
- * Copyright (C) 2018-2025 Intel Corporation
+ * Copyright (C) 2018-2026 Intel Corporation
  */
 #include <linux/dmi.h>
 #include "iwl-trans.h"
@@ -172,6 +172,14 @@ int iwl_pcie_ctxt_info_v2_alloc(struct iwl_trans *trans,
 	int ret;
 	int cmdq_size = max_t(u32, IWL_CMD_QUEUE_SIZE,
 			      trans->mac_cfg->base->min_txq_size);
+
+	if (WARN_ON_ONCE(trans_pcie->ctxt_info_v2 || trans_pcie->prph_info ||
+			 trans_pcie->prph_scratch || trans_pcie->iml ||
+			 trans_pcie->ctxt_info_dma_addr ||
+			 trans_pcie->prph_info_dma_addr ||
+			 trans_pcie->prph_scratch_dma_addr ||
+			 trans_pcie->iml_dma_addr || trans_pcie->iml_len))
+		return -EBUSY;
 
 	switch (trans->conf.rx_buf_size) {
 	case IWL_AMSDU_DEF:
@@ -361,16 +369,24 @@ err_free_ctxt_info:
 	dma_free_coherent(trans->dev, sizeof(*trans_pcie->ctxt_info_v2),
 			  trans_pcie->ctxt_info_v2,
 			  trans_pcie->ctxt_info_dma_addr);
+	trans_pcie->ctxt_info_dma_addr = 0;
 	trans_pcie->ctxt_info_v2 = NULL;
 err_free_prph_info:
 	dma_free_coherent(trans->dev, PAGE_SIZE, prph_info,
 			  trans_pcie->prph_info_dma_addr);
+	trans_pcie->prph_info_dma_addr = 0;
+	trans_pcie->prph_info = NULL;
 
 err_free_prph_scratch:
+#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+	iwl_trans_pcie_free_fseq(trans, prph_scratch);
+#endif
 	dma_free_coherent(trans->dev,
 			  sizeof(*prph_scratch),
 			prph_scratch,
 			trans_pcie->prph_scratch_dma_addr);
+	trans_pcie->prph_scratch_dma_addr = 0;
+	trans_pcie->prph_scratch = NULL;
 	return ret;
 
 }
