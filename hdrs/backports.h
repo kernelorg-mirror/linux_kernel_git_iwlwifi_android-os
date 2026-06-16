@@ -57,32 +57,42 @@ cfg80211_6ghz_power_type(u8 control, u32 client_flags)
 	struct_size((type *)NULL, member, count)
 #endif
 
+#ifndef typeof_flex_counter
 #define typeof_flex_counter(FAM)				\
 	typeof(_Generic(__flex_counter(FAM),			\
 			void *: (size_t)0,			\
 			default: *__flex_counter(FAM)))
+#endif
 
+#ifndef overflows_flex_counter_type
 #define overflows_flex_counter_type(TYPE, FAM, COUNT)		\
 	(overflows_type(COUNT, typeof_flex_counter(((TYPE *)NULL)->FAM)))
+#endif
 
+#ifndef __set_flex_counter
 #define __set_flex_counter(FAM, COUNT)				\
 ({								\
 	*_Generic(__flex_counter(FAM),				\
 		  void *:  &(size_t){ 0 },			\
 		  default: __flex_counter(FAM)) = (COUNT);	\
 })
+#endif
 
+#ifndef default_gfp
 #define __default_gfp(a,...) a
 #define default_gfp(...) __default_gfp(__VA_ARGS__ __VA_OPT__(,) GFP_KERNEL)
+#endif
 
 #include <linux/bug.h>
 
+#undef __alloc_objs
 #define __alloc_objs(KMALLOC, GFP, TYPE, COUNT)				\
 ({									\
 	const size_t __obj_size = size_mul(sizeof(TYPE), COUNT);	\
 	(TYPE *)KMALLOC(__obj_size, GFP);				\
 })
 
+#undef __alloc_flex
 #define __alloc_flex(KMALLOC, GFP, TYPE, FAM, COUNT)			\
 ({									\
 	const size_t __count = (COUNT);					\
@@ -93,53 +103,47 @@ cfg80211_6ghz_power_type(u8 control, u32 client_flags)
 	__obj_ptr;							\
 })
 
+#undef kmalloc_obj
 #define kmalloc_obj(VAR_OR_TYPE, ...) \
 	__alloc_objs(kmalloc, default_gfp(__VA_ARGS__), typeof(VAR_OR_TYPE), 1)
 
+#undef kmalloc_objs
 #define kmalloc_objs(VAR_OR_TYPE, COUNT, ...) \
 	__alloc_objs(kmalloc, default_gfp(__VA_ARGS__), typeof(VAR_OR_TYPE), COUNT)
 
+#undef kmalloc_flex
 #define kmalloc_flex(VAR_OR_TYPE, FAM, COUNT, ...) \
 	__alloc_flex(kmalloc, default_gfp(__VA_ARGS__), typeof(VAR_OR_TYPE), FAM, COUNT)
 
+#undef kzalloc_obj
 #define kzalloc_obj(P, ...) \
 	__alloc_objs(kzalloc, default_gfp(__VA_ARGS__), typeof(P), 1)
+#undef kzalloc_objs
 #define kzalloc_objs(P, COUNT, ...) \
 	__alloc_objs(kzalloc, default_gfp(__VA_ARGS__), typeof(P), COUNT)
+#undef kzalloc_flex
 #define kzalloc_flex(P, FAM, COUNT, ...)		\
 	__alloc_flex(kzalloc, default_gfp(__VA_ARGS__), typeof(P), FAM, COUNT)
 
+#undef kvmalloc_obj
 #define kvmalloc_obj(P, ...) \
 	__alloc_objs(kvmalloc, default_gfp(__VA_ARGS__), typeof(P), 1)
+#undef kvmalloc_objs
 #define kvmalloc_objs(P, COUNT, ...) \
 	__alloc_objs(kvmalloc, default_gfp(__VA_ARGS__), typeof(P), COUNT)
+#undef kvmalloc_flex
 #define kvmalloc_flex(P, FAM, COUNT, ...) \
 	__alloc_flex(kvmalloc, default_gfp(__VA_ARGS__), typeof(P), FAM, COUNT)
 
+#undef kvzalloc_obj
 #define kvzalloc_obj(P, ...) \
 	__alloc_objs(kvzalloc, default_gfp(__VA_ARGS__), typeof(P), 1)
+#undef kvzalloc_objs
 #define kvzalloc_objs(P, COUNT, ...) \
 	__alloc_objs(kvzalloc, default_gfp(__VA_ARGS__), typeof(P), COUNT)
+#undef kvzalloc_flex
 #define kvzalloc_flex(P, FAM, COUNT, ...) \
 	__alloc_flex(kvzalloc, default_gfp(__VA_ARGS__), typeof(P), FAM, COUNT)
-
-#define IEEE80211_CHAN_NO_UHR 0
-#define NL80211_RRF_NO_UHR 0
-#define ASSOC_REQ_DISABLE_UHR 0
-
-struct ieee80211_sta_uhr_cap {
-	bool has_uhr;
-	struct ieee80211_uhr_cap_mac mac;
-	struct ieee80211_uhr_cap_phy phy;
-};
-
-static inline const struct ieee80211_sta_uhr_cap *
-ieee80211_get_uhr_iftype_cap(const struct ieee80211_supported_band *sband,
-			     enum nl80211_iftype iftype)
-{
-	return NULL;
-}
-
 
 #include <crypto/aes.h>
 #include <linux/string.h>
