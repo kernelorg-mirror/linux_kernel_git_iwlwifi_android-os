@@ -2187,13 +2187,14 @@ ieee80211_add_link_elems(struct ieee80211_sub_if_data *sdata,
 	offset = ieee80211_add_before_reg_conn(skb, extra_elems,
 					       extra_elems_len, offset);
 
-	if (sband->band == NL80211_BAND_6GHZ) {
+	/* only add this on the assoc link, not in per-STA profiles */
+	if (link) {
 		/*
 		 * as per Section E.2.7 of IEEE 802.11 REVme D7.0, non-AP STA
 		 * capable of operating on the 6 GHz band shall transmit
 		 * regulatory connectivity element.
 		 */
-		ieee80211_put_reg_conn(skb, chan->flags);
+		ieee80211_put_reg_conn(sdata, skb);
 	}
 
 	/*
