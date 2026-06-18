@@ -56,8 +56,12 @@ static int iwl_tm_validate_reg_ops(struct iwl_tm_data *data_in)
 		return -EINVAL;
 
 	request = (struct iwl_tm_regs_request *)(data_in->data);
-	request_size = sizeof(struct iwl_tm_regs_request) +
-		       request->num * sizeof(struct iwl_tm_reg_op);
+
+	if (request->num > (U32_MAX - sizeof(*request)) /
+				      sizeof(struct iwl_tm_reg_op))
+		return -EINVAL;
+
+	request_size = struct_size(request, reg_ops, request->num);
 	if (data_in->len < request_size)
 		return -EINVAL;
 

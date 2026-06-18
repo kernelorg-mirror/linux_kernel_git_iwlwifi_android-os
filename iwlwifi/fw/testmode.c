@@ -2,7 +2,7 @@
 /*
  * Copyright (C) 2012-2014, 2018-2021 Intel Corporation
  * Copyright (C) 2013-2015 Intel Mobile Communications GmbH
- * Copyright (C) 2023, 2025 Intel Corporation
+ * Copyright (C) 2023, 2025-2026 Intel Corporation
  */
 #include "iwl-trans.h"
 #include "iwl-tm-infc.h"
@@ -111,8 +111,12 @@ static int iwl_tm_reg_ops(struct iwl_testmode *testmode,
 		if (IS_AL_ADDR(cur_op->address) || cur_op->address < HBUS_BASE)
 			is_grab_nic_access_required = false;
 	}
-	result_size = sizeof(struct iwl_tm_regs_request) +
-		      read_idx * sizeof(struct iwl_tm_reg_op);
+
+	if (read_idx > (U32_MAX - sizeof(*result)) /
+				sizeof(struct iwl_tm_reg_op))
+		return -EINVAL;
+
+	result_size = struct_size(result, reg_ops, read_idx);
 
 	result = kzalloc(result_size, GFP_KERNEL);
 	if (!result)
