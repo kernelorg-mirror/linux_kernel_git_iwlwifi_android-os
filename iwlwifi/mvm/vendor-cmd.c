@@ -791,6 +791,9 @@ void iwl_mvm_active_rx_filters(struct iwl_mvm *mvm)
 	if (mvm->rx_filters & IWL_MVM_VENDOR_RXFILTER_EINVAL)
 		return;
 
+	if (!mvm->mcast_filter_cmd)
+		return;
+
 	for (i = 0; i < mvm->mcast_filter_cmd->count; i++) {
 		if (mvm->rx_filters & IWL_MVM_VENDOR_RXFILTER_MCAST4 &&
 		    memcmp(&mvm->mcast_filter_cmd->addr_list[i * ETH_ALEN],
