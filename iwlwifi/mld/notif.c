@@ -519,13 +519,7 @@ iwl_mld_notif_is_valid(struct iwl_mld *mld, struct iwl_rx_packet *pkt,
 			    handler->cmd_id, notif_ver,
 			    handler->sizes[handler->n_sizes - 1].ver);
 
-#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
-	/* Drop the notification in non-upstream builds to force adding
-	 * support for new versions
-	 */
 	return false;
-#endif
-	return size < handler->sizes[handler->n_sizes - 1].size;
 }
 
 struct iwl_async_handler_entry {
