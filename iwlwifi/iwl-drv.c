@@ -2004,10 +2004,12 @@ static int iwl_drv_load_fseq_image(struct iwl_trans *trans, struct iwl_fw *fw,
 	const struct iwl_fseq_file *fseq;
 	const struct iwl_ucode_tlv *tlv;
 	const struct firmware *fseq_fw;
-	u32 fseq_major, fseq_minor;
+	u32 fseq_major = pieces->fseq_ver.major;
+	u32 fseq_minor = pieces->fseq_ver.minor;
 	u32 tlv_len, tlv_type, len;
 	const u8 *tlv_data, *data;
 	u32 cnvi_id, cnvr_id;
+	u32 aligned_tlv_len;
 	char filename[100];
 	int err;
 
@@ -2061,8 +2063,17 @@ static int iwl_drv_load_fseq_image(struct iwl_trans *trans, struct iwl_fw *fw,
 			err = -EINVAL;
 			goto out;
 		}
-		len -= ALIGN(tlv_len, 4);
-		data += sizeof(*tlv) + ALIGN(tlv_len, 4);
+
+		aligned_tlv_len = ALIGN(tlv_len, 4);
+		if (len < aligned_tlv_len) {
+			IWL_ERR(trans, "invalid aligned TLV len: %u/%u\n",
+				len, aligned_tlv_len);
+			err = -EINVAL;
+			goto out;
+		}
+
+		len -= aligned_tlv_len;
+		data += sizeof(*tlv) + aligned_tlv_len;
 
 		switch (tlv_type) {
 		case IWL_UCODE_TLV_SEC_RT:
