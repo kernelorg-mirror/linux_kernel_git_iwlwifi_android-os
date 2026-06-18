@@ -218,6 +218,9 @@ static int iwl_tm_indirect_read(struct iwl_testmode *testmode,
 	if (iwl_tm_addr_range_prph(testmode, addr)) {
 		if (!iwl_trans_grab_nic_access(trans)) {
 			mutex_unlock(testmode->mutex);
+			kfree(data_out->data);
+			data_out->data = NULL;
+			data_out->len = 0;
 			return -EBUSY;
 		}
 		for (i = 0; i < size32; i++)
