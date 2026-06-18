@@ -1105,6 +1105,11 @@ static int iwl_parse_tlv_firmware(struct iwl_drv *drv,
 	bool usniffer_req = false;
 	size_t aligned_tlv_len;
 
+	if (len < sizeof(*ucode)) {
+		IWL_ERR(drv, "uCode has invalid length: %zd\n", len);
+		return -EINVAL;
+	}
+
 #ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
 	if (ucode->magic == cpu_to_le32(IWL_TLV_FW_DBG_MAGIC)) {
 		size_t dbg_data_ofs = offsetof(struct iwl_tlv_ucode_header,
@@ -1115,11 +1120,6 @@ static int iwl_parse_tlv_firmware(struct iwl_drv *drv,
 		goto fw_dbg_conf;
 	}
 #endif
-
-	if (len < sizeof(*ucode)) {
-		IWL_ERR(drv, "uCode has invalid length: %zd\n", len);
-		return -EINVAL;
-	}
 
 	if (ucode->magic != cpu_to_le32(IWL_TLV_UCODE_MAGIC)) {
 		IWL_ERR(drv, "invalid uCode magic: 0X%x\n",
