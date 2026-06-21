@@ -142,6 +142,8 @@ iwl_uefi_get_verified_variable_guid(struct iwl_fw_runtime *fwrt,
 				    unsigned int expected_size,
 				    unsigned long *size)
 {
+	bool is_x86 = IS_ENABLED(CONFIG_X86) || IS_ENABLED(CONFIG_X86_64) ||
+		      IS_ENABLED(CONFIG_X86_32);
 	unsigned long var_size;
 	u32 attributes = 0;
 	void *var;
@@ -149,10 +151,13 @@ iwl_uefi_get_verified_variable_guid(struct iwl_fw_runtime *fwrt,
 	if (fwrt->uefi_tables_lock_status == UEFI_CNV_GUID_UNLOCKED)
 		return ERR_PTR(-EINVAL);
 
+#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+	if (fwrt->trans->dbg_cfg.FORCE_NON_X86)
+		is_x86 = false;
+#endif
+
 	/* In x86 either GLUI or GLAI should exist */
-	if ((IS_ENABLED(CONFIG_X86) || IS_ENABLED(CONFIG_X86_64) ||
-	     IS_ENABLED(CONFIG_X86_32)) &&
-	    fwrt->uefi_tables_lock_status == UEFI_CNV_GUID_UNKNOWN)
+	if (is_x86 && fwrt->uefi_tables_lock_status == UEFI_CNV_GUID_UNKNOWN)
 		return ERR_PTR(-EINVAL);
 
 	var = iwl_uefi_get_variable_guid(fwrt->trans,

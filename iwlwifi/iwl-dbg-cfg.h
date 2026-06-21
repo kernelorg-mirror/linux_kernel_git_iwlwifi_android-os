@@ -309,6 +309,7 @@ struct iwl_dbg_cfg {
 	IWL_DBG_CFG_NODEF(bool, disable_eml)
 	IWL_DBG_CFG_DEF(int, eml_capa_override, -1)
 	IWL_DBG_CFG_NODEF(bool, load_external_pnvm)
+	IWL_DBG_CFG_NODEF(bool, FORCE_NON_X86)
 #ifdef CPTCFG_IWLWIFI_DEBUG
 	IWL_MOD_PARAM(u32, debug_level)
 #endif /* CPTCFG_IWLWIFI_DEBUG */
