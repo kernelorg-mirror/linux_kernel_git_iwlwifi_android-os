@@ -783,6 +783,10 @@ ieee80211_nan_find_evac_chan(struct ieee80211_local *local,
 
 		usable_channels++;
 
+		/* No-evacuate channel is usable but cannot be evacuated */
+		if (chan->no_evacuate)
+			continue;
+
 		chan_ctx = container_of(chan->chanctx_conf,
 					struct ieee80211_chanctx, conf);
 
