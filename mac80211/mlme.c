@@ -4600,6 +4600,7 @@ static void ieee80211_set_disassoc(struct ieee80211_sub_if_data *sdata,
 
 	ifmgd->uhr_omp.pending = 0;
 	ifmgd->uhr_omp.pending_init = 0;
+	sdata->u.mgd.wep_used = false;
 }
 
 static void ieee80211_reset_ap_probe(struct ieee80211_sub_if_data *sdata)
