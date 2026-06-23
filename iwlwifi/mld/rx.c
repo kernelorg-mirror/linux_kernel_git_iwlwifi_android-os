@@ -1546,6 +1546,12 @@ static void iwl_mld_decode_uhr_tb(struct iwl_mld_rx_phy_data *phy_data,
 				     le32_get_bits(phy_data->ntfy->sigs.uhr_tb.tb_rx1,
 						   OFDM_UCODE_TRIG_BASE_RX_RU),
 				     true);
+
+	if (phy_data->with_data) {
+		/* no support for TB UEQM, indicate we know it's not used */
+		uhr->user[0].known |=
+			cpu_to_le32(IEEE80211_RADIOTAP_UHR_USER_KNOWN_UEQM);
+	}
 }
 
 static void iwl_mld_uhr_decode_user_ru(struct iwl_mld_rx_phy_data *phy_data,
@@ -1660,6 +1666,9 @@ static void iwl_mld_decode_uhr_non_tb(struct iwl_mld_rx_phy_data *phy_data,
 				      struct ieee80211_rx_status *rx_status,
 				      struct ieee80211_radiotap_uhr *uhr)
 {
+	__le32 usig_a1 = phy_data->ntfy->sigs.uhr.usig_a1;
+	__le32 usig_a2 = phy_data->ntfy->sigs.uhr.usig_a2_uhr;
+
 	uhr->known |= cpu_to_le32(IEEE80211_RADIOTAP_UHR_KNOWN_SPATIAL_REUSE |
 				  IEEE80211_RADIOTAP_UHR_KNOWN_NUMBER_OF_UHR_LTF_SYMBOLS |
 				  /* All RU allocating size/index is in TB format */
@@ -1711,11 +1720,36 @@ static void iwl_mld_decode_uhr_non_tb(struct iwl_mld_rx_phy_data *phy_data,
 						   OFDM_RX_FRAME_UHR_STA_RU),
 				     true);
 
-	if (phy_data->with_data) {
-		uhr->user[0].known |= cpu_to_le32(IEEE80211_RADIOTAP_UHR_USER_KNOWN_STA_ID);
-		uhr->user[0].info |= LE32_DEC_ENC(phy_data->ntfy->sigs.uhr.user_id,
-						  OFDM_RX_FRAME_UHR_USER_FIELD_ID,
-						  IEEE80211_RADIOTAP_UHR_USER_INFO_STA_ID);
+	if (!phy_data->with_data)
+		return;
+
+	uhr->user[0].known |= cpu_to_le32(IEEE80211_RADIOTAP_UHR_USER_KNOWN_STA_ID);
+	uhr->user[0].info |= LE32_DEC_ENC(phy_data->ntfy->sigs.uhr.user_id,
+					  OFDM_RX_FRAME_UHR_USER_FIELD_ID,
+					  IEEE80211_RADIOTAP_UHR_USER_INFO_STA_ID);
+
+	/*
+	 * report UEQM only for downlink OFDMA here
+	 * (uplink OFDMA is TB so not here, but also not supported)
+	 */
+	if (usig_a1 & cpu_to_le32(OFDM_RX_FRAME_ENHANCED_WIFI_UL_FLAG) ||
+	    usig_a2 & cpu_to_le32(OFDM_RX_FRAME_EHT_PPDU_TYPE))
+		return;
+
+	uhr->user[0].known |=
+		cpu_to_le32(IEEE80211_RADIOTAP_UHR_USER_KNOWN_UEQM);
+	uhr->user[0].info |=
+		LE32_DEC_ENC(phy_data->ntfy->sigs.uhr.b2,
+			     OFDM_RX_FRAME_UHR_UEQM,
+			     IEEE80211_RADIOTAP_UHR_USER_INFO_UEQM);
+
+	if (uhr->user[0].info & cpu_to_le32(IEEE80211_RADIOTAP_UHR_USER_INFO_UEQM)) {
+		uhr->user[0].known |=
+			cpu_to_le32(IEEE80211_RADIOTAP_UHR_USER_KNOWN_UEQM_PATTERN);
+		uhr->user[0].info |=
+			LE32_DEC_ENC(phy_data->ntfy->sigs.uhr.b2,
+				     OFDM_RX_FRAME_UHR_UEQM_PATTERN,
+				     IEEE80211_RADIOTAP_UHR_USER_INFO_UEQM_PATTERN);
 	}
 }
 
