@@ -1546,12 +1546,6 @@ static void iwl_mld_decode_uhr_tb(struct iwl_mld_rx_phy_data *phy_data,
 				     le32_get_bits(phy_data->ntfy->sigs.uhr_tb.tb_rx1,
 						   OFDM_UCODE_TRIG_BASE_RX_RU),
 				     true);
-
-	if (phy_data->with_data) {
-		/* no support for TB UEQM, indicate we know it's not used */
-		uhr->user[0].known |=
-			cpu_to_le32(IEEE80211_RADIOTAP_UHR_USER_KNOWN_UEQM);
-	}
 }
 
 static void iwl_mld_uhr_decode_user_ru(struct iwl_mld_rx_phy_data *phy_data,
@@ -1728,12 +1722,9 @@ static void iwl_mld_decode_uhr_non_tb(struct iwl_mld_rx_phy_data *phy_data,
 					  OFDM_RX_FRAME_UHR_USER_FIELD_ID,
 					  IEEE80211_RADIOTAP_UHR_USER_INFO_STA_ID);
 
-	/*
-	 * report UEQM only for downlink OFDMA here
-	 * (uplink OFDMA is TB so not here, but also not supported)
-	 */
-	if (usig_a1 & cpu_to_le32(OFDM_RX_FRAME_ENHANCED_WIFI_UL_FLAG) ||
-	    usig_a2 & cpu_to_le32(OFDM_RX_FRAME_EHT_PPDU_TYPE))
+	/* don't report UEQM for downlink non-OFDMA MU-MIMO allocations */
+	if (!(usig_a1 & cpu_to_le32(OFDM_RX_FRAME_ENHANCED_WIFI_UL_FLAG)) &&
+	    le32_get_bits(usig_a2, OFDM_RX_FRAME_UHR_PPDU_TYPE) == 2)
 		return;
 
 	uhr->user[0].known |=
