@@ -1320,7 +1320,7 @@ static void iwl_mld_rx_eht(struct iwl_mld *mld, struct sk_buff *skb,
 
 		eht->user_info[0] |=
 			le32_encode_bits(u32_get_bits(rate_n_flags,
-						      RATE_VHT_MCS_RATE_CODE_MSK),
+						      RATE_MCS_CODE_MSK),
 					 IEEE80211_RADIOTAP_EHT_USER_INFO_MCS) |
 			le32_encode_bits(u32_get_bits(rate_n_flags,
 						      RATE_MCS_NSS_MSK),
@@ -1829,7 +1829,7 @@ static void iwl_mld_decode_uhr_phy_data(struct iwl_mld_rx_phy_data *phy_data,
 
 		uhr->user[0].info |=
 			le32_encode_bits(u32_get_bits(rate_n_flags,
-						      RATE_VHT_MCS_RATE_CODE_MSK),
+						      RATE_MCS_CODE_MSK),
 					 IEEE80211_RADIOTAP_UHR_USER_INFO_MCS);
 		uhr->user[0].info |=
 			le32_encode_bits(u32_get_bits(rate_n_flags,
