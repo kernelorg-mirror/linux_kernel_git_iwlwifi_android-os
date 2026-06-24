@@ -1672,7 +1672,6 @@ static void iwl_mld_decode_uhr_non_tb(struct iwl_mld_rx_phy_data *phy_data,
 				  IEEE80211_RADIOTAP_UHR_KNOWN_PE_DISAMBIGUITY |
 				  IEEE80211_RADIOTAP_UHR_KNOWN_PRI80_CHAN_POS |
 				  IEEE80211_RADIOTAP_UHR_KNOWN_NUMBER_OF_NON_OFDMA_USERS |
-				  /* not supported by HW so IM=1 on is never received */
 				  IEEE80211_RADIOTAP_UHR_KNOWN_INTERFERENCE_MITIGATION);
 
 	uhr->data[0] |= LE32_DEC_ENC(phy_data->ntfy->sigs.uhr.b1,
@@ -1706,6 +1705,8 @@ static void iwl_mld_decode_uhr_non_tb(struct iwl_mld_rx_phy_data *phy_data,
 	uhr->data[7] |= LE32_DEC_ENC(phy_data->ntfy->sigs.uhr.b1,
 				     OFDM_RX_FRAME_UHR_NUM_OF_USERS,
 				     IEEE80211_RADIOTAP_UHR_DATA7_NUMBER_OF_NON_OFDMA_USERS);
+	if (!(phy_data->ntfy->sigs.uhr.b1 & cpu_to_le32(OFDM_RX_FRAME_UHR_IM_DISABLE)))
+		uhr->data[7] |= cpu_to_le32(IEEE80211_RADIOTAP_UHR_DATA7_INTERFERENCE_MITIGATION);
 
 	iwl_mld_uhr_decode_user_ru(phy_data, uhr);
 
