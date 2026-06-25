@@ -372,8 +372,8 @@ static void iwl_mld_remove_ap_keys_iter(struct ieee80211_hw *hw,
 	if (key->hw_key_idx == STA_KEY_IDX_INVALID)
 		return;
 
-	/* All the pairwise keys should have been removed by now */
-	if (WARN_ON(sta))
+	/* only remove group keys */
+	if (sta)
 		return;
 
 	if (key->link_id >= 0 && key->link_id != data->link_id)

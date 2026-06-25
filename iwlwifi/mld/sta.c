@@ -923,13 +923,6 @@ void iwl_mld_remove_sta(struct iwl_mld *mld, struct ieee80211_sta *sta)
 		iwl_mld_remove_txq(mld, sta->txq[i]);
 
 	for_each_sta_active_link(vif, sta, link_sta, link_id) {
-		/* Mac8011 will remove the groupwise keys after the sta is
-		 * removed, but FW expects all the keys to be removed before
-		 * the STA is, so remove them all here.
-		 */
-		if (vif->type == NL80211_IFTYPE_STATION && !sta->tdls)
-			iwl_mld_remove_ap_keys(mld, vif, sta, link_id);
-
 		/* Remove the link_sta */
 		iwl_mld_remove_link_sta(mld, link_sta);
 	}

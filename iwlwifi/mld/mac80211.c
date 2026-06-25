@@ -2717,9 +2717,21 @@ static void iwl_mld_sta_pre_rcu_remove(struct ieee80211_hw *hw,
 	 * on further RCU synchronisation after the sta_state()
 	 * callback deleted the station.
 	 */
-	for_each_mld_link_sta(mld_sta, mld_link_sta, link_id)
+
+	for_each_mld_link_sta(mld_sta, mld_link_sta, link_id) {
 		RCU_INIT_POINTER(mld->fw_id_to_link_sta[mld_link_sta->fw_id],
 				 NULL);
+
+		/*
+		 * mac80211 will remove the group keys during the STA
+		 * removal, but then we don't have the AP STA as we've
+		 * already NULLed the pointer below, and thus we cannot
+		 * remove the keys properly from FW since we need the
+		 * station ID. Remove them all here to be able to.
+		 */
+		if (sta == mld_vif->ap_sta)
+			iwl_mld_remove_ap_keys(mld, vif, sta, link_id);
+	}
 
 	if (sta == mld_vif->ap_sta)
 		mld_vif->ap_sta = NULL;
