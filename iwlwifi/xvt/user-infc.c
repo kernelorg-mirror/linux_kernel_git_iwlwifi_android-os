@@ -2160,14 +2160,14 @@ iwl_xvt_get_rx_agg_stats_cmd(struct iwl_xvt *xvt,
 {
 	struct iwl_xvt_get_rx_agg_stats *params = (void *)req->input_data;
 	struct iwl_xvt_get_rx_agg_stats_resp *stats_resp =
-						(void *)resp->resp_data;
+		(void *)resp->resp_data;
 	struct iwl_xvt_reorder_buffer *buffer;
 	int i;
 
 	IWL_DEBUG_INFO(xvt, "get rx agg stats: sta_id=%d, tid=%d\n",
 		       params->sta_id, params->tid);
 
-	if (req->max_out_length < sizeof(stats_resp))
+	if (req->max_out_length < sizeof(*stats_resp))
 		return -ENOBUFS;
 
 	for (i = 0; i < ARRAY_SIZE(xvt->reorder_bufs); i++) {
