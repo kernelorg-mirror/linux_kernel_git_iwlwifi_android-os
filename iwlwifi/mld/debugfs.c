@@ -561,10 +561,6 @@ static ssize_t iwl_dbgfs_inject_packet_write(struct iwl_mld *mld,
 	rxb._page = alloc_pages(GFP_KERNEL, 0);
 	if (!rxb._page)
 		return -ENOMEM;
-
-	/* for RX path, if RX is injected via this debugfs */
-	rxb.map_len = PAGE_SIZE;
-
 	pkt = rxb_addr(&rxb);
 
 	ret = hex2bin(page_address(rxb._page), buf, n_bytes);
