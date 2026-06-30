@@ -272,7 +272,8 @@ static void iwl_mld_ftm_set_assoc_tk_iter(struct ieee80211_hw *hw,
 	struct iwl_mld_ftm_iter_data *target = data;
 	enum iwl_location_cipher cipher;
 
-	if (!sta || memcmp(sta->addr, target->bssid, ETH_ALEN))
+	if (!(key->flags & IEEE80211_KEY_FLAG_PAIRWISE) ||
+	    memcmp(sta->addr, target->bssid, ETH_ALEN))
 		return;
 
 	if (WARN_ON(!sta->mfp))

@@ -71,8 +71,8 @@ iwl_mld_wake_pkt_key_iter(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
 			  struct ieee80211_sta *sta,
 			  struct ieee80211_key_conf *key, void *_data)
 {
+	bool is_group_key = !(key->flags & IEEE80211_KEY_FLAG_PAIRWISE);
 	struct iwl_mld_wake_pkt_iter_data *data = _data;
-	bool is_group_key = !sta;
 
 	/* ignore anything that is not a PTK / GTK */
 	if (key->keyidx > 3)
@@ -1000,7 +1000,7 @@ iwl_mld_resume_keys_iter(struct ieee80211_hw *hw,
 	if (rsc_notif_ver == IWL_FW_CMD_VER_UNKNOWN &&
 	    key->keyidx >= 0 && key->keyidx <= 3) {
 		/* PTK */
-		if (sta) {
+		if (key->flags & IEEE80211_KEY_FLAG_PAIRWISE) {
 			iwl_mld_update_ptk_rx_seq(data->mld, wowlan_status,
 						  sta, key,
 						  key->cipher ==
@@ -1040,7 +1040,7 @@ iwl_mld_rsc_update_key_iter(struct ieee80211_hw *hw,
 	if (key->keyidx > 3)
 		return;
 
-	if (sta) {
+	if (key->flags & IEEE80211_KEY_FLAG_PAIRWISE) {
 		/* PTK */
 		BUILD_BUG_ON(ARRAY_SIZE(data->notif->ucast_rsc) !=
 			     IWL_MAX_TID_COUNT);
@@ -1767,7 +1767,7 @@ iwl_mld_suspend_key_data_iter(struct ieee80211_hw *hw,
 	case WLAN_CIPHER_SUITE_TKIP:
 		if (!cipher)
 			cipher = cpu_to_le32(STA_KEY_FLG_TKIP);
-		if (sta) {
+		if (key->flags & IEEE80211_KEY_FLAG_PAIRWISE) {
 			key_rsc = data->rsc->ucast_rsc;
 			if (key->cipher == WLAN_CIPHER_SUITE_TKIP)
 				iwl_mld_suspend_convert_tkip_ipn(key, key_rsc);

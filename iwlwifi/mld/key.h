@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0 OR BSD-3-Clause */
 /*
- * Copyright (C) 2024-2025 Intel Corporation
+ * Copyright (C) 2024-2026 Intel Corporation
  */
 #ifndef __iwl_mld_key_h__
 #define __iwl_mld_key_h__
@@ -18,10 +18,6 @@ int iwl_mld_add_key(struct iwl_mld *mld,
 		    struct ieee80211_vif *vif,
 		    struct ieee80211_sta *sta,
 		    struct ieee80211_key_conf *key);
-void iwl_mld_remove_ap_keys(struct iwl_mld *mld,
-			    struct ieee80211_vif *vif,
-			    struct ieee80211_sta *sta,
-			    unsigned int link_id);
 
 int iwl_mld_update_sta_keys(struct iwl_mld *mld,
 			    struct ieee80211_vif *vif,

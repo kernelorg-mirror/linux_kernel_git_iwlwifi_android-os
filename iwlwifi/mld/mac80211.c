@@ -312,6 +312,7 @@ static void iwl_mac_hw_set_flags(struct iwl_mld *mld)
 	ieee80211_hw_set(hw, SUPPORTS_AMSDU_IN_AMPDU);
 #endif
 	ieee80211_hw_set(hw, TDLS_WIDER_BW);
+	ieee80211_hw_set(hw, PER_STA_AP_GTK);
 }
 
 static void iwl_mld_hw_set_nan(struct iwl_mld *mld)
@@ -2479,19 +2480,8 @@ static int iwl_mld_mac80211_set_key(struct ieee80211_hw *hw,
 				    struct ieee80211_sta *sta,
 				    struct ieee80211_key_conf *key)
 {
-	struct iwl_mld_vif *mld_vif = iwl_mld_vif_from_mac80211(vif);
 	struct iwl_mld *mld = IWL_MAC80211_GET_MLD(hw);
 	int ret;
-
-	/*
-	 * FW always needs the AP STA for client mode.
-	 * Note that during removal this could already
-	 * be NULL (mac80211 removes keys after STAs)
-	 * but then we'll already have removed the key
-	 * and set hw_key_idx = STA_KEY_IDX_INVALID.
-	 */
-	if (!sta && vif->type == NL80211_IFTYPE_STATION)
-		sta = mld_vif->ap_sta;
 
 	switch (cmd) {
 	case SET_KEY:
@@ -2720,20 +2710,9 @@ static void iwl_mld_sta_pre_rcu_remove(struct ieee80211_hw *hw,
 	 * callback deleted the station.
 	 */
 
-	for_each_mld_link_sta(mld_sta, mld_link_sta, link_id) {
+	for_each_mld_link_sta(mld_sta, mld_link_sta, link_id)
 		RCU_INIT_POINTER(mld->fw_id_to_link_sta[mld_link_sta->fw_id],
 				 NULL);
-
-		/*
-		 * mac80211 will remove the group keys during the STA
-		 * removal, but then we don't have the AP STA as we've
-		 * already NULLed the pointer below, and thus we cannot
-		 * remove the keys properly from FW since we need the
-		 * station ID. Remove them all here to be able to.
-		 */
-		if (sta == mld_vif->ap_sta)
-			iwl_mld_remove_ap_keys(mld, vif, sta, link_id);
-	}
 
 	if (sta == mld_vif->ap_sta)
 		mld_vif->ap_sta = NULL;
