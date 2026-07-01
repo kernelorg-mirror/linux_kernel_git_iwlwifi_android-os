@@ -166,9 +166,19 @@ struct iwl_rfi_ddr_lut_entry iwl_mld_rfi_ddr_table[IWL_RFI_DDR_LUT_SIZE] = {
 	       {PHY_BAND_5, PHY_BAND_5, PHY_BAND_5, PHY_BAND_5, PHY_BAND_5,
 		PHY_BAND_5,}},
 
+	/* frequency 10667MHz */
+	{cpu_to_le16(640), {50, 58, 60, 62, 64, 68},
+	       {PHY_BAND_5, PHY_BAND_5, PHY_BAND_5, PHY_BAND_5, PHY_BAND_5,
+		PHY_BAND_5,}},
+
 	/* frequency 11200MHz */
 	{cpu_to_le16(672), {114, 116, 118, 120, 122},
 	      {PHY_BAND_5, PHY_BAND_5, PHY_BAND_5, PHY_BAND_5, PHY_BAND_5,}},
+
+	/* frequency 11733MHz */
+	{cpu_to_le16(704), {163, 167, 169, 171, 173, 175},
+	       {PHY_BAND_5, PHY_BAND_5, PHY_BAND_5, PHY_BAND_5, PHY_BAND_5,
+		PHY_BAND_5,}},
 
 	/* frequency 11800MHz */
 	{cpu_to_le16(708), {163, 171, 173, 175, 177},
