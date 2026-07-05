@@ -14,6 +14,7 @@
 #include "agg.h"
 #include "tlc.h"
 #include "nan.h"
+#include "tx.h"
 #include "fw/api/sta.h"
 #include "fw/api/mac.h"
 #include "fw/api/rx.h"
@@ -1068,8 +1069,8 @@ static int iwl_mld_allocate_internal_txq(struct iwl_mld *mld,
 	size = max_t(u32, IWL_MGMT_QUEUE_SIZE,
 		     mld->trans->mac_cfg->base->min_txq_size);
 
-	queue = iwl_trans_txq_alloc(mld->trans, 0, sta_mask, tid, size,
-				    IWL_WATCHDOG_DISABLED);
+	queue = iwl_mld_alloc_fw_txq(mld, sta_mask, tid, size,
+				     IWL_WATCHDOG_DISABLED);
 
 	if (queue >= 0)
 		IWL_DEBUG_TX_QUEUES(mld,

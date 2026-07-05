@@ -1521,13 +1521,11 @@ iwl_op_mode_mvm_start(struct iwl_trans *trans, const struct iwl_rf_cfg *cfg,
 			    IWL_UCODE_TLV_CAPA_FW_RESET_HANDSHAKE) &&
 		mvm->fw->ucode_ver > 77;
 
-	trans->conf.queue_alloc_cmd_ver =
+	mvm->sta_remove_requires_queue_remove =
 		iwl_fw_lookup_cmd_ver(mvm->fw,
 				      WIDE_ID(DATA_PATH_GROUP,
 					      SCD_QUEUE_CONFIG_CMD),
-				      0);
-	mvm->sta_remove_requires_queue_remove =
-		trans->conf.queue_alloc_cmd_ver > 0;
+				      0) > 0;
 
 	mvm->mld_api_is_used = iwl_mvm_has_mld_api(mvm->fw);
 

@@ -406,9 +406,6 @@ struct iwl_dump_sanitize_ops {
  * @cb_data_offs: offset inside skb->cb to store transport data at, must have
  *	space for at least two pointers
  * @fw_reset_handshake: firmware supports reset flow handshake
- * @queue_alloc_cmd_ver: queue allocation command version, set to 0
- *	for using the older SCD_QUEUE_CFG, set to the version of
- *	SCD_QUEUE_CONFIG_CMD otherwise.
  * @wide_cmd_header: true when ucode supports wide command header format
  * @rx_mpdu_cmd: MPDU RX command ID, must be assigned by opmode before
  *	starting the firmware, used for tracing
@@ -433,7 +430,6 @@ struct iwl_trans_config {
 
 	u8 cb_data_offs;
 	bool fw_reset_handshake;
-	u8 queue_alloc_cmd_ver;
 
 	bool wide_cmd_header;
 	u8 rx_mpdu_cmd, rx_mpdu_cmd_hdr_size;
@@ -913,8 +909,53 @@ int iwl_trans_get_rxq_dma_data(struct iwl_trans *trans, int queue,
 
 void iwl_trans_txq_free(struct iwl_trans *trans, int queue);
 
-int iwl_trans_txq_alloc(struct iwl_trans *trans, u32 flags, u32 sta_mask,
-			u8 tid, int size, unsigned int wdg_timeout);
+/**
+ * struct iwl_txq_alloc_info - info about a dynamically allocated TX queue
+ *
+ * Transport specific parameters needed by the op_mode for the txq allocation
+ *	command.
+ *
+ * @tfdq_dram_addr: DRAM address of the TFD circular buffer
+ * @bc_dram_addr: DRAM address of the byte count table
+ * @cb_size: size code of the TFD cyclic buffer (value is exponent - 3)
+ */
+struct iwl_txq_alloc_info {
+	dma_addr_t tfdq_dram_addr;
+	dma_addr_t bc_dram_addr;
+	u32 cb_size;
+};
+
+/**
+ * struct iwl_txq_alloc_result - The response from the firmware to the queue allocation command
+ *
+ * Filled in by the op_mode's queue allocation callback.
+ *
+ * @qid: queue ID assigned by the firmware
+ * @wr_ptr: initial write pointer of the queue
+ */
+struct iwl_txq_alloc_result {
+	int qid;
+	int wr_ptr;
+};
+
+/**
+ * iwl_trans_txq_alloc - allocate a TX queue.
+ * @trans: the transport
+ * @size: requested queue size
+ * @wdg_timeout: queue watchdog timeout
+ * @add_txq_cmd: op_mode callback that sends the queue allocation command to
+ *	the firmware based on @info and fills @result from the response
+ * @data: opaque data passed to @add_txq_cmd
+ *
+ * Return: the queue ID on success, a negative error code otherwise.
+ */
+int iwl_trans_txq_alloc(struct iwl_trans *trans, int size,
+			unsigned int wdg_timeout,
+			int (*add_txq_cmd)(struct iwl_op_mode *op_mode,
+					   const struct iwl_txq_alloc_info *info,
+					   struct iwl_txq_alloc_result *result,
+					   void *data),
+			void *data);
 
 void iwl_trans_txq_set_shared_mode(struct iwl_trans *trans,
 				   int txq_id, bool shared_mode);
@@ -1398,8 +1439,13 @@ struct iwl_trans_ops {
 	void (*txq_set_shared_mode)(struct iwl_trans *trans, u32 txq_id,
 				    bool shared_mode);
 	void (*set_q_ptrs)(struct iwl_trans *trans, int queue, int ptr);
-	int (*txq_alloc)(struct iwl_trans *trans, u32 flags, u32 sta_mask,
-			 u8 tid, int size, unsigned int wdg_timeout);
+	int (*txq_alloc)(struct iwl_trans *trans, int size,
+			 unsigned int wdg_timeout,
+			 int (*add_txq_cmd)(struct iwl_op_mode *op_mode,
+					    const struct iwl_txq_alloc_info *info,
+					    struct iwl_txq_alloc_result *result,
+					    void *data),
+			 void *data);
 	void (*txq_free)(struct iwl_trans *trans, int queue);
 	int (*rxq_dma_data)(struct iwl_trans *trans, int queue,
 			    struct iwl_trans_rxq_dma_data *data);

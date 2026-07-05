@@ -1877,11 +1877,9 @@ static int iwl_xvt_add_txq(struct iwl_xvt *xvt, u32 sta_mask,
 
 	if (iwl_xvt_is_unified_fw(xvt)) {
 		/*TODO: add support for second lmac*/
-		queue_id =
-			iwl_trans_txq_alloc(xvt->trans,
-					    flags & ~TX_QUEUE_CFG_ENABLE_QUEUE,
-					    sta_mask, cmd->tid,
-					    size, 0);
+		queue_id = iwl_xvt_alloc_fw_txq(xvt, flags &
+						     ~TX_QUEUE_CFG_ENABLE_QUEUE,
+						sta_mask, cmd->tid, size, 0);
 		if (queue_id < 0)
 			return queue_id;
 		if (queue_id >= ARRAY_SIZE(xvt->queue_data))

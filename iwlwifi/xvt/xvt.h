@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0 OR BSD-3-Clause */
 /*
- * Copyright (C) 2005-2014, 2018-2025 Intel Corporation
+ * Copyright (C) 2005-2014, 2018-2026 Intel Corporation
  * Copyright (C) 2015-2017 Intel Deutschland GmbH
  */
 #ifndef __iwl_xvt_h__
@@ -382,6 +382,9 @@ static inline bool iwl_xvt_has_default_txq(struct iwl_xvt *xvt)
 }
 
 void iwl_xvt_free_tx_queue(struct iwl_xvt *xvt, u8 lmac_id);
+
+int iwl_xvt_alloc_fw_txq(struct iwl_xvt *xvt, u32 flags, u32 sta_mask,
+			 u8 tid, int size, unsigned int timeout);
 
 int iwl_xvt_allocate_tx_queue(struct iwl_xvt *xvt, u8 sta_id,
 			      u8 lmac_id);

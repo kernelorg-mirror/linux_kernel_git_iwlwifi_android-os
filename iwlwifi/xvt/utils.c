@@ -36,6 +36,95 @@ int iwl_xvt_send_cmd_pdu(struct iwl_xvt *xvt, u32 id,
 	return iwl_xvt_send_cmd(xvt, &cmd);
 }
 
+struct iwl_xvt_txq_alloc_data {
+	u32 flags;
+	u32 sta_mask;
+	u8 tid;
+};
+
+static int iwl_xvt_txq_alloc_cmd(struct iwl_op_mode *op_mode,
+				 const struct iwl_txq_alloc_info *info,
+				 struct iwl_txq_alloc_result *result,
+				 void *data)
+{
+	const struct iwl_xvt_txq_alloc_data *params = data;
+	struct iwl_xvt *xvt = IWL_OP_MODE_GET_XVT(op_mode);
+	u8 cmd_ver = iwl_fw_lookup_cmd_ver(xvt->fw,
+					   WIDE_ID(DATA_PATH_GROUP,
+						   SCD_QUEUE_CONFIG_CMD), 0);
+	union {
+		struct iwl_tx_queue_cfg_cmd old;
+		struct iwl_scd_queue_cfg_cmd new;
+	} cmd = {};
+	struct iwl_host_cmd hcmd = {
+		.flags = CMD_WANT_SKB,
+	};
+	struct iwl_tx_queue_cfg_rsp *rsp;
+	int ret;
+
+	if (cmd_ver == 0) {
+		if (hweight32(params->sta_mask) != 1)
+			return -EINVAL;
+
+		cmd.old.tfdq_addr = cpu_to_le64(info->tfdq_dram_addr);
+		cmd.old.byte_cnt_addr = cpu_to_le64(info->bc_dram_addr);
+		cmd.old.cb_size = cpu_to_le32(info->cb_size);
+		cmd.old.flags = cpu_to_le16(params->flags |
+					    TX_QUEUE_CFG_ENABLE_QUEUE);
+		cmd.old.tid = params->tid;
+		cmd.old.sta_id = ffs(params->sta_mask) - 1;
+
+		hcmd.id = SCD_QUEUE_CFG;
+		hcmd.len[0] = sizeof(cmd.old);
+		hcmd.data[0] = &cmd.old;
+	} else if (cmd_ver == 3 || cmd_ver == 4) {
+		cmd.new.operation = cpu_to_le32(IWL_SCD_QUEUE_ADD);
+		cmd.new.u.add.tfdq_dram_addr =
+			cpu_to_le64(info->tfdq_dram_addr);
+		cmd.new.u.add.bc_dram_addr = cpu_to_le64(info->bc_dram_addr);
+		cmd.new.u.add.cb_size = cpu_to_le32(info->cb_size);
+		cmd.new.u.add.flags = cpu_to_le32(params->flags);
+		cmd.new.u.add.sta_mask = cpu_to_le32(params->sta_mask);
+		cmd.new.u.add.tid = params->tid;
+
+		hcmd.id = WIDE_ID(DATA_PATH_GROUP, SCD_QUEUE_CONFIG_CMD);
+		hcmd.len[0] = sizeof(cmd.new);
+		hcmd.data[0] = &cmd.new;
+	} else {
+		return -EOPNOTSUPP;
+	}
+
+	ret = iwl_xvt_send_cmd(xvt, &hcmd);
+	if (ret)
+		return ret;
+
+	if (WARN_ON(iwl_rx_packet_payload_len(hcmd.resp_pkt) != sizeof(*rsp))) {
+		ret = -EINVAL;
+		goto out;
+	}
+
+	rsp = (void *)hcmd.resp_pkt->data;
+	result->qid = le16_to_cpu(rsp->queue_number);
+	result->wr_ptr = le16_to_cpu(rsp->write_pointer);
+
+out:
+	iwl_free_resp(&hcmd);
+	return ret;
+}
+
+int iwl_xvt_alloc_fw_txq(struct iwl_xvt *xvt, u32 flags, u32 sta_mask,
+			 u8 tid, int size, unsigned int timeout)
+{
+	struct iwl_xvt_txq_alloc_data data = {
+		.flags = flags,
+		.sta_mask = sta_mask,
+		.tid = tid,
+	};
+
+	return iwl_trans_txq_alloc(xvt->trans, size, timeout,
+				   iwl_xvt_txq_alloc_cmd, &data);
+}
+
 void iwl_xvt_get_nic_error_log_v2(struct iwl_xvt *xvt,
 				  struct iwl_error_event_table_v2 *table)
 {

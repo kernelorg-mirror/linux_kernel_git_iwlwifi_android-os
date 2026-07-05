@@ -962,46 +962,27 @@ error:
 	return ERR_PTR(ret);
 }
 
-static int iwl_pcie_txq_alloc_response(struct iwl_trans *trans,
-				       struct iwl_txq *txq,
-				       struct iwl_host_cmd *hcmd)
+static int iwl_txq_dyn_activate(struct iwl_trans *trans, struct iwl_txq *txq,
+				const struct iwl_txq_alloc_result *result)
 {
 	struct iwl_trans_pcie *trans_pcie = IWL_TRANS_GET_PCIE_TRANS(trans);
-	struct iwl_tx_queue_cfg_rsp *rsp;
-	int ret, qid;
-	u32 wr_ptr;
-
-	if (WARN_ON(iwl_rx_packet_payload_len(hcmd->resp_pkt) !=
-		    sizeof(*rsp))) {
-		ret = -EINVAL;
-		goto error_free_resp;
-	}
-
-	rsp = (void *)hcmd->resp_pkt->data;
-	qid = le16_to_cpu(rsp->queue_number);
-	wr_ptr = le16_to_cpu(rsp->write_pointer);
+	int qid = result->qid;
+	int wr_ptr;
 
 	if (qid >= ARRAY_SIZE(trans_pcie->txqs.txq)) {
 		WARN_ONCE(1, "queue index %d unsupported", qid);
-		ret = -EIO;
-		goto error_free_resp;
-	}
-
-	if (test_and_set_bit(qid, trans_pcie->txqs.queue_used)) {
-		WARN_ONCE(1, "queue %d already used", qid);
-		ret = -EIO;
-		goto error_free_resp;
+		return -EIO;
 	}
 
 	if (WARN_ONCE(trans_pcie->txqs.txq[qid],
-		      "queue %d already allocated\n", qid)) {
-		ret = -EIO;
-		goto error_free_resp;
-	}
+		      "queue %d already allocated\n", qid))
+		return -EIO;
 
 	txq->id = qid;
 	trans_pcie->txqs.txq[qid] = txq;
-	wr_ptr &= (trans->mac_cfg->base->max_tfd_queue_size - 1);
+	set_bit(qid, trans_pcie->txqs.queue_used);
+	wr_ptr = result->wr_ptr &
+		 (trans->mac_cfg->base->max_tfd_queue_size - 1);
 
 	/* Place first TFD at index corresponding to start sequence number */
 	txq->read_ptr = wr_ptr;
@@ -1009,27 +990,21 @@ static int iwl_pcie_txq_alloc_response(struct iwl_trans *trans,
 
 	IWL_DEBUG_TX_QUEUES(trans, "Activate queue %d\n", qid);
 
-	iwl_free_resp(hcmd);
-	return qid;
-
-error_free_resp:
-	iwl_free_resp(hcmd);
-	iwl_txq_gen2_free_memory(trans, txq);
-	return ret;
+	return 0;
 }
 
-int iwl_txq_dyn_alloc(struct iwl_trans *trans, u32 flags, u32 sta_mask,
-		      u8 tid, int size, unsigned int timeout)
+int iwl_txq_dyn_alloc(struct iwl_trans *trans, int size,
+		      unsigned int timeout,
+		      int (*add_txq_cmd)(struct iwl_op_mode *op_mode,
+					 const struct iwl_txq_alloc_info *info,
+					 struct iwl_txq_alloc_result *result,
+					 void *data),
+		      void *data)
 {
 	struct iwl_trans_pcie *trans_pcie = IWL_TRANS_GET_PCIE_TRANS(trans);
+	struct iwl_txq_alloc_result result;
+	struct iwl_txq_alloc_info info;
 	struct iwl_txq *txq;
-	union {
-		struct iwl_tx_queue_cfg_cmd old;
-		struct iwl_scd_queue_cfg_cmd new;
-	} cmd;
-	struct iwl_host_cmd hcmd = {
-		.flags = CMD_WANT_SKB,
-	};
 	int ret;
 
 	/* take the min with bytecount table entries allowed */
@@ -1048,9 +1023,8 @@ int iwl_txq_dyn_alloc(struct iwl_trans *trans, u32 flags, u32 sta_mask,
 				break;
 
 			IWL_DEBUG_TX_QUEUES(trans,
-					    "Failed allocating TXQ of size %d for sta mask %x tid %d, ret: %ld\n",
-					    size, sta_mask, tid,
-					    PTR_ERR(txq));
+					    "Failed allocating TXQ of size %d, ret: %ld\n",
+					    size, PTR_ERR(txq));
 			size /= 2;
 		} while (size >= 16);
 	}
@@ -1058,47 +1032,19 @@ int iwl_txq_dyn_alloc(struct iwl_trans *trans, u32 flags, u32 sta_mask,
 	if (IS_ERR(txq))
 		return PTR_ERR(txq);
 
-	if (trans->conf.queue_alloc_cmd_ver == 0) {
-		memset(&cmd.old, 0, sizeof(cmd.old));
-		cmd.old.tfdq_addr = cpu_to_le64(txq->dma_addr);
-		cmd.old.byte_cnt_addr = cpu_to_le64(txq->bc_tbl.dma);
-		cmd.old.cb_size = cpu_to_le32(TFD_QUEUE_CB_SIZE(size));
-		cmd.old.flags = cpu_to_le16(flags | TX_QUEUE_CFG_ENABLE_QUEUE);
-		cmd.old.tid = tid;
+	info.tfdq_dram_addr = txq->dma_addr;
+	info.bc_dram_addr = txq->bc_tbl.dma;
+	info.cb_size = TFD_QUEUE_CB_SIZE(size);
 
-		if (hweight32(sta_mask) != 1) {
-			ret = -EINVAL;
-			goto error;
-		}
-		cmd.old.sta_id = ffs(sta_mask) - 1;
-
-		hcmd.id = SCD_QUEUE_CFG;
-		hcmd.len[0] = sizeof(cmd.old);
-		hcmd.data[0] = &cmd.old;
-	} else if (trans->conf.queue_alloc_cmd_ver == 3 ||
-		   trans->conf.queue_alloc_cmd_ver == 4) {
-		memset(&cmd.new, 0, sizeof(cmd.new));
-		cmd.new.operation = cpu_to_le32(IWL_SCD_QUEUE_ADD);
-		cmd.new.u.add.tfdq_dram_addr = cpu_to_le64(txq->dma_addr);
-		cmd.new.u.add.bc_dram_addr = cpu_to_le64(txq->bc_tbl.dma);
-		cmd.new.u.add.cb_size = cpu_to_le32(TFD_QUEUE_CB_SIZE(size));
-		cmd.new.u.add.flags = cpu_to_le32(flags);
-		cmd.new.u.add.sta_mask = cpu_to_le32(sta_mask);
-		cmd.new.u.add.tid = tid;
-
-		hcmd.id = WIDE_ID(DATA_PATH_GROUP, SCD_QUEUE_CONFIG_CMD);
-		hcmd.len[0] = sizeof(cmd.new);
-		hcmd.data[0] = &cmd.new;
-	} else {
-		ret = -EOPNOTSUPP;
-		goto error;
-	}
-
-	ret = iwl_trans_send_cmd(trans, &hcmd);
+	ret = add_txq_cmd(trans->op_mode, &info, &result, data);
 	if (ret)
 		goto error;
 
-	return iwl_pcie_txq_alloc_response(trans, txq, &hcmd);
+	ret = iwl_txq_dyn_activate(trans, txq, &result);
+	if (ret)
+		goto error;
+
+	return result.qid;
 
 error:
 	iwl_txq_gen2_free_memory(trans, txq);

@@ -418,10 +418,6 @@ iwl_mld_configure_trans(struct iwl_op_mode *op_mode)
 	trans->conf.command_groups = iwl_mld_groups;
 	trans->conf.command_groups_size = ARRAY_SIZE(iwl_mld_groups);
 	trans->conf.fw_reset_handshake = true;
-	trans->conf.queue_alloc_cmd_ver =
-		iwl_fw_lookup_cmd_ver(mld->fw, WIDE_ID(DATA_PATH_GROUP,
-						       SCD_QUEUE_CONFIG_CMD),
-				      0);
 	trans->conf.cb_data_offs = offsetof(struct ieee80211_tx_info,
 					    driver_data[2]);
 	trans->conf.fseq_img = &mld->fw->fseq;

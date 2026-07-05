@@ -905,8 +905,13 @@ void iwl_trans_set_q_ptrs(struct iwl_trans *trans, int queue, int ptr)
 }
 IWL_EXPORT_SYMBOL(iwl_trans_set_q_ptrs);
 
-int iwl_trans_txq_alloc(struct iwl_trans *trans, u32 flags, u32 sta_mask,
-			u8 tid, int size, unsigned int wdg_timeout)
+int iwl_trans_txq_alloc(struct iwl_trans *trans, int size,
+			unsigned int wdg_timeout,
+			int (*add_txq_cmd)(struct iwl_op_mode *op_mode,
+					   const struct iwl_txq_alloc_info *info,
+					   struct iwl_txq_alloc_result *result,
+					   void *data),
+			void *data)
 {
 	might_sleep();
 
@@ -916,8 +921,9 @@ int iwl_trans_txq_alloc(struct iwl_trans *trans, u32 flags, u32 sta_mask,
 
 	if (WARN_ON_ONCE(!trans->ops->txq_alloc))
 		return -EOPNOTSUPP;
-	return trans->ops->txq_alloc(trans, flags, sta_mask, tid,
-				     size, wdg_timeout);
+
+	return trans->ops->txq_alloc(trans, size, wdg_timeout, add_txq_cmd,
+				     data);
 }
 IWL_EXPORT_SYMBOL(iwl_trans_txq_alloc);
 

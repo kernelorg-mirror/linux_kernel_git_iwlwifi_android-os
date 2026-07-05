@@ -67,8 +67,8 @@ static int iwl_mld_wonder_alloc_txq(struct iwl_mld *mld,
 	size = max_t(u32, IWL_MGMT_QUEUE_SIZE,
 		     mld->trans->mac_cfg->base->min_txq_size);
 
-	queue = iwl_trans_txq_alloc(mld->trans, 0, sta_mask, tid, size,
-				    IWL_WATCHDOG_DISABLED);
+	queue = iwl_mld_alloc_fw_txq(mld, sta_mask, tid, size,
+				     IWL_WATCHDOG_DISABLED);
 	if (queue >= 0)
 		IWL_DEBUG_TX_QUEUES(mld,
 				    "Enabling TXQ #%d for sta mask 0x%x tid %d\n",
@@ -272,8 +272,8 @@ static int iwl_mld_wonder_alloc_sta_queue(struct iwl_mld *mld,
 	size = max_t(u32, IWL_DEFAULT_QUEUE_SIZE,
 		     mld->trans->mac_cfg->base->min_txq_size);
 
-	queue = iwl_trans_txq_alloc(mld->trans, 0, sta_mask, 0, size,
-				    IWL_WATCHDOG_DISABLED);
+	queue = iwl_mld_alloc_fw_txq(mld, sta_mask, 0, size,
+				     IWL_WATCHDOG_DISABLED);
 	if (queue < 0) {
 		IWL_ERR(mld, "wonder: failed to alloc sta TXQ: %d\n", queue);
 		return queue;

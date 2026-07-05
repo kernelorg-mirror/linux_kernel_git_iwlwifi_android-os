@@ -195,12 +195,73 @@ iwl_mld_get_queue_size(struct iwl_mld *mld, struct ieee80211_txq *txq)
 	return max_size;
 }
 
+struct iwl_mld_txq_alloc_data {
+	u32 sta_mask;
+	u8 tid;
+};
+
+static int iwl_mld_txq_alloc_cmd(struct iwl_op_mode *op_mode,
+				 const struct iwl_txq_alloc_info *info,
+				 struct iwl_txq_alloc_result *result,
+				 void *data)
+{
+	const struct iwl_mld_txq_alloc_data *params = data;
+	struct iwl_mld *mld = IWL_OP_MODE_GET_MLD(op_mode);
+	struct iwl_scd_queue_cfg_cmd cmd = {
+		.operation = cpu_to_le32(IWL_SCD_QUEUE_ADD),
+		.u.add.tfdq_dram_addr = cpu_to_le64(info->tfdq_dram_addr),
+		.u.add.bc_dram_addr = cpu_to_le64(info->bc_dram_addr),
+		.u.add.cb_size = cpu_to_le32(info->cb_size),
+		.u.add.sta_mask = cpu_to_le32(params->sta_mask),
+		.u.add.tid = params->tid,
+	};
+	struct iwl_host_cmd hcmd = {
+		.id = WIDE_ID(DATA_PATH_GROUP, SCD_QUEUE_CONFIG_CMD),
+		.flags = CMD_WANT_SKB,
+		.data = { &cmd, },
+		.len = { sizeof(cmd), },
+	};
+	struct iwl_tx_queue_cfg_rsp *rsp;
+	int ret;
+
+	ret = iwl_mld_send_cmd(mld, &hcmd);
+	if (ret)
+		return ret;
+
+	if (WARN_ON(iwl_rx_packet_payload_len(hcmd.resp_pkt) != sizeof(*rsp))) {
+		ret = -EINVAL;
+		goto out;
+	}
+
+	rsp = (void *)hcmd.resp_pkt->data;
+	result->qid = le16_to_cpu(rsp->queue_number);
+	result->wr_ptr = le16_to_cpu(rsp->write_pointer);
+
+out:
+	iwl_free_resp(&hcmd);
+	return ret;
+}
+
+int iwl_mld_alloc_fw_txq(struct iwl_mld *mld, u32 sta_mask,
+			 u8 tid, int size, unsigned int timeout)
+{
+	struct iwl_mld_txq_alloc_data data = {
+		.sta_mask = sta_mask,
+		.tid = tid,
+	};
+
+	return iwl_trans_txq_alloc(mld->trans, size, timeout,
+				   iwl_mld_txq_alloc_cmd, &data);
+}
+
 static int iwl_mld_allocate_txq(struct iwl_mld *mld, struct ieee80211_txq *txq)
 {
 	u8 tid = txq->tid == IEEE80211_NUM_TIDS ? IWL_MGMT_TID : txq->tid;
 	u32 fw_sta_mask = iwl_mld_fw_sta_id_mask(mld, txq->sta);
 	unsigned int watchdog_timeout;
 	int queue, size;
+
+	lockdep_assert_wiphy(mld->wiphy);
 
 	switch (txq->vif->type) {
 	case NL80211_IFTYPE_AP:		/* STA might go to PS */
@@ -212,17 +273,14 @@ static int iwl_mld_allocate_txq(struct iwl_mld *mld, struct ieee80211_txq *txq)
 		break;
 	}
 
-	lockdep_assert_wiphy(mld->wiphy);
-
 	if (tid == IWL_MGMT_TID)
 		size = max_t(u32, IWL_MGMT_QUEUE_SIZE,
 			     mld->trans->mac_cfg->base->min_txq_size);
 	else
 		size = iwl_mld_get_queue_size(mld, txq);
 
-	queue = iwl_trans_txq_alloc(mld->trans, 0, fw_sta_mask, tid, size,
-				    watchdog_timeout);
-
+	queue = iwl_mld_alloc_fw_txq(mld, fw_sta_mask, tid, size,
+				     watchdog_timeout);
 	if (queue >= 0)
 		IWL_DEBUG_TX_QUEUES(mld,
 				    "Enabling TXQ #%d for sta mask 0x%x tid %d\n",
@@ -237,7 +295,6 @@ static int iwl_mld_add_txq(struct iwl_mld *mld, struct ieee80211_txq *txq)
 
 	lockdep_assert_wiphy(mld->wiphy);
 
-	/* This will alse send the SCD_QUEUE_CONFIG_CMD */
 	id = iwl_mld_allocate_txq(mld, txq);
 	if (id < 0)
 		return id;
@@ -1506,7 +1563,9 @@ int iwl_mld_update_sta_txqs(struct iwl_mld *mld,
 
 	lockdep_assert_wiphy(mld->wiphy);
 
-	if (mld->trans->conf.queue_alloc_cmd_ver >= 4)
+	if (iwl_fw_lookup_cmd_ver(mld->fw,
+				  WIDE_ID(DATA_PATH_GROUP, SCD_QUEUE_CONFIG_CMD),
+				  0) >= 4)
 		cmd.u.modify.flags =
 			cpu_to_le16(IWL_SCD_QUEUE_MODIFY_FLAG_STA_MSK);
 
