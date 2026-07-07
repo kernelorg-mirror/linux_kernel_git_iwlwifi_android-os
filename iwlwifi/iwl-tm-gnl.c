@@ -702,7 +702,8 @@ static int iwl_tm_gnl_cmd_execute(struct iwl_tm_gnl_cmd *cmd_data)
 	}
 
 	if (ret) {
-		IWL_ERR(dev->trans, "%s Error=%d\n", __func__, ret);
+		IWL_ERR(dev->trans, "%s Error=%d cmd=0x%X\n", __func__, ret,
+			cmd_data->cmd);
 		return ret;
 	}
 
@@ -712,7 +713,8 @@ static int iwl_tm_gnl_cmd_execute(struct iwl_tm_gnl_cmd *cmd_data)
 					 &cmd_data->data_out);
 
 	if (ret)
-		IWL_ERR(dev->trans, "%s ret=%d\n", __func__, ret);
+		IWL_ERR(dev->trans, "%s ret=%d cmd=0x%X\n", __func__, ret,
+			cmd_data->cmd);
 	else
 		IWL_DEBUG_INFO(dev->trans, "%s ended Ok\n", __func__);
 	return ret;
