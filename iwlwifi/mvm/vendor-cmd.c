@@ -1564,7 +1564,7 @@ static int iwl_mvm_vendor_add_pasn_sta(struct wiphy *wiphy,
 				       struct wireless_dev *wdev,
 				       const void *data, int data_len)
 {
-	struct nlattr **tb;
+	struct nlattr **tb __free(kfree) = NULL;
 	struct ieee80211_hw *hw = wiphy_to_ieee80211_hw(wiphy);
 	struct iwl_mvm *mvm = IWL_MAC80211_GET_MVM(hw);
 	struct ieee80211_vif *vif = wdev_to_ieee80211_vif(wdev);
@@ -1626,7 +1626,7 @@ static int iwl_mvm_vendor_remove_pasn_sta(struct wiphy *wiphy,
 					  struct wireless_dev *wdev,
 					  const void *data, int data_len)
 {
-	struct nlattr **tb;
+	struct nlattr **tb __free(kfree) = NULL;
 	struct ieee80211_hw *hw = wiphy_to_ieee80211_hw(wiphy);
 	struct iwl_mvm *mvm = IWL_MAC80211_GET_MVM(hw);
 	struct ieee80211_vif *vif = wdev_to_ieee80211_vif(wdev);
