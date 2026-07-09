@@ -128,7 +128,8 @@ static bool ieee80211_key_needs_tailroom(struct ieee80211_key *key)
 	return !(key->flags & KEY_FLAG_UPLOADED_TO_HARDWARE);
 }
 
-static int ieee80211_key_enable_hw_accel(struct ieee80211_key *key)
+static int ieee80211_key_enable_hw_accel(struct ieee80211_key *key,
+					 bool update_tailroom)
 {
 	struct ieee80211_sub_if_data *sdata = key->sdata;
 	struct sta_info *sta;
@@ -145,7 +146,7 @@ static int ieee80211_key_enable_hw_accel(struct ieee80211_key *key)
 		 * so clear that flag now to avoid trying to remove
 		 * it again later.
 		 */
-		if (!ieee80211_key_needs_tailroom(key))
+		if (update_tailroom && !ieee80211_key_needs_tailroom(key))
 			increment_tailroom_need_count(sdata);
 
 		key->flags &= ~KEY_FLAG_UPLOADED_TO_HARDWARE;
@@ -211,7 +212,7 @@ static int ieee80211_key_enable_hw_accel(struct ieee80211_key *key)
 	if (!ret) {
 		key->flags |= KEY_FLAG_UPLOADED_TO_HARDWARE;
 
-		if (!ieee80211_key_needs_tailroom(key))
+		if (update_tailroom && !ieee80211_key_needs_tailroom(key))
 			decrease_tailroom_need_count(sdata, 1);
 
 		WARN_ON((key->conf.flags & IEEE80211_KEY_FLAG_PUT_IV_SPACE) &&
@@ -607,21 +608,37 @@ static int ieee80211_key_replace(struct ieee80211_sub_if_data *sdata,
 			ieee80211_key_disable_hw_accel(old);
 
 			if (new)
-				ret = ieee80211_key_enable_hw_accel(new);
+				ret = ieee80211_key_enable_hw_accel(new, false);
 		}
 	} else {
 		if (!local->wowlan) {
-			ret = ieee80211_key_enable_hw_accel(new);
+			ret = ieee80211_key_enable_hw_accel(new, false);
 		} else if (new->conf.link_id < 0 || !sdata->vif.active_links ||
 			 BIT(new->conf.link_id) & sdata->vif.active_links) {
 			new->flags |= KEY_FLAG_UPLOADED_TO_HARDWARE;
-			if (!ieee80211_key_needs_tailroom(new))
-				decrease_tailroom_need_count(sdata, 1);
 		}
 	}
 
 	if (ret)
 		return ret;
+
+	/*
+	 * The new key only becomes reachable by the TX path - and can thus
+	 * require software crypto tailroom - once it is assigned to the slot
+	 * (possibly not even then, depending on the key and default key, but
+	 * that's too complex to handle here).
+	 *
+	 * This is after it was installed in the device, so that the device
+	 * has it when it's used.
+	 *
+	 * This means that we can do the tailroom-needed accounting here and
+	 * only ever call increment_tailroom_need_count() if needed now, in
+	 * case it's fully offloaded it's not actually needed.
+	 *
+	 * This avoids the RCU synchronize on first key installation.
+	 */
+	if (new && ieee80211_key_needs_tailroom(new))
+		increment_tailroom_need_count(sdata);
 
 	if (new) {
 		spin_lock_bh(&sdata->local->key_lock);
@@ -1031,11 +1048,8 @@ int ieee80211_key_link(struct ieee80211_sub_if_data *sdata,
 		goto out;
 	}
 
-	increment_tailroom_need_count(sdata);
-
 	ret = ieee80211_key_replace(sdata, slot, old_key, key);
 	if (ret) {
-		decrease_tailroom_need_count(sdata, 1);
 		key->local = NULL;
 		key->sdata = NULL;
 		goto out;
@@ -1087,7 +1101,7 @@ void ieee80211_reenable_keys(struct ieee80211_sub_if_data *sdata)
 		list_for_each_entry(key, &sdata->key_list, list) {
 			if (!(key->flags & KEY_FLAG_TAINTED))
 				increment_tailroom_need_count(sdata);
-			ieee80211_key_enable_hw_accel(key);
+			ieee80211_key_enable_hw_accel(key, true);
 		}
 	}
 }
@@ -1717,7 +1731,7 @@ int ieee80211_key_switch_links(struct ieee80211_sub_if_data *sdata,
 		    !(add_links_mask & BIT(key->conf.link_id)))
 			continue;
 
-		ret = ieee80211_key_enable_hw_accel(key);
+		ret = ieee80211_key_enable_hw_accel(key, true);
 		if (ret)
 			return ret;
 	}
