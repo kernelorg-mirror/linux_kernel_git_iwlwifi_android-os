@@ -32,10 +32,14 @@ struct sta_info;
  * @KEY_FLAG_UPLOADED_TO_HARDWARE: Indicates that this key is present
  *	in the hardware for TX crypto hardware acceleration.
  * @KEY_FLAG_TAINTED: Key is tainted and packets should be dropped.
+ * @KEY_FLAG_RX_ONLY: Key is installed into an RX-only key slot, so it's
+ *	never used by the TX path and therefore never affects tailroom
+ *	allocation requirements.
  */
 enum ieee80211_internal_key_flags {
 	KEY_FLAG_UPLOADED_TO_HARDWARE	= BIT(0),
 	KEY_FLAG_TAINTED		= BIT(1),
+	KEY_FLAG_RX_ONLY		= BIT(2),
 };
 
 enum ieee80211_internal_tkip_state {
@@ -147,6 +151,8 @@ struct ieee80211_key_slot {
 	struct link_sta_info *link_sta;
 
 	struct ieee80211_link_data *link;
+
+	bool rx_only;
 };
 
 /**

@@ -118,6 +118,13 @@ static void decrease_tailroom_need_count(struct ieee80211_sub_if_data *sdata,
 	sdata->crypto_tx_tailroom_needed_cnt -= delta;
 }
 
+/* RX-only keys don't need tailroom since that's for TX only */
+static bool ieee80211_key_relevant_for_tailroom(struct ieee80211_key *key)
+{
+	return !(key->flags & KEY_FLAG_RX_ONLY);
+}
+
+/* check if this individual key needs tailroom right now */
 static bool ieee80211_key_needs_tailroom(struct ieee80211_key *key)
 {
 	if (key->conf.flags & (IEEE80211_KEY_FLAG_GENERATE_MMIC |
@@ -146,7 +153,9 @@ static int ieee80211_key_enable_hw_accel(struct ieee80211_key *key,
 		 * so clear that flag now to avoid trying to remove
 		 * it again later.
 		 */
-		if (update_tailroom && !ieee80211_key_needs_tailroom(key))
+		if (update_tailroom &&
+		    ieee80211_key_relevant_for_tailroom(key) &&
+		    !ieee80211_key_needs_tailroom(key))
 			increment_tailroom_need_count(sdata);
 
 		key->flags &= ~KEY_FLAG_UPLOADED_TO_HARDWARE;
@@ -212,7 +221,9 @@ static int ieee80211_key_enable_hw_accel(struct ieee80211_key *key,
 	if (!ret) {
 		key->flags |= KEY_FLAG_UPLOADED_TO_HARDWARE;
 
-		if (update_tailroom && !ieee80211_key_needs_tailroom(key))
+		if (update_tailroom &&
+		    ieee80211_key_relevant_for_tailroom(key) &&
+		    !ieee80211_key_needs_tailroom(key))
 			decrease_tailroom_need_count(sdata, 1);
 
 		WARN_ON((key->conf.flags & IEEE80211_KEY_FLAG_PUT_IV_SPACE) &&
@@ -282,7 +293,8 @@ static void ieee80211_key_disable_hw_accel(struct ieee80211_key *key)
 	    !(sdata->vif.active_links & BIT(key->conf.link_id)))
 		return;
 
-	if (!ieee80211_key_needs_tailroom(key))
+	if (ieee80211_key_relevant_for_tailroom(key) &&
+	    !ieee80211_key_needs_tailroom(key))
 		increment_tailroom_need_count(sdata);
 
 	pubsta = sta ? &sta->sta : NULL;
@@ -515,6 +527,7 @@ int ieee80211_key_slot_lookup(struct ieee80211_sub_if_data *sdata,
 
 		if (cigtk) {
 			slot->key = &slot->link_sta->rx_cigtk[key_idx];
+			slot->rx_only = true;
 			return 0;
 		}
 
@@ -523,6 +536,7 @@ int ieee80211_key_slot_lookup(struct ieee80211_sub_if_data *sdata,
 			      NUM_DEFAULT_MGMT_KEYS +
 			      NUM_DEFAULT_BEACON_KEYS) {
 			slot->key = &slot->link_sta->rx_gtk[key_idx];
+			slot->rx_only = true;
 			return 0;
 		}
 
@@ -637,7 +651,8 @@ static int ieee80211_key_replace(struct ieee80211_sub_if_data *sdata,
 	 *
 	 * This avoids the RCU synchronize on first key installation.
 	 */
-	if (new && ieee80211_key_needs_tailroom(new))
+	if (new && ieee80211_key_relevant_for_tailroom(new) &&
+	    ieee80211_key_needs_tailroom(new))
 		increment_tailroom_need_count(sdata);
 
 	if (new) {
@@ -890,14 +905,16 @@ static void __ieee80211_key_cleanup(struct ieee80211_key *key,
 
 		ieee80211_debugfs_key_remove(key);
 
-		if (delay_tailroom) {
-			/* see ieee80211_delayed_tailroom_dec */
-			sdata->crypto_tx_tailroom_pending_dec++;
-			wiphy_delayed_work_queue(sdata->local->hw.wiphy,
-						 &sdata->dec_tailroom_needed_wk,
-						 HZ / 2);
-		} else {
-			decrease_tailroom_need_count(sdata, 1);
+		if (ieee80211_key_relevant_for_tailroom(key)) {
+			if (delay_tailroom) {
+				/* see ieee80211_delayed_tailroom_dec */
+				sdata->crypto_tx_tailroom_pending_dec++;
+				wiphy_delayed_work_queue(sdata->local->hw.wiphy,
+							 &sdata->dec_tailroom_needed_wk,
+							 HZ / 2);
+			} else {
+				decrease_tailroom_need_count(sdata, 1);
+			}
 		}
 	}
 }
@@ -1030,6 +1047,8 @@ int ieee80211_key_link(struct ieee80211_sub_if_data *sdata,
 	key->local = sdata->local;
 	key->sdata = sdata;
 	key->sta = slot->sta;
+	if (slot->rx_only)
+		key->flags |= KEY_FLAG_RX_ONLY;
 
 	/*
 	 * Assign a unique ID to every key so we can easily prevent mixed
@@ -1099,7 +1118,8 @@ void ieee80211_reenable_keys(struct ieee80211_sub_if_data *sdata)
 
 	if (ieee80211_sdata_running(sdata)) {
 		list_for_each_entry(key, &sdata->key_list, list) {
-			if (!(key->flags & KEY_FLAG_TAINTED))
+			if (ieee80211_key_relevant_for_tailroom(key) &&
+			    !(key->flags & KEY_FLAG_TAINTED))
 				increment_tailroom_need_count(sdata);
 			ieee80211_key_enable_hw_accel(key, true);
 		}
@@ -1606,6 +1626,7 @@ ieee80211_gtk_rekey_add(struct ieee80211_vif *vif,
 
 	slot.sta = sta;
 	slot.link_sta = link_sta;
+	slot.rx_only = true;
 
 	if (cigtk)
 		slot.key = &link_sta->rx_cigtk[idx];
