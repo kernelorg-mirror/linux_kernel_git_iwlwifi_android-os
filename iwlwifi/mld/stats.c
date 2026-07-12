@@ -609,7 +609,7 @@ void iwl_mld_handle_stats_oper_notif(struct iwl_mld *mld,
 				    STATISTICS_OPER_NOTIF, 3) == 3) {
 		const struct iwl_system_statistics_notif_oper_v3 *stats =
 			(void *)&pkt->data;
-		_notif = kzalloc(sizeof(*_notif), GFP_KERNEL);
+		_notif = kzalloc_obj(*_notif);
 
 		if (!_notif)
 			return;

@@ -2871,6 +2871,7 @@ void iwl_mld_handle_rx_queues_sync_notif(struct iwl_mld *mld,
 		wake_up(&mld->rxq_sync.waitq);
 }
 
+#ifdef CONFIG_PM_SLEEP
 void iwl_mld_handle_rsc_notif(struct iwl_mld *mld,
 			      struct iwl_rx_packet *pkt, int queue)
 {
@@ -2892,6 +2893,7 @@ void iwl_mld_handle_rsc_notif(struct iwl_mld *mld,
 
 	iwl_mld_process_rsc_notification(mld, bss_vif, notif, queue);
 }
+#endif /* CONFIG_PM_SLEEP */
 
 static void iwl_mld_no_data_rx(struct iwl_mld *mld,
 			       struct napi_struct *napi,

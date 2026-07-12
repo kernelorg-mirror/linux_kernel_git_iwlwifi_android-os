@@ -1714,6 +1714,7 @@ enum mac80211_rx_encoding {
 	RX_ENC_HE,
 	RX_ENC_EHT,
 	RX_ENC_UHR,
+	RX_ENC_S1G,
 };
 
 /**
@@ -1790,18 +1791,18 @@ struct ieee80211_rx_status {
 			u8 he_ru:3;
 			u8 he_gi:2;
 			u8 he_dcm:1;
-		};
+		} __packed;
 		struct {
 			u8 ru:4;
 			u8 gi:2;
-		} eht;
+		} __packed eht;
 		struct {
 			u8 ru:4;
 			u8 gi:2;
 			u8 elr:1;
 			u8 im:1;
-		} uhr;
-	};
+		} __packed uhr;
+	} __packed;
 	u8 rate_idx;
 	u8 nss;
 	u8 rx_flags;
@@ -1813,6 +1814,8 @@ struct ieee80211_rx_status {
 	u8 zero_length_psdu_type;
 	u8 link_valid:1, link_id:4;
 };
+
+static_assert(sizeof(struct ieee80211_rx_status) <= sizeof_field(struct sk_buff, cb));
 
 static inline u32
 ieee80211_rx_status_to_khz(struct ieee80211_rx_status *rx_status)
@@ -2022,12 +2025,16 @@ enum ieee80211_vif_flags {
  * @IEEE80211_OFFLOAD_DECAP_ENABLED: rx encapsulation offload is enabled
  *	The driver supports passing received 802.11 frames as 802.3 frames to
  *	mac80211.
+ * @IEEE80211_OFFLOAD_ENCAP_MCAST: tx multicast encapsulation offload is enabled
+ *	The driver supports sending multicast frames passed as 802.3 frames
+ *	by mac80211.
  */
 
 enum ieee80211_offload_flags {
 	IEEE80211_OFFLOAD_ENCAP_ENABLED		= BIT(0),
 	IEEE80211_OFFLOAD_ENCAP_4ADDR		= BIT(1),
 	IEEE80211_OFFLOAD_DECAP_ENABLED		= BIT(2),
+	IEEE80211_OFFLOAD_ENCAP_MCAST		= BIT(3),
 };
 
 #define IEEE80211_NAN_AVAIL_BLOB_MAX_LEN	54
@@ -2750,8 +2757,8 @@ struct ieee80211_sta {
 	struct ieee80211_txq *txq[IEEE80211_NUM_TIDS + 1];
 
 	u16 valid_links;
-	bool epp_peer;
 	u16 ext_mld_capa_ops;
+	bool epp_peer;
 
 	struct ieee80211_link_sta deflink;
 	struct ieee80211_link_sta __rcu *link[IEEE80211_MLD_MAX_NUM_LINKS];
@@ -7936,6 +7943,17 @@ void ieee80211_nan_func_match(struct ieee80211_vif *vif,
 			      gfp_t gfp);
 
 /**
+ * ieee80211_nan_sched_update_done - notify that NAN schedule update is done
+ *
+ * This function is called by the driver to notify mac80211 that the NAN
+ * schedule update has been applied.
+ * Must be called with wiphy mutex held. May sleep.
+ *
+ * @vif: &struct ieee80211_vif pointer from the add_interface callback.
+ */
+void ieee80211_nan_sched_update_done(struct ieee80211_vif *vif);
+
+/**
  * ieee80211_nan_cluster_joined - notify about NAN cluster join.
  *
  * This function is used to notify mac80211 about NAN cluster join.
@@ -7948,17 +7966,6 @@ void ieee80211_nan_func_match(struct ieee80211_vif *vif,
 void ieee80211_nan_cluster_joined(struct ieee80211_vif *vif,
 				  const u8 *cluster_id, bool new_cluster,
 				  gfp_t gfp);
-
-/**
- * ieee80211_nan_sched_update_done - notify that NAN schedule update is done
- *
- * This function is called by the driver to notify mac80211 that the NAN
- * schedule update has been applied.
- * Must be called with wiphy mutex held. May sleep.
- *
- * @vif: &struct ieee80211_vif pointer from the add_interface callback.
- */
-void ieee80211_nan_sched_update_done(struct ieee80211_vif *vif);
 
 /**
  * ieee80211_nan_try_evacuate - try to evacuate a NAN channel

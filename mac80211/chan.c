@@ -640,9 +640,7 @@ __ieee80211_recalc_chanctx_min_def(struct ieee80211_local *local,
 	lockdep_assert_wiphy(local->hw.wiphy);
 
 	/* don't optimize non-20MHz based and radar_enabled confs */
-	if (ctx->conf.def.width == NL80211_CHAN_WIDTH_5 ||
-	    ctx->conf.def.width == NL80211_CHAN_WIDTH_10 ||
-	    ctx->conf.def.width == NL80211_CHAN_WIDTH_1 ||
+	if (ctx->conf.def.width == NL80211_CHAN_WIDTH_1 ||
 	    ctx->conf.def.width == NL80211_CHAN_WIDTH_2 ||
 	    ctx->conf.def.width == NL80211_CHAN_WIDTH_4 ||
 	    ctx->conf.def.width == NL80211_CHAN_WIDTH_8 ||
@@ -749,8 +747,14 @@ _ieee80211_recalc_chanctx_min_def(struct ieee80211_local *local,
 				  struct ieee80211_link_data *rsvd_for,
 				  bool check_reserved)
 {
-	u32 changed = __ieee80211_recalc_chanctx_min_def(local, ctx, rsvd_for,
-							 check_reserved);
+	u32 changed;
+
+	/* No recalc for S1G chan ctx's */
+	if (cfg80211_chandef_is_s1g(&ctx->conf.def))
+		return;
+
+	changed = __ieee80211_recalc_chanctx_min_def(local, ctx, rsvd_for,
+						     check_reserved);
 
 	/* check is BW narrowed */
 	ieee80211_chan_bw_change(local, ctx, false, true);

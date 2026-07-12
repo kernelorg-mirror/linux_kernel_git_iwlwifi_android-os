@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0 OR BSD-3-Clause
 /*
- * Copyright (C) 2005-2014, 2018-2026 Intel Corporation
+ * Copyright (C) 2005-2014, 2018-2023, 2025-2026 Intel Corporation
  * Copyright (C) 2013-2015 Intel Mobile Communications GmbH
  * Copyright (C) 2016-2017 Intel Deutschland GmbH
  */
@@ -19,7 +19,6 @@
 #include "iwl-prph.h"
 #include "iwl-io.h"
 #include "iwl-csr.h"
-#include "fw/acpi.h"
 #include "fw/api/nvm-reg.h"
 #include "fw/api/commands.h"
 #include "fw/api/cmdhdr.h"

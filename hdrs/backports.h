@@ -312,3 +312,9 @@ static inline ssize_t __bp_strscpy_pad(char *dst, const char *src, size_t cnt)
 #define __bp_strscpy_pad_pick(dst, src, cnt, fn, ...) fn
 #define strscpy_pad(dst, ...) \
 	__bp_strscpy_pad_pick(dst, ##__VA_ARGS__, __bp_strscpy_pad3, __bp_strscpy_pad2)(dst, __VA_ARGS__)
+
+/*
+ * struct system_device_crosststamp::sys_realtime was renamed to sys_systime
+ * in 7.2 (upstream 5ccaf1e569f0). Map the new name to the old one.
+ */
+#define sys_systime sys_realtime

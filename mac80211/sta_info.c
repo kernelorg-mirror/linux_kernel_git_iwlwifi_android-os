@@ -2611,6 +2611,13 @@ static void sta_stats_decode_rate(struct ieee80211_local *local, u32 rate,
 	case STA_STATS_RATE_TYPE_UHR:
 		WARN_ONCE(1, "UHR not supported on this kernel version\n");
 		break;
+	case STA_STATS_RATE_TYPE_S1G:
+		rinfo->flags = RATE_INFO_FLAGS_S1G_MCS;
+		rinfo->mcs = STA_STATS_GET(S1G_MCS, rate);
+		rinfo->nss = STA_STATS_GET(S1G_NSS, rate);
+		if (STA_STATS_GET(SGI, rate))
+			rinfo->flags |= RATE_INFO_FLAGS_SHORT_GI;
+		break;
 	}
 }
 
@@ -3264,7 +3271,10 @@ void sta_set_sinfo(struct sta_info *sta, struct station_info *sinfo,
 		struct link_sta_info *link_sta;
 		int link_id;
 
-		ether_addr_copy(sinfo->mld_addr, sta->addr);
+		sinfo->mlo_params_valid = true;
+		sinfo->assoc_link_id = sta->deflink.link_id;
+		if (sta->sta.mlo)
+			ether_addr_copy(sinfo->mld_addr, sta->addr);
 
 		/* assign valid links first for iteration */
 		sinfo->valid_links = sta->sta.valid_links;
@@ -3522,6 +3532,23 @@ static u8 ieee80211_sta_nss_capability(struct link_sta_info *link_sta)
 void ieee80211_sta_init_nss_bw_capa(struct link_sta_info *link_sta,
 				    struct cfg80211_chan_def *chandef)
 {
+	/*
+	 * TODO: The entirety of the STA Tx/Rx bandwidth handling
+	 * assumes 20MHz based widths, so for now don't initialise
+	 * pubsta->bandwidth for S1G bands. Since enum
+	 * ieee80211_sta_rx_bandwidth is ordered, we will probably
+	 * need to introduce ieee80211_s1g_sta_rx_bandwidth with
+	 * S1G widths and associated S1G specific code. Additionally,
+	 * existing S1G hardware is all 1SS, in the future if hardware
+	 * starts supporting >1SS this should be implemented in
+	 * ieee80211_sta_nss_capability().
+	 */
+	if (cfg80211_chandef_is_s1g(chandef)) {
+		link_sta->capa_nss = 1;
+		link_sta->pub->rx_nss = 1;
+		return;
+	}
+
 	link_sta->capa_nss = ieee80211_sta_nss_capability(link_sta);
 	link_sta->pub->rx_nss = link_sta->capa_nss;
 

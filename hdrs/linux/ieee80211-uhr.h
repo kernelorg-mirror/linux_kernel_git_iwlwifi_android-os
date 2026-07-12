@@ -533,6 +533,7 @@ static inline bool ieee80211_uhr_capa_size_ok(const u8 *data, u8 len,
 
 /**
  * ieee80211_uhr_capa_get_om_pu_to_us - get OM parameter update timeout in usec
+ * @cap: the UHR capability element, size must be validated
  *
  * Return: the OM parameter update timeout in usec, or -1 if it's not valid
  */
