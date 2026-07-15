@@ -234,6 +234,9 @@ int iwl_drv_switch_op_mode(struct iwl_drv *drv, const char *new_op_name)
 	_iwl_op_mode_stop(drv);
 	list_move_tail(&drv->list, &new_op->drv);
 
+	/* Make sure the opmode gets a clean conf */
+	memset(&drv->trans->conf, 0, sizeof(drv->trans->conf));
+
 	if (new_op->ops) {
 		drv->op_mode = _iwl_op_mode_start(drv, new_op);
 		if (!drv->op_mode) {
