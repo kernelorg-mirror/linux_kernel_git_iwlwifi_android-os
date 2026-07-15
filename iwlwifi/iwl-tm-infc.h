@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0 OR BSD-3-Clause */
 /*
- * Copyright (C) 2010-2014, 2018-2025 Intel Corporation
+ * Copyright (C) 2010-2014, 2018-2026 Intel Corporation
  * Copyright (C) 2013-2015 Intel Mobile Communications GmbH
  * Copyright (C) 2015-2017 Intel Deutschland GmbH
  */
@@ -124,7 +124,7 @@ enum {
 	IWL_XVT_CMD_ALLOC_DMA,
 	IWL_XVT_CMD_GET_DMA,
 	IWL_XVT_CMD_FREE_DMA,
-	IWL_XVT_CMD_GET_CHIP_ID,
+	IWL_XVT_CMD_GET_CHIP_ID, /* deprecated, no longer supported */
 	IWL_XVT_CMD_APMG_PD_MODE,
 	IWL_XVT_CMD_GET_MAC_ADDR_INFO,
 	IWL_XVT_CMD_MOD_TX_STOP,
@@ -553,14 +553,6 @@ struct iwl_xvt_alloc_dma {
 struct iwl_xvt_get_dma {
 	__u32 size;
 	__u8 data[];
-} __packed __aligned(4);
-
-/**
- * struct iwl_xvt_chip_id - get the chip id from SCU
- * @registers:	an array of registers to hold the chip id data
- */
-struct iwl_xvt_chip_id {
-	__u32 registers[3];
 } __packed __aligned(4);
 
 /**

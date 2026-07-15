@@ -31,10 +31,6 @@
 #include "fw/pnvm.h"
 
 #define XVT_UCODE_CALIB_TIMEOUT HZ
-#define XVT_SCU_BASE	(0xe6a00000)
-#define XVT_SCU_SNUM1	(XVT_SCU_BASE + 0x300)
-#define XVT_SCU_SNUM2	(XVT_SCU_SNUM1 + 0x4)
-#define XVT_SCU_SNUM3	(XVT_SCU_SNUM2 + 0x4)
 #define XVT_MAX_TX_COUNT (ULLONG_MAX)
 #define XVT_LMAC_0_STA_ID (0) /* must be aligned with station id added in USC */
 #define XVT_LMAC_1_STA_ID (2) /* must be aligned with station id added in USC */
@@ -1838,26 +1834,6 @@ static int iwl_xvt_free_dma(struct iwl_xvt *xvt,
 	return 0;
 }
 
-static int iwl_xvt_get_chip_id(struct iwl_xvt *xvt,
-			       struct iwl_tm_data *data_out)
-{
-	struct iwl_xvt_chip_id *chip_id;
-
-	chip_id = kmalloc(sizeof(struct iwl_xvt_chip_id), GFP_KERNEL);
-	if (!chip_id)
-		return -ENOMEM;
-
-	chip_id->registers[0] = ioread32((void __force __iomem *)XVT_SCU_SNUM1);
-	chip_id->registers[1] = ioread32((void __force __iomem *)XVT_SCU_SNUM2);
-	chip_id->registers[2] = ioread32((void __force __iomem *)XVT_SCU_SNUM3);
-
-
-	data_out->data = chip_id;
-	data_out->len = sizeof(struct iwl_xvt_chip_id);
-
-	return 0;
-}
-
 static int iwl_xvt_get_mac_addr_info(struct iwl_xvt *xvt,
 				     struct iwl_tm_data *data_out)
 {
@@ -2468,9 +2444,6 @@ int iwl_xvt_user_cmd_execute(struct iwl_testmode *testmode, u32 cmd,
 
 	case IWL_XVT_CMD_FREE_DMA:
 		ret = iwl_xvt_free_dma(xvt, data_in);
-		break;
-	case IWL_XVT_CMD_GET_CHIP_ID:
-		ret = iwl_xvt_get_chip_id(xvt, data_out);
 		break;
 
 	case IWL_XVT_CMD_GET_MAC_ADDR_INFO:

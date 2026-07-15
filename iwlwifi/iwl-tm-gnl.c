@@ -222,11 +222,6 @@ static int iwl_tm_validate_rx_hdrs_mode_req(struct iwl_tm_data *data_in)
 	return 0;
 }
 
-static int iwl_tm_validate_get_chip_id(struct iwl_trans *trans)
-{
-	return 0;
-}
-
 /**
  * iwl_tm_validate_apmg_pd_mode_req() - Validates apmg rx mode request
  * @data_in:	Input to be validated
@@ -670,10 +665,6 @@ static int iwl_tm_gnl_cmd_execute(struct iwl_tm_gnl_cmd *cmd_data)
 		common_op = true;
 		break;
 #endif
-	case IWL_XVT_CMD_GET_CHIP_ID:
-		ret = iwl_tm_validate_get_chip_id(dev->trans);
-		break;
-
 	case IWL_TM_USER_CMD_GET_SIL_STEP:
 		ret = iwl_tm_gnl_get_sil_step(dev->trans, &cmd_data->data_out);
 		common_op = true;
