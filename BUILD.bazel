@@ -48,7 +48,7 @@ DRIVER_CONFIG = [
 ddk_module(
     name = "iwl7000_mac80211",
     srcs = glob([
-        "mac80211/*.c",
+        "mac80211/*.c"
     ]),
     out = "iwl7000_mac80211.ko",
     copts = [
