@@ -647,7 +647,7 @@ static int iwl_dbg_tlv_alloc_fragments(struct iwl_fw_runtime *fwrt,
 	u32 num_frags, remain_pages, frag_pages;
 	int i;
 
-	if (alloc_id < IWL_FW_INI_ALLOCATION_INVALID ||
+	if (alloc_id <= IWL_FW_INI_ALLOCATION_INVALID ||
 	    alloc_id >= IWL_FW_INI_ALLOCATION_NUM)
 		return -EIO;
 
@@ -730,7 +730,7 @@ static int iwl_dbg_tlv_apply_buffer(struct iwl_fw_runtime *fwrt,
 			 IWL_UCODE_TLV_CAPA_DBG_BUF_ALLOC_CMD_SUPP))
 		return 0;
 
-	if (alloc_id < IWL_FW_INI_ALLOCATION_INVALID ||
+	if (alloc_id <= IWL_FW_INI_ALLOCATION_INVALID ||
 	    alloc_id >= IWL_FW_INI_ALLOCATION_NUM)
 		return -EIO;
 
