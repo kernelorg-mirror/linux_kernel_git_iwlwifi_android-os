@@ -5,6 +5,8 @@
 #ifndef __iwl_mld_hcmd_h__
 #define __iwl_mld_hcmd_h__
 
+#include "mld.h"
+
 #ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
 #include "iwl-io.h"
 static void iwl_mld_check_random_nmi(struct iwl_mld *mld)
