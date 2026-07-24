@@ -976,10 +976,6 @@ int iwl_trans_read_mem_no_grab(struct iwl_trans *trans, u32 addr,
 int iwl_trans_read_config32(struct iwl_trans *trans, u32 ofs,
 			    u32 *val);
 
-#ifdef CPTCFG_IWLWIFI_DEBUGFS
-void iwl_trans_debugfs_cleanup(struct iwl_trans *trans);
-#endif
-
 #define iwl_trans_read_mem_bytes(trans, addr, buf, bufsize)	\
 	({							\
 		if (__builtin_constant_p(bufsize))		\

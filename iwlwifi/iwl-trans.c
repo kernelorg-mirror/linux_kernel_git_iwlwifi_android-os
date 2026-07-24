@@ -804,19 +804,6 @@ void iwl_trans_txq_set_shared_mode(struct iwl_trans *trans,
 }
 IWL_EXPORT_SYMBOL(iwl_trans_txq_set_shared_mode);
 
-#ifdef CPTCFG_IWLWIFI_DEBUGFS
-void iwl_trans_debugfs_cleanup(struct iwl_trans *trans)
-{
-	if (trans->mac_cfg->gen3) {
-		IWL_ERR(trans, "%s is not implemented for gen3\n", __func__);
-		/* TODO: add gen3 version (task = debugfs) */
-		return;
-	}
-
-	iwl_trans_pcie_debugfs_cleanup(trans);
-}
-#endif
-
 void iwl_trans_set_q_ptrs(struct iwl_trans *trans, int queue, int ptr)
 {
 	if (WARN_ONCE(trans->state != IWL_TRANS_FW_ALIVE,
