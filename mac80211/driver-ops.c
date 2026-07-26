@@ -621,6 +621,8 @@ int drv_change_sta_links(struct ieee80211_local *local,
 	if (ret)
 		return ret;
 
+	sta->active_links = new_links;
+
 	/* during reconfig don't add it to debugfs again */
 	if (local->in_reconfig || local->resuming)
 		return 0;
