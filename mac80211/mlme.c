@@ -7042,7 +7042,7 @@ static bool ieee80211_assoc_success(struct ieee80211_sub_if_data *sdata,
 		}
 
 		if (link_id != assoc_data->assoc_link_id) {
-			err = ieee80211_sta_activate_link(sta, link_id);
+			err = ieee80211_sta_set_link_valid(sta, link_id);
 			if (err)
 				goto out_err;
 		}
@@ -11406,7 +11406,7 @@ ieee80211_process_ml_reconf_resp(struct ieee80211_sub_if_data *sdata,
 		if (add_links_data->link[link_id].status != WLAN_STATUS_SUCCESS)
 			goto disconnect;
 
-		if (ieee80211_sta_activate_link(sta, link_id))
+		if (ieee80211_sta_set_link_valid(sta, link_id))
 			goto disconnect;
 
 		changed |= ieee80211_link_set_associated(link, cbss);
