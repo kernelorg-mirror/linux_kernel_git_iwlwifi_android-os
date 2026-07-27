@@ -2567,6 +2567,8 @@ next_queue:
 
 #define HOST_COMPLETE_TIMEOUT	(2 * HZ)
 
+#define HOST_COMPLETE_QUICK_TIMEOUT	msecs_to_jiffies(200)
+
 static int iwl_trans_pcie_send_hcmd_sync(struct iwl_trans *trans,
 					 struct iwl_host_cmd *cmd,
 					 const char *cmd_str)
@@ -2598,10 +2600,33 @@ static int iwl_trans_pcie_send_hcmd_sync(struct iwl_trans *trans,
 		return ret;
 	}
 
-	ret = wait_event_timeout(trans_pcie->wait_command_queue,
-				 !test_bit(STATUS_SYNC_HCMD_ACTIVE,
-					   &trans->status),
-				 HOST_COMPLETE_TIMEOUT);
+	/*
+	 * Wait for the command to complete. On the first attempt wait only a
+	 * short time; if it times out, read a word from the config space (to
+	 * poke the device and gather debug info) and retry with the full
+	 * timeout.
+	 */
+	for (int i = 0; i < 2; i++) {
+		ret = wait_event_timeout(trans_pcie->wait_command_queue,
+					 !test_bit(STATUS_SYNC_HCMD_ACTIVE,
+						   &trans->status),
+					 i == 0 ? HOST_COMPLETE_QUICK_TIMEOUT :
+						  HOST_COMPLETE_TIMEOUT);
+		if (ret)
+			break;
+
+		if (i == 0) {
+			u32 val;
+
+			pci_read_config_dword(trans_pcie->pci_dev,
+					      PCI_VENDOR_ID, &val);
+			IWL_ERR(trans,
+				"Command %s: no response after %dms, config space 0x%08x, retrying\n",
+				cmd_str,
+				jiffies_to_msecs(HOST_COMPLETE_QUICK_TIMEOUT),
+				val);
+		}
+	}
 	if (!ret) {
 		IWL_ERR(trans, "Error sending %s: time out after %dms.\n",
 			cmd_str, jiffies_to_msecs(HOST_COMPLETE_TIMEOUT));

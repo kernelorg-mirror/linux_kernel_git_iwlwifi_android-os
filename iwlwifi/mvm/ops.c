@@ -2250,7 +2250,6 @@ static void iwl_op_mode_mvm_device_powered_off(struct iwl_op_mode *op_mode)
 	clear_bit(IWL_MVM_STATUS_IN_D3, &mvm->status);
 	iwl_mvm_restart_cleanup(mvm);
 	mvm->fast_resume = false;
-	mvm->device_powered_off = true;
 	mutex_unlock(&mvm->mutex);
 }
 #else

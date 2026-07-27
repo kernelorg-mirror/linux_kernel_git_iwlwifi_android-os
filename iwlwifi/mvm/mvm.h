@@ -1184,11 +1184,6 @@ struct iwl_mvm {
 
 	/* Indicate if device power save is allowed */
 	u8 ps_disabled; /* u8 instead of bool to ease debugfs_create_* usage */
-	/*
-	 * If the device was powered off during S3 cycle we
-	 * disable power save and never re-enable it.
-	 */
-	bool device_powered_off;
 	/* Indicate if 32Khz external clock is valid */
 	u32 ext_clock_valid;
 
