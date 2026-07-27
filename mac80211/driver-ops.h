@@ -1787,4 +1787,47 @@ drv_nan_peer_sched_changed(struct ieee80211_local *local,
 	return ret;
 }
 
+static inline int drv_st_config(struct ieee80211_sub_if_data *sdata,
+				struct ieee80211_st_config *config)
+{
+	struct ieee80211_local *local = sdata->local;
+	int ret = 0;
+
+	might_sleep();
+	lockdep_assert_wiphy(local->hw.wiphy);
+
+	if (!check_sdata_in_driver(sdata))
+		return -EIO;
+
+	trace_drv_st_config(local, sdata, config);
+	if (local->ops->st_config)
+		ret = local->ops->st_config(&local->hw, &sdata->vif, config);
+	trace_drv_st_config_result(local, sdata, ret, config);
+
+	return ret;
+}
+
+static inline int drv_st_exec(struct ieee80211_sub_if_data *sdata,
+			      struct ieee80211_st_exec *exec)
+{
+	struct ieee80211_local *local = sdata->local;
+	int ret = -EOPNOTSUPP;
+
+	might_sleep();
+	lockdep_assert_wiphy(local->hw.wiphy);
+
+	if (!check_sdata_in_driver(sdata))
+		return -EIO;
+
+	trace_drv_st_exec(local, sdata, exec);
+	if (local->ops->st_exec)
+		ret = local->ops->st_exec(&local->hw, &sdata->vif, exec);
+	trace_drv_st_exec_result(local, sdata, ret, exec);
+
+	if (WARN_ON(ret && exec->step != IEEE80211_ST_EXEC_STEP_ADD_LINKS))
+		return 0;
+
+	return ret;
+}
+
 #endif /* __MAC80211_DRIVER_OPS */

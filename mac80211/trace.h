@@ -3460,6 +3460,159 @@ TRACE_EVENT(drv_nan_peer_sched_changed,
 	)
 );
 
+TRACE_EVENT(drv_st_config,
+	TP_PROTO(struct ieee80211_local *local,
+		 struct ieee80211_sub_if_data *sdata,
+		 struct ieee80211_st_config *config),
+
+	TP_ARGS(local, sdata, config),
+
+	TP_STRUCT__entry(
+		LOCAL_ENTRY
+		VIF_ENTRY
+	),
+
+	TP_fast_assign(
+		LOCAL_ASSIGN;
+		VIF_ASSIGN;
+	),
+
+	TP_printk(LOCAL_PR_FMT  VIF_PR_FMT,
+		  LOCAL_PR_ARG, VIF_PR_ARG)
+);
+
+TRACE_EVENT(drv_st_config_result,
+	TP_PROTO(struct ieee80211_local *local,
+		 struct ieee80211_sub_if_data *sdata,
+		 int ret,
+		 struct ieee80211_st_config *config),
+
+	TP_ARGS(local, sdata, ret, config),
+
+	TP_STRUCT__entry(
+		LOCAL_ENTRY
+		VIF_ENTRY
+		__field(int, ret)
+		__field(u32, mode)
+		__field(unsigned long, timeout)
+	),
+
+	TP_fast_assign(
+		LOCAL_ASSIGN;
+		VIF_ASSIGN;
+		__entry->ret = ret;
+		__entry->mode = config->mode;
+		__entry->timeout = config->timeout;
+	),
+
+	TP_printk(LOCAL_PR_FMT  VIF_PR_FMT
+		  " ret:%d mode:%u timeout:%lu",
+		  LOCAL_PR_ARG, VIF_PR_ARG, __entry->ret, __entry->mode,
+		  __entry->timeout)
+);
+
+TRACE_EVENT(drv_st_exec,
+	TP_PROTO(struct ieee80211_local *local,
+		 struct ieee80211_sub_if_data *sdata,
+		 struct ieee80211_st_exec *exec),
+
+	TP_ARGS(local, sdata, exec),
+
+	TP_STRUCT__entry(
+		LOCAL_ENTRY
+		VIF_ENTRY
+		__field(u32, step)
+		__field(u32, mode)
+		__array(u8, ap_mld_addr, ETH_ALEN)
+		__field(u16, links)
+		__array(u8, bssids, IEEE80211_MLD_MAX_NUM_LINKS * ETH_ALEN)
+		__array(u8, prev_sta_addr, ETH_ALEN)
+		__array(u8, sta_addr, ETH_ALEN)
+		__field(bool, dl_sn_reset)
+		__field(bool, ul_sn_reset)
+		__field(bool, new_ptk)
+		__field(u16, max_dl_ba_buf_size)
+		__array(u16, ul_ba_buf_size, IEEE80211_NUM_TIDS)
+		__field(u16, csa_links)
+	),
+
+	TP_fast_assign(
+		LOCAL_ASSIGN;
+		VIF_ASSIGN;
+		__entry->step = exec->step;
+		__entry->mode = exec->mode;
+		if (exec->ap_mld_addr)
+			memcpy(__entry->ap_mld_addr, exec->ap_mld_addr, ETH_ALEN);
+		else
+			eth_zero_addr(__entry->ap_mld_addr);
+		__entry->links = 0;
+		memset(__entry->bssids, 0, sizeof(__entry->bssids));
+		for (int i = 0; i < IEEE80211_MLD_MAX_NUM_LINKS; i++) {
+			if (!exec->link_conf[i])
+				continue;
+			__entry->links |= BIT(i);
+			memcpy(__entry->bssids + i * ETH_ALEN,
+			       exec->link_conf[i]->bssid, ETH_ALEN);
+		}
+		if (exec->prev_sta)
+			memcpy(__entry->prev_sta_addr, exec->prev_sta->addr, ETH_ALEN);
+		else
+			eth_zero_addr(__entry->prev_sta_addr);
+		if (exec->sta)
+			memcpy(__entry->sta_addr, exec->sta->addr, ETH_ALEN);
+		else
+			eth_zero_addr(__entry->sta_addr);
+		__entry->dl_sn_reset = exec->dl_sn_reset;
+		__entry->ul_sn_reset = exec->ul_sn_reset;
+		__entry->new_ptk = exec->new_ptk;
+		__entry->max_dl_ba_buf_size = exec->max_dl_ba_buf_size;
+		memcpy(__entry->ul_ba_buf_size, exec->ul_ba_buf_size,
+		       sizeof(__entry->ul_ba_buf_size));
+		__entry->csa_links = exec->csa_links;
+	),
+
+	TP_printk(LOCAL_PR_FMT  VIF_PR_FMT
+		  " step:%u mode:%u ap_mld:%pM links:0x%04x prev_sta:%pM sta:%pM dl_sn_reset:%d ul_sn_reset:%d new_ptk:%d max_dl_ba:%u csa_links:0x%04x",
+		  LOCAL_PR_ARG, VIF_PR_ARG,
+		  __entry->step, __entry->mode, __entry->ap_mld_addr,
+		  __entry->links,
+		  __entry->prev_sta_addr, __entry->sta_addr,
+		  __entry->dl_sn_reset, __entry->ul_sn_reset, __entry->new_ptk,
+		  __entry->max_dl_ba_buf_size,
+		  __entry->csa_links)
+);
+
+TRACE_EVENT(drv_st_exec_result,
+	TP_PROTO(struct ieee80211_local *local,
+		 struct ieee80211_sub_if_data *sdata,
+		 int ret,
+		 struct ieee80211_st_exec *exec),
+
+	TP_ARGS(local, sdata, ret, exec),
+
+	TP_STRUCT__entry(
+		LOCAL_ENTRY
+		VIF_ENTRY
+		__field(int, ret)
+		__field(u16, links)
+	),
+
+	TP_fast_assign(
+		LOCAL_ASSIGN;
+		VIF_ASSIGN;
+		__entry->ret = ret;
+		__entry->links = 0;
+		for (int i = 0; i < IEEE80211_MLD_MAX_NUM_LINKS; i++) {
+			if (!exec->link_conf[i])
+				continue;
+			__entry->links |= BIT(i);
+		}
+	),
+
+	TP_printk(LOCAL_PR_FMT  VIF_PR_FMT " ret:%d links:0x%04x",
+		  LOCAL_PR_ARG, VIF_PR_ARG, __entry->ret, __entry->links)
+);
+
 #endif /* !__MAC80211_DRIVER_TRACE || TRACE_HEADER_MULTI_READ */
 
 #undef TRACE_INCLUDE_PATH
