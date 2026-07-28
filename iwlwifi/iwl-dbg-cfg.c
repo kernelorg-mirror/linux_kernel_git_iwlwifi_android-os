@@ -119,7 +119,14 @@ dbg_cfg_load_bin(const char *name, const char *val, struct iwl_dbg_cfg_bin *out)
 	}
 	out->data = data;
 	out->len = len;
-	printk(KERN_INFO "iwlwifi debug config: %d bytes for %s\n", len, name);
+	if (len > 64) {
+		printk(KERN_INFO "iwlwifi debug config: %s\n", name);
+		print_hex_dump(KERN_INFO, "  binary data: ", DUMP_PREFIX_OFFSET,
+			       16, 1, data, len, 0);
+	} else {
+		printk(KERN_INFO "iwlwifi debug config: %s=%*phN\n",
+		       name, len, data);
+	}
 	return 0;
 error:
 	printk(KERN_INFO "iwlwifi debug config: Invalid data for %s\n", name);
