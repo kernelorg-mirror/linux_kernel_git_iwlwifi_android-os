@@ -502,19 +502,18 @@ iwl_mld_fill_supp_rates(struct iwl_mld *mld,
 
 	if (capa->uhr_cap && capa->uhr_cap->has_uhr && capa->own_uhr_cap) {
 		cmd->mode = IWL_TLC_MNG_MODE_UHR;
-		/*
-		 * FIXME: spec currently inherits from EHT but has no
-		 * finer MCS bits. Once that's there, need to add them
-		 * to the bitmaps (and maybe copy this to UHR, or so.)
-		 * For now just assume supported.
-		 */
+		iwl_mld_fill_eht_rates(vif, capa, cmd);
+		/* FIXME: the spec makes this dependent on 20-MHz only STA */
 		for (int nss = 0; nss < IWL_TLC_NSS_MAX; nss++) {
-			for (int bw = 0; bw < IWL_TLC_MCS_PER_BW_NUM_V4; bw++)
+			for (int bw = 0; bw < IWL_TLC_MCS_PER_BW_NUM_V4; bw++) {
+				if (!cmd->ht_rates[nss][bw])
+					continue;
+
 				cmd->ht_rates[nss][bw] |=
 					cpu_to_le32(BIT(17) | BIT(19) |
 						    BIT(20) | BIT(23));
+			}
 		}
-		iwl_mld_fill_eht_rates(vif, capa, cmd);
 	} else if (capa->eht_cap && capa->eht_cap->has_eht &&
 		   capa->own_he_cap && capa->own_eht_cap) {
 		cmd->mode = IWL_TLC_MNG_MODE_EHT;
