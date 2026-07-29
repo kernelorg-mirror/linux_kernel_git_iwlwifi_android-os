@@ -293,6 +293,8 @@ struct iwl_dbg_cfg {
 	IWL_DBG_CFG_BIN(eht_mcs_80)
 	IWL_DBG_CFG_BIN(eht_mcs_160)
 	IWL_DBG_CFG_BIN(eht_mcs_320)
+	IWL_DBG_CFG_BIN(uhr_mac_cap)
+	IWL_DBG_CFG_BIN(uhr_phy_cap)
 	IWL_DBG_CFG_NODEF(bool, eht_disable_320)
 	IWL_DBG_CFG(u32, FW_DBG_DOMAIN)
 	IWL_DBG_CFG_FN(FW_DBG_PRESET, iwl_dbg_cfg_parse_fw_dbg_preset)
