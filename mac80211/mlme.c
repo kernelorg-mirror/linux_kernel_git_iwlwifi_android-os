@@ -10601,7 +10601,7 @@ int ieee80211_mgd_assoc(struct ieee80211_sub_if_data *sdata,
 			 * should this be more if we miss one?
 			 */
 			sdata_info(sdata, "waiting for beacon from %pM\n",
-				   sdata->deflink.u.mgd.bssid);
+				   link->u.mgd.bssid);
 			assoc_data->timeout = TU_TO_EXP_TIME(req->bss->beacon_interval);
 			assoc_data->timeout_started = true;
 			assoc_data->need_beacon = true;
