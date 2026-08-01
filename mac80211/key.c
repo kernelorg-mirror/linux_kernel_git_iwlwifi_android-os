@@ -1146,8 +1146,7 @@ void ieee80211_remove_link_keys(struct ieee80211_link_data *link,
 	lockdep_assert_wiphy(local->hw.wiphy);
 
 	list_for_each_entry_safe(key, tmp, &sdata->key_list, list) {
-		if ((ieee80211_vif_is_mld(&sdata->vif)) &&
-		    (key->conf.link_id != link->link_id))
+		if (key->conf.link_id != link->link_id)
 			continue;
 		ieee80211_key_replace(key->sdata, link, key->sta,
 				      key->conf.flags, key, NULL);
