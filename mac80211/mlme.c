@@ -149,45 +149,6 @@ static int ecw2cw(int ecw)
 	return (1 << ecw) - 1;
 }
 
-static bool
-ieee80211_chandef_he_6ghz_oper_bss(struct ieee80211_sub_if_data *sdata,
-				   struct cfg80211_bss *cbss,
-				   struct cfg80211_chan_def *chandef)
-{
-	const struct ieee80211_he_operation *he_operation;
-	const struct cfg80211_bss_ies *ies;
-	const struct element *elem;
-	bool ret;
-
-	if (ieee80211_hw_check(&sdata->local->hw, STRICT) || !cbss)
-		return false;
-
-	guard(rcu)();
-
-	ies = rcu_dereference(cbss->ies);
-	if (!ies)
-		return false;
-
-	elem = cfg80211_find_ext_elem(WLAN_EID_EXT_HE_OPERATION, ies->data,
-				      ies->len);
-	if (!elem || elem->datalen < sizeof(*he_operation) + 1 ||
-	    elem->datalen < ieee80211_he_oper_size(elem->data + 1))
-		return false;
-
-	he_operation = (const struct ieee80211_he_operation *)(elem->data + 1);
-
-	/* As this is a workaround to allow connection to Wi-Fi 6E APs, check
-	 * only for HE operation and do not check EHT operation.
-	 */
-	ret = ieee80211_chandef_he_6ghz_oper(sdata->local, he_operation, NULL,
-					     chandef);
-	if (ret)
-		sdata_info(sdata,
-			   "Using HE 6 GHz operation information from BSS elems\n");
-
-	return ret;
-}
-
 static bool ieee80211_chandef_usable(struct ieee80211_sub_if_data *sdata,
 				     const struct cfg80211_chan_def *chandef,
 				     u32 prohibited_flags)
@@ -208,7 +169,6 @@ struct ieee80211_determine_ap_chan_data {
 	struct ieee80211_channel *channel;
 	const struct ieee802_11_elems *elems;
 	const struct ieee80211_conn_settings *conn;
-	struct cfg80211_bss *cbss;
 	u32 vht_cap_info;
 	bool ignore_ht_channel_mismatch;
 	const struct cfg80211_chan_def *cur_chandef;
@@ -291,21 +251,7 @@ ieee80211_determine_ap_chan(struct ieee80211_sub_if_data *sdata,
 		if (!ieee80211_chandef_he_6ghz_oper(sdata->local, he_oper,
 						    eht_oper, chandef)) {
 			sdata_info(sdata, "bad HE/EHT 6 GHz operation\n");
-
-			/* Some APs, e.g. some versions of Aruba AP-635,
-			 * advertise bad HE operation in their association
-			 * response. In such cases, try to use the HE operation
-			 * from beacon/probe response if possible.
-			 */
-			if (!ieee80211_chandef_he_6ghz_oper_bss(sdata,
-								data->cbss,
-								chandef))
-				return IEEE80211_CONN_MODE_LEGACY;
-
-			/* The above check verifies only HE operation, and
-			 * doesn't check EHT operation, thus set the mode to HE.
-			 */
-			return IEEE80211_CONN_MODE_HE;
+			return IEEE80211_CONN_MODE_LEGACY;
 		}
 
 		if (eht_oper && ieee80211_hw_check(&sdata->local->hw, STRICT)) {
@@ -1150,7 +1096,6 @@ ieee80211_determine_chan_mode(struct ieee80211_sub_if_data *sdata,
 		.vht_cap_info = bss->vht_cap_info,
 		.ignore_ht_channel_mismatch = false,
 		.chandef = ap_chandef,
-		.cbss = cbss,
 		.conn = conn,
 	};
 	int ret;
@@ -1533,8 +1478,7 @@ static void ieee80211_send_uhr_omp_req_dbe(struct ieee80211_sub_if_data *sdata,
 
 static int ieee80211_config_bw(struct ieee80211_link_data *link,
 			       struct ieee802_11_elems *elems,
-			       bool update, u64 *changed, u16 stype,
-			       struct cfg80211_bss *cbss)
+			       bool update, u64 *changed, u16 stype)
 {
 	struct ieee80211_channel *channel = link->conf->chanreq.oper.chan;
 	struct cfg80211_chan_def ap_chandef;
@@ -1544,7 +1488,6 @@ static int ieee80211_config_bw(struct ieee80211_link_data *link,
 		.vht_cap_info = 0,
 		.ignore_ht_channel_mismatch = true,
 		.chandef = &ap_chandef,
-		.cbss = cbss,
 		.elems = elems,
 		.conn = &link->u.mgd.conn,
 		.cur_chandef = &link->conf->chanreq.oper,
@@ -5996,7 +5939,7 @@ static bool ieee80211_assoc_config_link(struct ieee80211_link_data *link,
 				link_id == assoc_data->assoc_link_id,
 				changed,
 				le16_to_cpu(mgmt->frame_control) &
-					IEEE80211_FCTL_STYPE, cbss)) {
+					IEEE80211_FCTL_STYPE)) {
 		ret = false;
 		goto out;
 	}
@@ -8352,7 +8295,7 @@ static void ieee80211_rx_mgmt_beacon(struct ieee80211_link_data *link,
 	changed |= ieee80211_recalc_twt_req(sdata, sband, link, link_sta, elems);
 
 	if (ieee80211_config_bw(link, elems, true, &changed,
-				IEEE80211_STYPE_BEACON, NULL)) {
+				IEEE80211_STYPE_BEACON)) {
 		ieee80211_set_disassoc(sdata, IEEE80211_STYPE_DEAUTH,
 				       WLAN_REASON_DEAUTH_LEAVING,
 				       true, deauth_buf);
