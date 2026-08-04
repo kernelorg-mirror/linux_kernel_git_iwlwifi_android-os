@@ -352,7 +352,6 @@ int iwl_pcie_ctxt_info_v2_alloc(struct iwl_trans *trans,
 	trans_pcie->prph_scratch = prph_scratch;
 
 	/* Allocate IML */
-	trans_pcie->iml_len = fw->iml_len;
 	trans_pcie->iml = dma_alloc_coherent(trans->dev, fw->iml_len,
 					     &trans_pcie->iml_dma_addr,
 					     GFP_KERNEL);
@@ -360,6 +359,7 @@ int iwl_pcie_ctxt_info_v2_alloc(struct iwl_trans *trans,
 		ret = -ENOMEM;
 		goto err_free_ctxt_info;
 	}
+	trans_pcie->iml_len = fw->iml_len;
 
 	memcpy(trans_pcie->iml, fw->iml, fw->iml_len);
 
