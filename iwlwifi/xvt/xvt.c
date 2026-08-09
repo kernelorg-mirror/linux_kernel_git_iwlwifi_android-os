@@ -348,6 +348,10 @@ static void iwl_xvt_reclaim_and_free(struct iwl_xvt *xvt,
 	struct sk_buff *skb;
 	struct iwl_xvt_skb_info *skb_info;
 
+	if (IWL_FW_CHECK(xvt, txq_id >= ARRAY_SIZE(xvt->queue_data),
+			 "Invalid txq_id %d\n", txq_id))
+		return;
+
 	__skb_queue_head_init(&skbs);
 
 	iwl_trans_reclaim(xvt->trans, txq_id, ssn, &skbs, is_flush);
@@ -436,6 +440,10 @@ static void iwl_xvt_txpath_flush(struct iwl_xvt *xvt,
 		int read_before = le16_to_cpu(queue_info->read_before_flush);
 		int read_after = le16_to_cpu(queue_info->read_after_flush);
 		int queue_num = le16_to_cpu(queue_info->queue_num);
+
+		if (IWL_FW_CHECK(xvt, queue_num >= ARRAY_SIZE(xvt->queue_data),
+				 "Invalid queue_num %d\n", queue_num))
+			continue;
 
 		if (tid == IWL_MGMT_TID)
 			tid = IWL_MAX_TID_COUNT;
