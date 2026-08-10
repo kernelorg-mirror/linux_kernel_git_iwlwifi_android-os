@@ -603,9 +603,9 @@ static int iwl_tm_gnl_cmd_execute(struct iwl_tm_gnl_cmd *cmd_data)
 	struct iwl_tm_gnl_dev *dev;
 	bool common_op = false;
 	int ret = 0;
-	mutex_lock(&dev_list_mtx);
+
+	guard(mutex)(&dev_list_mtx);
 	dev = iwl_tm_gnl_get_dev(cmd_data->dev_name);
-	mutex_unlock(&dev_list_mtx);
 	if (!dev)
 		return -ENODEV;
 
@@ -745,9 +745,8 @@ static int iwl_tm_gnl_command_dump(struct iwl_tm_gnl_cmd *cmd_data)
 	struct iwl_tm_gnl_dev *dev;
 	int ret = 0;
 
-	mutex_lock(&dev_list_mtx);
+	guard(mutex)(&dev_list_mtx);
 	dev = iwl_tm_gnl_get_dev(cmd_data->dev_name);
-	mutex_unlock(&dev_list_mtx);
 	if (!dev)
 		return -ENODEV;
 
