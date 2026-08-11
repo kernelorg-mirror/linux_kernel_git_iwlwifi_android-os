@@ -43,6 +43,7 @@ DRIVER_CONFIG = [
     "CONFIG_IWL7000_MLD_MODULE=1",
     "CONFIG_IWL7000_DEBUGFS=1",
     "CONFIG_CFG80211_DEBUGFS=1",
+    "CONFIG_IWL7000_WONDER=1",
 ]
 
 ddk_module(
@@ -137,6 +138,7 @@ ddk_module(
         ":iwl7000_mac80211",
         ":iwlwifi",
         ":iwlwifi_hdrs",
+        "//common-modules/wonder:wonder_headers",
         "//private/desktop-google:main80211_hdrs",
         "//private/desktop-google/net/wireless:cfg80211",
     ],

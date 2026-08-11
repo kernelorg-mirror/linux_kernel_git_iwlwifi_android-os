@@ -59,6 +59,10 @@
 #define CPTCFG_IWL_VENDOR_CMDS 1
 #endif
 
+#ifdef CONFIG_IWL7000_WONDER
+#define CPTCFG_IWLMLD_WONDER 1
+#endif
+
 #define CPTCFG_IWLWIFI_DONT_DUMP_FIFOS 1
 
 #endif
