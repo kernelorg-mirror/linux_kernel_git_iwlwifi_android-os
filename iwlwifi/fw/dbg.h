@@ -337,7 +337,7 @@ void iwl_fw_dbg_clear_monitor_buf(struct iwl_fw_runtime *fwrt);
 static inline void iwl_fw_check_failed_nmi(struct iwl_trans *trans)
 {
 	if (trans->dbg_cfg.FW_MISBEHAVE_NMI)
-		iwl_force_nmi(trans);
+		iwl_trans_force_nmi(trans);
 }
 
 struct iwl_incorrect_object {

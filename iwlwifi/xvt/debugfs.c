@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0 OR BSD-3-Clause
 /*
  * Copyright (C) 2017 Intel Deutschland GmbH
- * Copyright (C) 2018-2024 Intel Corporation
+ * Copyright (C) 2018-2024, 2026 Intel Corporation
  */
 #include "xvt.h"
 #include "fw/dbg.h"
@@ -65,7 +65,7 @@ static ssize_t iwl_dbgfs_fw_restart_write(struct iwl_xvt *xvt, char *buf,
 static ssize_t iwl_dbgfs_fw_nmi_write(struct iwl_xvt *xvt, char *buf,
 				      size_t count, loff_t *ppos)
 {
-	iwl_force_nmi(xvt->trans);
+	iwl_trans_force_nmi(xvt->trans);
 
 	return count;
 }

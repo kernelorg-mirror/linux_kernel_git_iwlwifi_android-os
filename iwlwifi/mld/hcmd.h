@@ -23,7 +23,7 @@ static void iwl_mld_check_random_nmi(struct iwl_mld *mld)
 	random_nmi->nmi_counter++;
 	IWL_ERR(mld, "Forcing NMI via random NMI infra (count %u/%u)\n",
 		random_nmi->nmi_counter, random_nmi->nmi_limit);
-	iwl_force_nmi(mld->trans);
+	iwl_trans_force_nmi(mld->trans);
 }
 #endif
 

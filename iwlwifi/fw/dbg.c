@@ -2055,7 +2055,7 @@ int iwl_fw_dbg_collect(struct iwl_fw_runtime *fwrt,
 		if (trigger->flags & IWL_FW_DBG_FORCE_RESTART) {
 			IWL_WARN(fwrt, "Force restart: trigger %d fired.\n",
 				 trig);
-			iwl_force_nmi(fwrt->trans);
+			iwl_trans_force_nmi(fwrt->trans);
 			return 0;
 		}
 
@@ -2253,7 +2253,7 @@ static void iwl_fw_dbg_collect_sync(struct iwl_fw_runtime *fwrt, u8 wk_idx)
 	}
 
 	if (fwrt->trans->dbg.last_tp_resetfw == IWL_FW_INI_RESET_FW_MODE_STOP_FW_ONLY)
-		iwl_force_nmi(fwrt->trans);
+		iwl_trans_force_nmi(fwrt->trans);
 
 #ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
 	goto out;
