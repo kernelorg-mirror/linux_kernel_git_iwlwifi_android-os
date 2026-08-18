@@ -85,7 +85,6 @@ ddk_module(
         "iwlwifi/cfg/*.c",
         "iwlwifi/fw/*.c",
         "iwlwifi/pcie/*.c",
-        "iwlwifi/pcie/*/*.c",
     ]),
     out = "iwlwifi.ko",
     copts = [
