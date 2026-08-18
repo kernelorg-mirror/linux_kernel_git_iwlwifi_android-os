@@ -820,7 +820,7 @@ IWL_EXPORT_SYMBOL(iwl_trans_is_pm_supported);
 
 bool iwl_trans_is_ltr_enabled(struct iwl_trans *trans)
 {
-	return iwl_pcie_gen1_2_is_ltr_enabled(trans);
+	return iwl_pcie_is_ltr_enabled(trans);
 }
 IWL_EXPORT_SYMBOL(iwl_trans_is_ltr_enabled);
 

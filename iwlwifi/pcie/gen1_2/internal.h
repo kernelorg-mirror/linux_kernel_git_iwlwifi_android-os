@@ -1241,7 +1241,7 @@ static inline bool iwl_pcie_gen1_is_pm_supported(struct iwl_trans *trans)
 	return trans_pcie->pm_support;
 }
 
-static inline bool iwl_pcie_gen1_2_is_ltr_enabled(struct iwl_trans *trans)
+static inline bool iwl_pcie_is_ltr_enabled(struct iwl_trans *trans)
 {
 	struct iwl_trans_pcie *trans_pcie = IWL_TRANS_GET_PCIE_TRANS(trans);
 
