@@ -826,7 +826,7 @@ IWL_EXPORT_SYMBOL(iwl_trans_is_ltr_enabled);
 
 int iwl_trans_activate_nic(struct iwl_trans *trans)
 {
-	return iwl_pcie_gen1_2_activate_nic(trans);
+	return iwl_pcie_activate_nic(trans);
 }
 IWL_EXPORT_SYMBOL(iwl_trans_activate_nic);
 
