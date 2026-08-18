@@ -862,7 +862,7 @@ static inline u16 iwl_txq_gen1_tfd_tb_get_len(struct iwl_trans *trans,
 }
 
 static inline struct iwl_device_tx_cmd *
-iwl_pcie_gen1_2_alloc_tx_cmd(struct iwl_trans *trans)
+iwl_pcie_alloc_tx_cmd(struct iwl_trans *trans)
 {
 	struct iwl_trans_pcie *trans_pcie = IWL_TRANS_GET_PCIE_TRANS(trans);
 
@@ -870,8 +870,8 @@ iwl_pcie_gen1_2_alloc_tx_cmd(struct iwl_trans *trans)
 }
 
 static inline void
-iwl_pcie_gen1_2_free_tx_cmd(struct iwl_trans *trans,
-			    struct iwl_device_tx_cmd *dev_cmd)
+iwl_pcie_free_tx_cmd(struct iwl_trans *trans,
+		     struct iwl_device_tx_cmd *dev_cmd)
 {
 	struct iwl_trans_pcie *trans_pcie = IWL_TRANS_GET_PCIE_TRANS(trans);
 
