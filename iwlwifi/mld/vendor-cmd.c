@@ -181,11 +181,11 @@ static int iwl_mld_vendor_set_dynamic_txp_profile(struct wiphy *wiphy,
 	if (!mld->fw_status.running)
 		return 0;
 
-	err = iwl_mld_config_sar_profile(mld, chain_a, chain_b);
+	err = iwl_mld_config_sar_profiles(mld, chain_a, chain_b);
 
 	if (err > 0)
 		/* For SAR validation purpose we need to track the exact return
-		 * value of iwl_mld_sar_select_profile, mostly to differentiate
+		 * value of iwl_mld_config_sar_profiles, mostly to differentiate
 		 * between general SAR failure and the case of WRDS disable
 		 * (it is illegal if WRDS doesn't exist but WGDS does).
 		 * Since nl80211 forbids a positive number as a return value,

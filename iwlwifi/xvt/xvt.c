@@ -1249,10 +1249,10 @@ int iwl_xvt_sar_select_profile(struct iwl_xvt *xvt, int prof_a, int prof_b)
 	u8 cmd_ver = iwl_fw_lookup_cmd_ver(xvt->fw, cmd_id, 3);
 	void *cmd_data = &old_cmd;
 
-	if (cmd_ver == 11) {
-		len = sizeof(cmd.v11);
+	if (cmd_ver == 12 || cmd_ver == 11) {
+		len = sizeof(cmd.v12);
 		n_subbands = IWL_NUM_SUB_BANDS_V3;
-		per_chain = &cmd.v11.per_chain[0][0][0];
+		per_chain = &cmd.v12.per_chain[0][0][0];
 	} else if (cmd_ver == 10) {
 		len = sizeof(cmd.v10);
 		n_subbands = IWL_NUM_SUB_BANDS_V2;
@@ -1290,7 +1290,8 @@ int iwl_xvt_sar_select_profile(struct iwl_xvt *xvt, int prof_a, int prof_b)
 		cmd_data = &cmd;
 
 	if (iwl_sar_fill_profile(&xvt->fwrt, per_chain, IWL_NUM_CHAIN_TABLES,
-				 n_subbands, prof_a, prof_b))
+				 n_subbands, prof_a, prof_b,
+				 xvt->fwrt.sar_profiles, false))
 		return -ENOENT;
 
 	IWL_DEBUG_RADIO(xvt, "Sending REDUCE_TX_POWER_CMD per chain\n");
