@@ -17,7 +17,6 @@
 #include "iwl-drv.h"
 #include "iwl-prph.h"
 #include "gen1_2/internal.h"
-#include "gen3/trans.h"
 
 #define _IS_A(cfg, _struct) __builtin_types_compatible_p(typeof(cfg),	\
 							 struct _struct)
@@ -790,9 +789,6 @@ static int iwl_pci_probe(struct pci_dev *pdev, const struct pci_device_id *ent)
 		return -EIO;
 	}
 
-	if (mac_cfg->gen3)
-		return iwl_pci_gen3_probe(pdev, ent, mac_cfg, hw_base, hw_rev);
-
 	return iwl_pci_gen1_2_probe(pdev, ent, mac_cfg, hw_base, hw_rev);
 }
 
@@ -802,9 +798,6 @@ static void iwl_pci_remove(struct pci_dev *pdev)
 
 	if (!trans)
 		return;
-
-	if (trans->mac_cfg->gen3)
-		return iwl_pcie_gen3_remove(trans);
 
 	iwl_pcie_gen1_2_remove(trans);
 }

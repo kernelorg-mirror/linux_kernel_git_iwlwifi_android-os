@@ -13,7 +13,6 @@
 #include <linux/dmapool.h>
 #include "fw/api/commands.h"
 #include "pcie/gen1_2/internal.h"
-#include "pcie/gen3/trans.h"
 #include "pcie/iwl-context-info-v2.h"
 
 struct iwl_trans_dev_restart_data {
@@ -334,9 +333,6 @@ IWL_EXPORT_SYMBOL(iwl_trans_send_cmd);
 
 struct iwl_device_tx_cmd *iwl_trans_alloc_tx_cmd(struct iwl_trans *trans)
 {
-	if (WARN_ONCE(trans->mac_cfg->gen3, "NOT IMPLEMENTED\n"))
-		return ERR_PTR(-EINVAL);
-
 	return iwl_pcie_gen1_2_alloc_tx_cmd(trans);
 }
 IWL_EXPORT_SYMBOL(iwl_trans_alloc_tx_cmd);
@@ -344,9 +340,6 @@ IWL_EXPORT_SYMBOL(iwl_trans_alloc_tx_cmd);
 void iwl_trans_free_tx_cmd(struct iwl_trans *trans,
 			   struct iwl_device_tx_cmd *dev_cmd)
 {
-	if (WARN_ONCE(trans->mac_cfg->gen3, "NOT IMPLEMENTED\n"))
-		return;
-
 	iwl_pcie_gen1_2_free_tx_cmd(trans, dev_cmd);
 }
 IWL_EXPORT_SYMBOL(iwl_trans_free_tx_cmd);
@@ -402,10 +395,7 @@ void iwl_trans_op_mode_enter(struct iwl_trans *trans,
 
 	WARN_ON_ONCE(!trans->conf.rx_mpdu_cmd);
 
-	if (trans->mac_cfg->gen3)
-		iwl_pcie_gen3_op_mode_enter(trans);
-	else
-		iwl_pcie_gen1_2_op_mode_enter(trans);
+	iwl_pcie_gen1_2_op_mode_enter(trans);
 }
 IWL_EXPORT_SYMBOL(iwl_trans_op_mode_enter);
 
@@ -415,9 +405,6 @@ int iwl_trans_start_hw(struct iwl_trans *trans)
 
 	clear_bit(STATUS_TRANS_RESET_IN_PROGRESS, &trans->status);
 
-	if (trans->mac_cfg->gen3)
-		return iwl_pcie_gen3_start_hw(trans);
-
 	return iwl_trans_pcie_start_hw(trans);
 }
 IWL_EXPORT_SYMBOL(iwl_trans_start_hw);
@@ -426,9 +413,7 @@ void iwl_trans_op_mode_leave(struct iwl_trans *trans)
 {
 	might_sleep();
 
-	if (trans->mac_cfg->gen3)
-		iwl_pcie_gen3_op_mode_leave(trans);
-	else if (trans->mac_cfg->gen2)
+	if (trans->mac_cfg->gen2)
 		iwl_trans_pcie_gen2_op_mode_leave(trans);
 	else
 		iwl_trans_pcie_op_mode_leave(trans);
@@ -443,61 +428,39 @@ IWL_EXPORT_SYMBOL(iwl_trans_op_mode_leave);
 
 void iwl_trans_write8(struct iwl_trans *trans, u32 ofs, u8 val)
 {
-	if (trans->mac_cfg->gen3)
-		iwl_trans_pcie_gen3_write8(trans, ofs, val);
-	else
-		iwl_trans_pcie_write8(trans, ofs, val);
+	iwl_trans_pcie_write8(trans, ofs, val);
 }
 
 void iwl_trans_write32(struct iwl_trans *trans, u32 ofs, u32 val)
 {
-	if (trans->mac_cfg->gen3)
-		iwl_trans_pcie_gen3_write32(trans, ofs, val);
-	else
-		iwl_trans_pcie_write32(trans, ofs, val);
+	iwl_trans_pcie_write32(trans, ofs, val);
 }
 
 u32 iwl_trans_read32(struct iwl_trans *trans, u32 ofs)
 {
-	if (trans->mac_cfg->gen3)
-		return iwl_trans_pcie_gen3_read32(trans, ofs);
-
 	return iwl_trans_pcie_read32(trans, ofs);
 }
 
 u32 iwl_trans_read_prph(struct iwl_trans *trans, u32 ofs)
 {
-	if (trans->mac_cfg->gen3)
-		return iwl_trans_pcie_gen3_read_prph(trans, ofs);
-
 	return iwl_trans_pcie_read_prph(trans, ofs);
 }
 
 void iwl_trans_write_prph(struct iwl_trans *trans, u32 ofs, u32 val)
 {
-	if (trans->mac_cfg->gen3)
-		return iwl_trans_pcie_gen3_write_prph(trans, ofs, val);
-
 	return iwl_trans_pcie_write_prph(trans, ofs, val);
 }
 
 int iwl_trans_read_mem(struct iwl_trans *trans, u32 addr,
 		       void *buf, int dwords)
 {
-	if (trans->mac_cfg->gen3)
-		return iwl_trans_pcie_gen3_read_mem(trans, addr, buf, dwords);
-	else
-		return iwl_trans_pcie_read_mem(trans, addr, buf, dwords);
+	return iwl_trans_pcie_read_mem(trans, addr, buf, dwords);
 }
 IWL_EXPORT_SYMBOL(iwl_trans_read_mem);
 
 int iwl_trans_read_mem_no_grab(struct iwl_trans *trans, u32 addr,
 			       void *buf, u32 dwords)
 {
-	if (trans->mac_cfg->gen3)
-		return iwl_trans_pcie_gen3_read_mem_no_grab(trans, addr,
-							    buf, dwords);
-
 	return iwl_trans_pcie_read_mem_no_grab(trans, addr, buf, dwords);
 }
 
@@ -522,9 +485,6 @@ IWL_EXPORT_SYMBOL(iwl_trans_write_mem);
 
 void iwl_trans_set_pmi(struct iwl_trans *trans, bool state)
 {
-	if (WARN_ONCE(trans->mac_cfg->gen3,
-		      "iwl_trans_set_pmi() is not supported in gen3 devices\n"))
-		return;
 	if (state)
 		set_bit(STATUS_TPOWER_PMI, &trans->status);
 	else
@@ -534,9 +494,6 @@ IWL_EXPORT_SYMBOL(iwl_trans_set_pmi);
 
 int iwl_trans_sw_reset(struct iwl_trans *trans)
 {
-	if (trans->mac_cfg->gen3)
-		return iwl_pcie_gen3_sw_reset(trans, true);
-
 	return iwl_trans_pcie_sw_reset(trans, true);
 }
 
@@ -584,46 +541,31 @@ int iwl_trans_write_imr_mem(struct iwl_trans *trans, u32 dst_addr,
 void iwl_trans_set_bits_mask(struct iwl_trans *trans, u32 reg,
 			     u32 mask, u32 value)
 {
-	if (trans->mac_cfg->gen3)
-		iwl_trans_pcie_gen3_set_bits_mask(trans, reg, mask, value);
-	else
-		iwl_trans_pcie_set_bits_mask(trans, reg, mask, value);
+	iwl_trans_pcie_set_bits_mask(trans, reg, mask, value);
 }
 IWL_EXPORT_SYMBOL(iwl_trans_set_bits_mask);
 
 int iwl_trans_read_config32(struct iwl_trans *trans, u32 ofs,
 			    u32 *val)
 {
-	if (trans->mac_cfg->gen3)
-		return iwl_trans_pcie_gen3_read_config32(trans, ofs, val);
-
 	return iwl_trans_pcie_read_config32(trans, ofs, val);
 }
 
 bool iwl_trans_grab_nic_access(struct iwl_trans *trans)
 {
-	if (trans->mac_cfg->gen3)
-		return iwl_trans_pcie_gen3_grab_nic_access(trans);
-	else
-		return iwl_trans_pcie_grab_nic_access(trans);
+	return iwl_trans_pcie_grab_nic_access(trans);
 }
 IWL_EXPORT_SYMBOL(iwl_trans_grab_nic_access);
 
 void iwl_trans_resched_with_nic_access(struct iwl_trans *trans)
 {
-	if (trans->mac_cfg->gen3)
-		iwl_trans_pcie_gen3_resched_with_nic_access(trans);
-	else
-		iwl_trans_pcie_resched_with_nic_access(trans);
+	iwl_trans_pcie_resched_with_nic_access(trans);
 }
 
 void __releases(nic_access)
 iwl_trans_release_nic_access(struct iwl_trans *trans)
 {
-	if (trans->mac_cfg->gen3)
-		iwl_trans_pcie_gen3_release_nic_access(trans);
-	else
-		iwl_trans_pcie_release_nic_access(trans);
+	iwl_trans_pcie_release_nic_access(trans);
 }
 IWL_EXPORT_SYMBOL(iwl_trans_release_nic_access);
 
@@ -869,7 +811,7 @@ void iwl_trans_set_reduce_power(struct iwl_trans *trans,
 
 bool iwl_trans_is_pm_supported(struct iwl_trans *trans)
 {
-	if (WARN_ON(trans->mac_cfg->gen2 || trans->mac_cfg->gen3))
+	if (WARN_ON(trans->mac_cfg->gen2))
 		return false;
 
 	return iwl_pcie_gen1_is_pm_supported(trans);
@@ -878,18 +820,12 @@ IWL_EXPORT_SYMBOL(iwl_trans_is_pm_supported);
 
 bool iwl_trans_is_ltr_enabled(struct iwl_trans *trans)
 {
-	if (WARN_ON(trans->mac_cfg->gen3))
-		return false;
-
 	return iwl_pcie_gen1_2_is_ltr_enabled(trans);
 }
 IWL_EXPORT_SYMBOL(iwl_trans_is_ltr_enabled);
 
 int iwl_trans_activate_nic(struct iwl_trans *trans)
 {
-	if (trans->mac_cfg->gen3)
-		return iwl_pcie_gen3_activate_nic(trans);
-
 	return iwl_pcie_gen1_2_activate_nic(trans);
 }
 IWL_EXPORT_SYMBOL(iwl_trans_activate_nic);

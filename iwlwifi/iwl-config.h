@@ -349,7 +349,6 @@ enum iwl_mac_cfg_ltr_delay {
  * @xtal_latency: power up latency to get the xtal stabilized
  * @extra_phy_cfg_flags: extra configuration flags to pass to the PHY
  * @gen2: 22000 and on transport operation
- * @gen3: blazar and on transport operation
  * @mq_rx_supported: multi-queue rx support
  * @integrated: discrete or integrated
  * @low_latency_xtal: use the low latency xtal if supported
@@ -364,7 +363,6 @@ struct iwl_mac_cfg {
 	u32 xtal_latency;
 	u32 extra_phy_cfg_flags;
 	u32 gen2:1,
-	    gen3:1,
 	    mq_rx_supported:1,
 	    integrated:1,
 	    low_latency_xtal:1,

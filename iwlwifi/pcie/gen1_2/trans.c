@@ -4097,9 +4097,6 @@ static void iwl_pcie_recheck_me_status(struct work_struct *wk)
 	trans_pcie->me_present = !!(val & CSR_HW_IF_CONFIG_REG_IAMT_UP);
 }
 
-/* TODO: relevant for blazar and later, remove when gen3 is active
- * (task=clean_up_old)
- */
 static void iwl_pcie_check_me_status(struct iwl_trans *trans)
 {
 	struct iwl_trans_pcie *trans_pcie = IWL_TRANS_GET_PCIE_TRANS(trans);
