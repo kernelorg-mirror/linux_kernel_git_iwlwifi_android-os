@@ -83,8 +83,8 @@ static void iwl_tm_execute_reg_ops(struct iwl_testmode *testmode,
 			read_idx++;
 		} else {
 			/* IWL_TM_REG_OP_WRITE is the only possible option */
-			iwl_write32(testmode->trans, cur_op->address,
-				    cur_op->value);
+			iwl_trans_write32(testmode->trans, cur_op->address,
+					  cur_op->value);
 		}
 	}
 }
@@ -256,9 +256,9 @@ static int iwl_tm_indirect_write(struct iwl_testmode *testmode,
 				mutex_unlock(testmode->mutex);
 				return -EBUSY;
 			}
-			iwl_write32(trans, HBUS_TARG_PRPH_WADDR,
-				    (addr & 0x000FFFFF) | ((size - 1) << 24));
-			iwl_write32(trans, HBUS_TARG_PRPH_WDAT, val);
+			iwl_trans_write32(trans, HBUS_TARG_PRPH_WADDR,
+					  (addr & 0x000FFFFF) | ((size - 1) << 24));
+			iwl_trans_write32(trans, HBUS_TARG_PRPH_WDAT, val);
 			iwl_trans_release_nic_access(trans);
 		} else {
 			if (size % sizeof(u32)) {

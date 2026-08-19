@@ -44,7 +44,7 @@ static void iwl_dump_host_monitor_block(struct iwl_trans *trans,
 	int i;
 
 	IWL_ERR(trans, "Host monitor block 0x%x vector 0x%x\n", block, vec);
-	iwl_write32(trans, CSR_MONITOR_CFG_REG, (block << 8) | vec);
+	iwl_trans_pcie_write32(trans, CSR_MONITOR_CFG_REG, (block << 8) | vec);
 	for (i = 0; i < iter; i++)
 		IWL_ERR(trans, "    value [iter %d]: 0x%08x\n",
 			i, iwl_read32(trans, CSR_MONITOR_STATUS_REG));
@@ -170,16 +170,16 @@ void iwl_pcie_alloc_fw_monitor(struct iwl_trans *trans, u8 max_power)
 
 static u32 iwl_trans_pcie_read_shr(struct iwl_trans *trans, u32 reg)
 {
-	iwl_write32(trans, HEEP_CTRL_WRD_PCIEX_CTRL_REG,
-		    ((reg & 0x0000ffff) | (2 << 28)));
+	iwl_trans_pcie_write32(trans, HEEP_CTRL_WRD_PCIEX_CTRL_REG,
+			       ((reg & 0x0000ffff) | (2 << 28)));
 	return iwl_read32(trans, HEEP_CTRL_WRD_PCIEX_DATA_REG);
 }
 
 static void iwl_trans_pcie_write_shr(struct iwl_trans *trans, u32 reg, u32 val)
 {
-	iwl_write32(trans, HEEP_CTRL_WRD_PCIEX_DATA_REG, val);
-	iwl_write32(trans, HEEP_CTRL_WRD_PCIEX_CTRL_REG,
-		    ((reg & 0x0000ffff) | (3 << 28)));
+	iwl_trans_pcie_write32(trans, HEEP_CTRL_WRD_PCIEX_DATA_REG, val);
+	iwl_trans_pcie_write32(trans, HEEP_CTRL_WRD_PCIEX_CTRL_REG,
+			       ((reg & 0x0000ffff) | (3 << 28)));
 }
 
 static void iwl_pcie_set_pwr(struct iwl_trans *trans, bool vaux)
@@ -603,28 +603,28 @@ static void iwl_pcie_load_firmware_chunk_fh(struct iwl_trans *trans,
 					    u32 dst_addr, dma_addr_t phy_addr,
 					    u32 byte_cnt)
 {
-	iwl_write32(trans, FH_TCSR_CHNL_TX_CONFIG_REG(FH_SRVC_CHNL),
-		    FH_TCSR_TX_CONFIG_REG_VAL_DMA_CHNL_PAUSE);
+	iwl_trans_pcie_write32(trans, FH_TCSR_CHNL_TX_CONFIG_REG(FH_SRVC_CHNL),
+			       FH_TCSR_TX_CONFIG_REG_VAL_DMA_CHNL_PAUSE);
 
-	iwl_write32(trans, FH_SRVC_CHNL_SRAM_ADDR_REG(FH_SRVC_CHNL),
-		    dst_addr);
+	iwl_trans_pcie_write32(trans, FH_SRVC_CHNL_SRAM_ADDR_REG(FH_SRVC_CHNL),
+			       dst_addr);
 
-	iwl_write32(trans, FH_TFDIB_CTRL0_REG(FH_SRVC_CHNL),
-		    phy_addr & FH_MEM_TFDIB_DRAM_ADDR_LSB_MSK);
+	iwl_trans_pcie_write32(trans, FH_TFDIB_CTRL0_REG(FH_SRVC_CHNL),
+			       phy_addr & FH_MEM_TFDIB_DRAM_ADDR_LSB_MSK);
 
-	iwl_write32(trans, FH_TFDIB_CTRL1_REG(FH_SRVC_CHNL),
-		    (iwl_get_dma_hi_addr(phy_addr)
-			<< FH_MEM_TFDIB_REG1_ADDR_BITSHIFT) | byte_cnt);
+	iwl_trans_pcie_write32(trans, FH_TFDIB_CTRL1_REG(FH_SRVC_CHNL),
+			       (iwl_get_dma_hi_addr(phy_addr)
+				<< FH_MEM_TFDIB_REG1_ADDR_BITSHIFT) | byte_cnt);
 
-	iwl_write32(trans, FH_TCSR_CHNL_TX_BUF_STS_REG(FH_SRVC_CHNL),
-		    BIT(FH_TCSR_CHNL_TX_BUF_STS_REG_POS_TB_NUM) |
-		    BIT(FH_TCSR_CHNL_TX_BUF_STS_REG_POS_TB_IDX) |
-		    FH_TCSR_CHNL_TX_BUF_STS_REG_VAL_TFDB_VALID);
+	iwl_trans_pcie_write32(trans, FH_TCSR_CHNL_TX_BUF_STS_REG(FH_SRVC_CHNL),
+			       BIT(FH_TCSR_CHNL_TX_BUF_STS_REG_POS_TB_NUM) |
+			       BIT(FH_TCSR_CHNL_TX_BUF_STS_REG_POS_TB_IDX) |
+			       FH_TCSR_CHNL_TX_BUF_STS_REG_VAL_TFDB_VALID);
 
-	iwl_write32(trans, FH_TCSR_CHNL_TX_CONFIG_REG(FH_SRVC_CHNL),
-		    FH_TCSR_TX_CONFIG_REG_VAL_DMA_CHNL_ENABLE |
-		    FH_TCSR_TX_CONFIG_REG_VAL_DMA_CREDIT_DISABLE |
-		    FH_TCSR_TX_CONFIG_REG_VAL_CIRQ_HOST_ENDTFD);
+	iwl_trans_pcie_write32(trans, FH_TCSR_CHNL_TX_CONFIG_REG(FH_SRVC_CHNL),
+			       FH_TCSR_TX_CONFIG_REG_VAL_DMA_CHNL_ENABLE |
+			       FH_TCSR_TX_CONFIG_REG_VAL_DMA_CREDIT_DISABLE |
+			       FH_TCSR_TX_CONFIG_REG_VAL_CIRQ_HOST_ENDTFD);
 }
 
 static int iwl_pcie_load_firmware_chunk(struct iwl_trans *trans,
@@ -917,7 +917,7 @@ void iwl_pcie_apply_destination(struct iwl_trans *trans)
 
 		switch (dest->reg_ops[i].op) {
 		case CSR_ASSIGN:
-			iwl_write32(trans, addr, val);
+			iwl_trans_pcie_write32(trans, addr, val);
 			break;
 		case CSR_SETBIT:
 			iwl_set_bit(trans, addr, BIT(val));
@@ -997,7 +997,7 @@ static int iwl_pcie_load_given_ucode(struct iwl_trans *trans,
 	iwl_enable_interrupts(trans);
 
 	/* release CPU reset */
-	iwl_write32(trans, CSR_RESET, 0);
+	iwl_trans_pcie_write32(trans, CSR_RESET, 0);
 
 	return 0;
 }
@@ -1160,7 +1160,7 @@ static void iwl_pcie_map_rx_causes(struct iwl_trans *trans)
 				      MSIX_FH_INT_CAUSES_Q(idx - offset));
 		val |= BIT(MSIX_FH_INT_CAUSES_Q(idx));
 	}
-	iwl_write32(trans, CSR_MSIX_FH_INT_MASK_AD, ~val);
+	iwl_trans_pcie_write32(trans, CSR_MSIX_FH_INT_MASK_AD, ~val);
 
 	val = MSIX_FH_INT_CAUSES_Q(0);
 	if (trans_pcie->shared_vec_mask & IWL_SHARED_IRQ_NON_RX)
@@ -1333,7 +1333,7 @@ int iwl_trans_pcie_start_fw(struct iwl_trans *trans,
 
 	iwl_enable_rfkill_int(trans);
 
-	iwl_write32(trans, CSR_INT, 0xFFFFFFFF);
+	iwl_trans_pcie_write32(trans, CSR_INT, 0xFFFFFFFF);
 
 	/*
 	 * We enabled the RF-Kill interrupt and the handler may very
@@ -1363,12 +1363,12 @@ int iwl_trans_pcie_start_fw(struct iwl_trans *trans,
 	}
 
 	/* make sure rfkill handshake bits are cleared */
-	iwl_write32(trans, CSR_UCODE_DRV_GP1_CLR, CSR_UCODE_SW_BIT_RFKILL);
-	iwl_write32(trans, CSR_UCODE_DRV_GP1_CLR,
-		    CSR_UCODE_DRV_GP1_BIT_CMD_BLOCKED);
+	iwl_trans_pcie_write32(trans, CSR_UCODE_DRV_GP1_CLR, CSR_UCODE_SW_BIT_RFKILL);
+	iwl_trans_pcie_write32(trans, CSR_UCODE_DRV_GP1_CLR,
+			       CSR_UCODE_DRV_GP1_BIT_CMD_BLOCKED);
 
 	/* clear (again), then enable host interrupts */
-	iwl_write32(trans, CSR_INT, 0xFFFFFFFF);
+	iwl_trans_pcie_write32(trans, CSR_INT, 0xFFFFFFFF);
 
 	ret = iwl_pcie_nic_init(trans);
 	if (ret) {
@@ -1386,8 +1386,8 @@ int iwl_trans_pcie_start_fw(struct iwl_trans *trans,
 	iwl_enable_fw_load_int(trans);
 
 	/* really make sure rfkill handshake bits are cleared */
-	iwl_write32(trans, CSR_UCODE_DRV_GP1_CLR, CSR_UCODE_SW_BIT_RFKILL);
-	iwl_write32(trans, CSR_UCODE_DRV_GP1_CLR, CSR_UCODE_SW_BIT_RFKILL);
+	iwl_trans_pcie_write32(trans, CSR_UCODE_DRV_GP1_CLR, CSR_UCODE_SW_BIT_RFKILL);
+	iwl_trans_pcie_write32(trans, CSR_UCODE_DRV_GP1_CLR, CSR_UCODE_SW_BIT_RFKILL);
 
 	/* Load the given image to the HW */
 	if (trans->mac_cfg->device_family >= IWL_DEVICE_FAMILY_8000)
@@ -1519,9 +1519,9 @@ static int iwl_pcie_d3_handshake(struct iwl_trans *trans, bool suspend)
 				    suspend ? UREG_DOORBELL_TO_ISR6_SUSPEND :
 					      UREG_DOORBELL_TO_ISR6_RESUME);
 	else
-		iwl_write32(trans, CSR_IPC_SLEEP_CONTROL,
-			    suspend ? CSR_IPC_SLEEP_CONTROL_SUSPEND :
-				      CSR_IPC_SLEEP_CONTROL_RESUME);
+		iwl_trans_pcie_write32(trans, CSR_IPC_SLEEP_CONTROL,
+				       suspend ? CSR_IPC_SLEEP_CONTROL_SUSPEND :
+						 CSR_IPC_SLEEP_CONTROL_RESUME);
 
 	ret = wait_event_timeout(trans_pcie->sx_waitq,
 				 trans_pcie->sx_state != IWL_SX_WAITING,
@@ -1907,6 +1907,7 @@ void iwl_trans_pcie_write8(struct iwl_trans *trans, u32 ofs, u8 val)
 
 void iwl_trans_pcie_write32(struct iwl_trans *trans, u32 ofs, u32 val)
 {
+	trace_iwlwifi_dev_iowrite32(trans->dev, ofs, val);
 	writel(val, IWL_TRANS_GET_PCIE_TRANS(trans)->hw_base + ofs);
 }
 
@@ -2448,8 +2449,8 @@ bool _iwl_trans_pcie_grab_nic_access(struct iwl_trans *trans, bool silent)
 						IWL_RESET_MODE_RESCAN :
 						IWL_RESET_MODE_REMOVE_ONLY);
 		else
-			iwl_write32(trans, CSR_RESET,
-				    CSR_RESET_REG_FLAG_FORCE_NMI);
+			iwl_trans_pcie_write32(trans, CSR_RESET,
+					       CSR_RESET_REG_FLAG_FORCE_NMI);
 
 		spin_unlock(&trans_pcie->reg_lock);
 		return false;
@@ -2527,8 +2528,8 @@ int iwl_trans_pcie_read_mem(struct iwl_trans *trans, u32 addr,
 		bool resched = false;
 
 		if (iwl_trans_grab_nic_access(trans)) {
-			iwl_write32(trans, HBUS_TARG_MEM_RADDR,
-				    addr + 4 * offs);
+			iwl_trans_pcie_write32(trans, HBUS_TARG_MEM_RADDR,
+					       addr + 4 * offs);
 
 			while (offs < dwords) {
 				vals[offs] = iwl_read32(trans,
@@ -2579,8 +2580,8 @@ int iwl_trans_pcie_read_mem_no_grab(struct iwl_trans *trans, u32 addr,
 		unsigned long end = jiffies + HZ / 2;
 		bool resched = false;
 
-		iwl_write32(trans, HBUS_TARG_MEM_RADDR,
-			    addr + 4 * offs);
+		iwl_trans_pcie_write32(trans, HBUS_TARG_MEM_RADDR,
+				       addr + 4 * offs);
 
 		while (offs < dwords) {
 			vals[offs] = iwl_read32(trans, HBUS_TARG_MEM_RDAT);
@@ -3652,7 +3653,7 @@ void iwl_trans_pcie_sync_nmi(struct iwl_trans *trans)
 		/* Error detected by uCode */
 		if (inta_hw & sw_err_bit) {
 			/* Clear causes register */
-			iwl_write32(trans, inta_addr, inta_hw & sw_err_bit);
+			iwl_trans_pcie_write32(trans, inta_addr, inta_hw & sw_err_bit);
 			break;
 		}
 

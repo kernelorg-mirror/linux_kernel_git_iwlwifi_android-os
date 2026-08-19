@@ -11,13 +11,6 @@
 #include "iwl-csr.h"
 #include "iwl-debug.h"
 
-void iwl_write32(struct iwl_trans *trans, u32 ofs, u32 val)
-{
-	trace_iwlwifi_dev_iowrite32(trans->dev, ofs, val);
-	iwl_trans_write32(trans, ofs, val);
-}
-IWL_EXPORT_SYMBOL(iwl_write32);
-
 u32 iwl_read32(struct iwl_trans *trans, u32 ofs)
 {
 	u32 val = iwl_trans_read32(trans, ofs);
@@ -48,7 +41,7 @@ IWL_EXPORT_SYMBOL(iwl_poll_bits_mask);
 void iwl_write_direct32(struct iwl_trans *trans, u32 reg, u32 value)
 {
 	if (iwl_trans_grab_nic_access(trans)) {
-		iwl_write32(trans, reg, value);
+		iwl_trans_write32(trans, reg, value);
 		iwl_trans_release_nic_access(trans);
 	}
 }

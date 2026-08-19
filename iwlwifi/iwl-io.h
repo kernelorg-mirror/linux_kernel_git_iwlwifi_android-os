@@ -8,7 +8,6 @@
 #include "iwl-devtrace.h"
 #include "iwl-trans.h"
 
-void iwl_write32(struct iwl_trans *trans, u32 ofs, u32 val);
 u32 iwl_read32(struct iwl_trans *trans, u32 ofs);
 
 static inline void iwl_set_bit(struct iwl_trans *trans, u32 reg, u32 mask)

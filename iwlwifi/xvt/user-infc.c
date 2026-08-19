@@ -178,12 +178,12 @@ void iwl_xvt_send_user_rx_notif(struct iwl_xvt *xvt,
 
 static void iwl_xvt_led_enable(struct iwl_xvt *xvt)
 {
-	iwl_write32(xvt->trans, CSR_LED_REG, CSR_LED_REG_TURN_ON);
+	iwl_trans_write32(xvt->trans, CSR_LED_REG, CSR_LED_REG_TURN_ON);
 }
 
 static void iwl_xvt_led_disable(struct iwl_xvt *xvt)
 {
-	iwl_write32(xvt->trans, CSR_LED_REG, CSR_LED_REG_TURN_OFF);
+	iwl_trans_write32(xvt->trans, CSR_LED_REG, CSR_LED_REG_TURN_OFF);
 }
 
 /**
@@ -567,7 +567,7 @@ static int iwl_xvt_start_op_mode(struct iwl_xvt *xvt)
 			if (err) {
 				IWL_ERR(xvt, "Failed to start HW\n");
 			} else {
-				iwl_write32(xvt->trans, CSR_RESET, 0);
+				iwl_trans_write32(xvt->trans, CSR_RESET, 0);
 				xvt->state = IWL_XVT_STATE_NO_FW;
 			}
 		}
