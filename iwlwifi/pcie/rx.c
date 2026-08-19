@@ -148,12 +148,12 @@ int iwl_pcie_rx_stop(struct iwl_trans *trans)
 	if (trans->mac_cfg->device_family >= IWL_DEVICE_FAMILY_AX210) {
 		/* TODO: remove this once fw does it */
 		iwl_write_umac_prph(trans, RFH_RXF_DMA_CFG_AX210, 0);
-		return iwl_poll_umac_prph_bit(trans, RFH_GEN_STATUS_AX210,
-					      RXF_DMA_IDLE, RXF_DMA_IDLE, 1000);
+		return iwl_pcie_poll_umac_prph_bit(trans, RFH_GEN_STATUS_AX210,
+						   RXF_DMA_IDLE, RXF_DMA_IDLE, 1000);
 	} else if (trans->mac_cfg->mq_rx_supported) {
 		iwl_write_prph(trans, RFH_RXF_DMA_CFG, 0);
-		return iwl_poll_prph_bit(trans, RFH_GEN_STATUS,
-					   RXF_DMA_IDLE, RXF_DMA_IDLE, 1000);
+		return iwl_pcie_poll_prph_bit(trans, RFH_GEN_STATUS,
+					      RXF_DMA_IDLE, RXF_DMA_IDLE, 1000);
 	} else {
 		iwl_write_direct32(trans, FH_MEM_RCSR_CHNL0_CONFIG_REG, 0);
 		return iwl_pcie_poll_direct_bit(trans, FH_MEM_RSSR_RX_STATUS_REG,

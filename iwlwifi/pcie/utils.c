@@ -132,3 +132,27 @@ int iwl_pcie_poll_direct_bit(struct iwl_trans *trans,
 
 	return -ETIMEDOUT;
 }
+
+int iwl_pcie_poll_prph_bit(struct iwl_trans *trans, u32 addr,
+			   u32 bits, u32 mask, int timeout)
+{
+	int t = 0;
+
+	do {
+		if ((iwl_read_prph(trans, addr) & mask) == (bits & mask))
+			return 0;
+		udelay(IWL_PCIE_POLL_INTERVAL);
+		t += IWL_PCIE_POLL_INTERVAL;
+	} while (t < timeout);
+
+	return -ETIMEDOUT;
+}
+
+int iwl_pcie_poll_umac_prph_bit(struct iwl_trans *trans,
+				u32 addr, u32 bits, u32 mask,
+				int timeout)
+{
+	return iwl_pcie_poll_prph_bit(trans, addr +
+				      trans->mac_cfg->umac_prph_offset,
+				      bits, mask, timeout);
+}
