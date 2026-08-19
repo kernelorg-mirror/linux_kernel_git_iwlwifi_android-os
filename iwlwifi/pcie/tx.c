@@ -99,7 +99,7 @@ static void iwl_pcie_txq_inc_wr_ptr(struct iwl_trans *trans,
 		 * uCode will wake up, and interrupt us again, so next
 		 * time we'll skip this part.
 		 */
-		reg = iwl_read32(trans, CSR_UCODE_DRV_GP1);
+		reg = iwl_trans_pcie_read32(trans, CSR_UCODE_DRV_GP1);
 
 		if (reg & CSR_UCODE_DRV_GP1_BIT_MAC_SLEEP) {
 			IWL_DEBUG_INFO(trans, "Tx queue %d requesting wakeup, GP1 = 0x%x\n",
@@ -595,7 +595,7 @@ static void iwl_pcie_tx_stop_fh(struct iwl_trans *trans)
 	if (ret)
 		IWL_ERR(trans,
 			"Failing on timeout while stopping DMA channel %d [0x%08x]\n",
-			ch, iwl_read32(trans, FH_TSSR_TX_STATUS_REG));
+			ch, iwl_trans_pcie_read32(trans, FH_TSSR_TX_STATUS_REG));
 
 	iwl_trans_release_nic_access(trans);
 

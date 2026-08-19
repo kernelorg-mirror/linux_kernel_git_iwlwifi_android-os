@@ -123,11 +123,11 @@ _iwl_trans_pcie_fw_reset_handshake(struct iwl_trans *trans,
 		u32 inta_hw;
 
 		if (trans_pcie->msix_enabled) {
-			inta_hw = iwl_read32(trans, CSR_MSIX_HW_INT_CAUSES_AD);
+			inta_hw = iwl_trans_pcie_read32(trans, CSR_MSIX_HW_INT_CAUSES_AD);
 			reset_done =
 				inta_hw & MSIX_HW_INT_CAUSES_REG_RESET_DONE;
 		} else {
-			inta_hw = iwl_read32(trans, CSR_INT);
+			inta_hw = iwl_trans_pcie_read32(trans, CSR_INT);
 			reset_done = inta_hw & CSR_INT_BIT_RESET_DONE;
 		}
 
@@ -477,18 +477,18 @@ static void iwl_pcie_spin_for_iml(struct iwl_trans *trans)
 	if (WARN_ON(!trans_pcie->iml))
 		return;
 
-	value = iwl_read32(trans, CSR_LTR_LAST_MSG);
+	value = iwl_trans_pcie_read32(trans, CSR_LTR_LAST_MSG);
 	IWL_DEBUG_INFO(trans, "Polling for IML load - CSR_LTR_LAST_MSG=0x%x\n",
 		       value);
 
 	while (time_before(jiffies, end_time)) {
-		if (iwl_read32(trans, CSR_MSIX_HW_INT_CAUSES_AD) &
+		if (iwl_trans_pcie_read32(trans, CSR_MSIX_HW_INT_CAUSES_AD) &
 				MSIX_HW_INT_CAUSES_REG_IML) {
 			irq = true;
 			break;
 		}
 		/* Keep the CPU and device busy. */
-		value = iwl_read32(trans, CSR_LTR_LAST_MSG);
+		value = iwl_trans_pcie_read32(trans, CSR_LTR_LAST_MSG);
 		loops++;
 	}
 
@@ -594,7 +594,7 @@ again:
 
 	if (trans->mac_cfg->device_family >= IWL_DEVICE_FAMILY_BZ) {
 		IWL_DEBUG_POWER(trans, "function scratch register value is 0x%08x\n",
-				iwl_read32(trans, CSR_FUNC_SCRATCH));
+				iwl_trans_pcie_read32(trans, CSR_FUNC_SCRATCH));
 		iwl_trans_pcie_write32(trans, CSR_FUNC_SCRATCH, CSR_FUNC_SCRATCH_INIT_VALUE);
 		iwl_set_bit(trans, CSR_GP_CNTRL,
 			    CSR_GP_CNTRL_REG_FLAG_ROM_START);

@@ -45,7 +45,7 @@ static inline void _iwl_trans_set_bits_mask(struct iwl_trans *trans,
 	WARN_ON_ONCE(value & ~mask);
 #endif
 
-	v = iwl_read32(trans, reg);
+	v = iwl_trans_pcie_read32(trans, reg);
 	v &= ~mask;
 	v |= value;
 	iwl_trans_pcie_write32(trans, reg, v);

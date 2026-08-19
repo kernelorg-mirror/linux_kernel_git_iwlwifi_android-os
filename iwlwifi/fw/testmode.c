@@ -76,8 +76,8 @@ static void iwl_tm_execute_reg_ops(struct iwl_testmode *testmode,
 		cur_op = &request->reg_ops[idx];
 
 		if  (cur_op->op_type == IWL_TM_REG_OP_READ) {
-			cur_op->value = iwl_read32(testmode->trans,
-						   cur_op->address);
+			cur_op->value = iwl_trans_read32(testmode->trans,
+							 cur_op->address);
 			memcpy(&result->reg_ops[read_idx], cur_op,
 			       sizeof(*cur_op));
 			read_idx++;

@@ -11,15 +11,6 @@
 #include "iwl-csr.h"
 #include "iwl-debug.h"
 
-u32 iwl_read32(struct iwl_trans *trans, u32 ofs)
-{
-	u32 val = iwl_trans_read32(trans, ofs);
-
-	trace_iwlwifi_dev_ioread32(trans->dev, ofs, val);
-	return val;
-}
-IWL_EXPORT_SYMBOL(iwl_read32);
-
 #define IWL_POLL_INTERVAL 10	/* microseconds */
 
 int iwl_poll_bits_mask(struct iwl_trans *trans, u32 addr,
@@ -28,7 +19,7 @@ int iwl_poll_bits_mask(struct iwl_trans *trans, u32 addr,
 	int t = 0;
 
 	do {
-		if ((iwl_read32(trans, addr) & mask) == (bits & mask))
+		if ((iwl_trans_read32(trans, addr) & mask) == (bits & mask))
 			return 0;
 		udelay(IWL_POLL_INTERVAL);
 		t += IWL_POLL_INTERVAL;

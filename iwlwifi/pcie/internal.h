@@ -1143,7 +1143,7 @@ static inline bool iwl_is_rfkill_set(struct iwl_trans *trans)
 		return true;
 #endif
 
-	return !(iwl_read32(trans, CSR_GP_CNTRL) &
+	return !(iwl_trans_pcie_read32(trans, CSR_GP_CNTRL) &
 		CSR_GP_CNTRL_REG_FLAG_HW_RF_KILL_SW);
 }
 

@@ -47,7 +47,7 @@ static void iwl_dump_host_monitor_block(struct iwl_trans *trans,
 	iwl_trans_pcie_write32(trans, CSR_MONITOR_CFG_REG, (block << 8) | vec);
 	for (i = 0; i < iter; i++)
 		IWL_ERR(trans, "    value [iter %d]: 0x%08x\n",
-			i, iwl_read32(trans, CSR_MONITOR_STATUS_REG));
+			i, iwl_trans_pcie_read32(trans, CSR_MONITOR_STATUS_REG));
 }
 
 static void iwl_pcie_dump_host_monitor(struct iwl_trans *trans)
@@ -56,7 +56,7 @@ static void iwl_pcie_dump_host_monitor(struct iwl_trans *trans)
 	case IWL_DEVICE_FAMILY_22000:
 	case IWL_DEVICE_FAMILY_AX210:
 		IWL_ERR(trans, "CSR_RESET = 0x%x\n",
-			iwl_read32(trans, CSR_RESET));
+			iwl_trans_pcie_read32(trans, CSR_RESET));
 		iwl_dump_host_monitor_block(trans, IWL_HOST_MON_BLOCK_PEMON,
 					    IWL_HOST_MON_BLOCK_PEMON_VEC0, 15);
 		iwl_dump_host_monitor_block(trans, IWL_HOST_MON_BLOCK_PEMON,
@@ -172,7 +172,7 @@ static u32 iwl_trans_pcie_read_shr(struct iwl_trans *trans, u32 reg)
 {
 	iwl_trans_pcie_write32(trans, HEEP_CTRL_WRD_PCIEX_CTRL_REG,
 			       ((reg & 0x0000ffff) | (2 << 28)));
-	return iwl_read32(trans, HEEP_CTRL_WRD_PCIEX_DATA_REG);
+	return iwl_trans_pcie_read32(trans, HEEP_CTRL_WRD_PCIEX_DATA_REG);
 }
 
 static void iwl_trans_pcie_write_shr(struct iwl_trans *trans, u32 reg, u32 val)
@@ -1211,9 +1211,9 @@ static void iwl_pcie_init_msix(struct iwl_trans_pcie *trans_pcie)
 	if (!trans_pcie->msix_enabled)
 		return;
 
-	trans_pcie->fh_init_mask = ~iwl_read32(trans, CSR_MSIX_FH_INT_MASK_AD);
+	trans_pcie->fh_init_mask = ~iwl_trans_pcie_read32(trans, CSR_MSIX_FH_INT_MASK_AD);
 	trans_pcie->fh_mask = trans_pcie->fh_init_mask;
-	trans_pcie->hw_init_mask = ~iwl_read32(trans, CSR_MSIX_HW_INT_MASK_AD);
+	trans_pcie->hw_init_mask = ~iwl_trans_pcie_read32(trans, CSR_MSIX_HW_INT_MASK_AD);
 	trans_pcie->hw_mask = trans_pcie->hw_init_mask;
 }
 
@@ -1616,7 +1616,7 @@ int iwl_trans_pcie_d3_resume(struct iwl_trans *trans,
 	IWL_DEBUG_POWER(trans, "WFPM value upon resume = 0x%08X\n",
 			iwl_read_umac_prph(trans, WFPM_GP2));
 
-	val = iwl_read32(trans, CSR_RESET);
+	val = iwl_trans_pcie_read32(trans, CSR_RESET);
 	if (val & CSR_RESET_REG_FLAG_NEVO_RESET) {
 		IWL_INFO(trans, "Device was reset during suspend\n");
 		trans->state = IWL_TRANS_NO_FW;
@@ -1913,7 +1913,10 @@ void iwl_trans_pcie_write32(struct iwl_trans *trans, u32 ofs, u32 val)
 
 u32 iwl_trans_pcie_read32(struct iwl_trans *trans, u32 ofs)
 {
-	return readl(IWL_TRANS_GET_PCIE_TRANS(trans)->hw_base + ofs);
+	u32 val = readl(IWL_TRANS_GET_PCIE_TRANS(trans)->hw_base + ofs);
+
+	trace_iwlwifi_dev_ioread32(trans->dev, ofs, val);
+	return val;
 }
 
 static u32 iwl_trans_pcie_prph_msk(struct iwl_trans *trans)
@@ -2426,7 +2429,7 @@ bool _iwl_trans_pcie_grab_nic_access(struct iwl_trans *trans, bool silent)
 	 */
 	ret = iwl_poll_bits_mask(trans, CSR_GP_CNTRL, poll, mask, 15000);
 	if (unlikely(ret)) {
-		u32 cntrl = iwl_read32(trans, CSR_GP_CNTRL);
+		u32 cntrl = iwl_trans_pcie_read32(trans, CSR_GP_CNTRL);
 		bool ma_integrated = (CSR_HW_REV_TYPE(trans->info.hw_rev) ==
 				      IWL_CFG_MAC_TYPE_MA) &&
 				     trans->mac_cfg->integrated;
@@ -2532,8 +2535,8 @@ int iwl_trans_pcie_read_mem(struct iwl_trans *trans, u32 addr,
 					       addr + 4 * offs);
 
 			while (offs < dwords) {
-				vals[offs] = iwl_read32(trans,
-							HBUS_TARG_MEM_RDAT);
+				vals[offs] = iwl_trans_pcie_read32(trans,
+								   HBUS_TARG_MEM_RDAT);
 
 				if (iwl_trans_is_hw_error_value(vals[offs]))
 					num_consec_hw_errors++;
@@ -2584,7 +2587,7 @@ int iwl_trans_pcie_read_mem_no_grab(struct iwl_trans *trans, u32 addr,
 				       addr + 4 * offs);
 
 		while (offs < dwords) {
-			vals[offs] = iwl_read32(trans, HBUS_TARG_MEM_RDAT);
+			vals[offs] = iwl_trans_pcie_read32(trans, HBUS_TARG_MEM_RDAT);
 
 			if (iwl_trans_is_hw_error_value(vals[offs]))
 				num_consec_hw_errors++;
@@ -2801,7 +2804,7 @@ void iwl_pcie_dump_csr(struct iwl_trans *trans)
 	for (i = 0; i <  ARRAY_SIZE(csr_tbl); i++) {
 		IWL_ERR(trans, "  %25s: 0X%08x\n",
 			get_csr_string(csr_tbl[i]),
-			iwl_read32(trans, csr_tbl[i]));
+			iwl_trans_pcie_read32(trans, csr_tbl[i]));
 	}
 }
 
@@ -3077,7 +3080,7 @@ static ssize_t iwl_dbgfs_rfkill_read(struct file *file,
 
 	pos = scnprintf(buf, sizeof(buf), "debug: %d\nhw: %d\n",
 			trans_pcie->debug_rfkill,
-			!(iwl_read32(trans, CSR_GP_CNTRL) &
+			!(iwl_trans_pcie_read32(trans, CSR_GP_CNTRL) &
 				CSR_GP_CNTRL_REG_FLAG_HW_RF_KILL_SW));
 
 	return simple_read_from_buffer(user_buf, count, ppos, buf, pos);
@@ -3648,7 +3651,7 @@ void iwl_trans_pcie_sync_nmi(struct iwl_trans *trans)
 
 	iwl_trans_force_nmi(trans);
 	while (time_after(timeout, jiffies)) {
-		u32 inta_hw = iwl_read32(trans, inta_addr);
+		u32 inta_hw = iwl_trans_pcie_read32(trans, inta_addr);
 
 		/* Error detected by uCode */
 		if (inta_hw & sw_err_bit) {
@@ -4099,7 +4102,7 @@ static void iwl_pcie_recheck_me_status(struct work_struct *wk)
 							 me_recheck_wk.work);
 	u32 val;
 
-	val = iwl_read32(trans_pcie->trans, CSR_HW_IF_CONFIG_REG);
+	val = iwl_trans_pcie_read32(trans_pcie->trans, CSR_HW_IF_CONFIG_REG);
 	trans_pcie->me_present = !!(val & CSR_HW_IF_CONFIG_REG_IAMT_UP);
 }
 
@@ -4117,14 +4120,14 @@ static void iwl_pcie_check_me_status(struct iwl_trans *trans)
 	if (trans->mac_cfg->device_family < IWL_DEVICE_FAMILY_BZ)
 		return;
 
-	val = iwl_read_prph(trans, CNVI_SCU_REG_FOR_ECO_1);
+	val = iwl_trans_pcie_read_prph(trans, CNVI_SCU_REG_FOR_ECO_1);
 	if (val & CNVI_SCU_REG_FOR_ECO_1_WIAMT_KNOWN) {
 		trans_pcie->me_present =
 			!!(val & CNVI_SCU_REG_FOR_ECO_1_WIAMT_PRESENT);
 		return;
 	}
 
-	val = iwl_read32(trans, CSR_HW_IF_CONFIG_REG);
+	val = iwl_trans_pcie_read32(trans, CSR_HW_IF_CONFIG_REG);
 	if (val & (CSR_HW_IF_CONFIG_REG_ME_OWN |
 		   CSR_HW_IF_CONFIG_REG_IAMT_UP)) {
 		trans_pcie->me_present = 1;
@@ -4185,7 +4188,7 @@ int _iwl_pci_probe(struct pci_dev *pdev, const struct pci_device_id *ent,
 		}
 	}
 
-	info.hw_rf_id = iwl_read32(iwl_trans, CSR_HW_RF_ID);
+	info.hw_rf_id = iwl_trans_pcie_read32(iwl_trans, CSR_HW_RF_ID);
 
 	/*
 	 * The RF_ID is set to zero in blank OTP so read version to

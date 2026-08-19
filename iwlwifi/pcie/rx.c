@@ -179,7 +179,7 @@ static void iwl_pcie_rxq_inc_wr_ptr(struct iwl_trans *trans,
 	 */
 	if (!trans->mac_cfg->base->shadow_reg_enable &&
 	    test_bit(STATUS_TPOWER_PMI, &trans->status)) {
-		reg = iwl_read32(trans, CSR_UCODE_DRV_GP1);
+		reg = iwl_trans_pcie_read32(trans, CSR_UCODE_DRV_GP1);
 
 		if (reg & CSR_UCODE_DRV_GP1_BIT_MAC_SLEEP) {
 			IWL_DEBUG_INFO(trans, "Rx queue requesting wakeup, GP1 = 0x%x\n",
@@ -1715,7 +1715,7 @@ static void iwl_pcie_irq_handle_error(struct iwl_trans *trans)
 	}
 
 	if (trans->mac_cfg->device_family >= IWL_DEVICE_FAMILY_SC) {
-		u32 val = iwl_read32(trans, CSR_IPC_STATE);
+		u32 val = iwl_trans_pcie_read32(trans, CSR_IPC_STATE);
 
 		if (val & CSR_IPC_STATE_TOP_RESET_REQ) {
 			IWL_ERR(trans, "FW requested TOP reset for FSEQ\n");
@@ -1740,7 +1740,7 @@ static u32 iwl_pcie_int_cause_non_ict(struct iwl_trans *trans)
 	trace_iwlwifi_dev_irq(trans->dev);
 
 	/* Discover which interrupts are active/pending */
-	inta = iwl_read32(trans, CSR_INT);
+	inta = iwl_trans_pcie_read32(trans, CSR_INT);
 
 	/* the thread will service interrupts and re-enable them */
 	return inta;
@@ -1863,7 +1863,7 @@ static void iwl_trans_pcie_handle_reset_interrupt(struct iwl_trans *trans)
 	u32 state;
 
 	if (trans->mac_cfg->device_family >= IWL_DEVICE_FAMILY_SC) {
-		u32 val = iwl_read32(trans, CSR_IPC_STATE);
+		u32 val = iwl_trans_pcie_read32(trans, CSR_IPC_STATE);
 
 		state = u32_get_bits(val, CSR_IPC_STATE_RESET);
 		IWL_DEBUG_ISR(trans, "IPC state = 0x%x/%d\n", val, state);
@@ -1935,8 +1935,8 @@ irqreturn_t iwl_pcie_irq_handler(int irq, void *dev_id)
 		IWL_DEBUG_ISR(trans,
 			      "ISR inta 0x%08x, enabled 0x%08x(sw), enabled(hw) 0x%08x, fh 0x%08x\n",
 			      inta, trans_pcie->inta_mask,
-			      iwl_read32(trans, CSR_INT_MASK),
-			      iwl_read32(trans, CSR_FH_INT_STATUS));
+			      iwl_trans_pcie_read32(trans, CSR_INT_MASK),
+			      iwl_trans_pcie_read32(trans, CSR_FH_INT_STATUS));
 		if (inta & (~trans_pcie->inta_mask))
 			IWL_DEBUG_ISR(trans,
 				      "We got a masked interrupt (0x%08x)\n",
@@ -1988,7 +1988,7 @@ irqreturn_t iwl_pcie_irq_handler(int irq, void *dev_id)
 
 	if (iwl_have_debug_level(IWL_DL_ISR))
 		IWL_DEBUG_ISR(trans, "inta 0x%08x, enabled 0x%08x\n",
-			      inta, iwl_read32(trans, CSR_INT_MASK));
+			      inta, iwl_trans_pcie_read32(trans, CSR_INT_MASK));
 
 	spin_unlock_bh(&trans_pcie->irq_lock);
 
@@ -2304,8 +2304,8 @@ irqreturn_t iwl_pcie_irq_msix_handler(int irq, void *dev_id)
 	lock_map_acquire(&trans->sync_cmd_lockdep_map);
 
 	spin_lock_bh(&trans_pcie->irq_lock);
-	inta_fh = iwl_read32(trans, CSR_MSIX_FH_INT_CAUSES_AD);
-	inta_hw = iwl_read32(trans, CSR_MSIX_HW_INT_CAUSES_AD);
+	inta_fh = iwl_trans_pcie_read32(trans, CSR_MSIX_FH_INT_CAUSES_AD);
+	inta_hw = iwl_trans_pcie_read32(trans, CSR_MSIX_HW_INT_CAUSES_AD);
 	/*
 	 * Clear causes registers to avoid being handling the same cause.
 	 */
@@ -2325,7 +2325,7 @@ irqreturn_t iwl_pcie_irq_msix_handler(int irq, void *dev_id)
 		IWL_DEBUG_ISR(trans,
 			      "ISR[%d] inta_fh 0x%08x, enabled (sw) 0x%08x (hw) 0x%08x\n",
 			      entry->entry, inta_fh, trans_pcie->fh_mask,
-			      iwl_read32(trans, CSR_MSIX_FH_INT_MASK_AD));
+			      iwl_trans_pcie_read32(trans, CSR_MSIX_FH_INT_MASK_AD));
 		if (inta_fh & ~trans_pcie->fh_mask)
 			IWL_DEBUG_ISR(trans,
 				      "We got a masked interrupt (0x%08x)\n",
@@ -2427,7 +2427,7 @@ irqreturn_t iwl_pcie_irq_msix_handler(int irq, void *dev_id)
 		IWL_DEBUG_ISR(trans,
 			      "ISR[%d] inta_hw 0x%08x, enabled (sw) 0x%08x (hw) 0x%08x\n",
 			      entry->entry, inta_hw, trans_pcie->hw_mask,
-			      iwl_read32(trans, CSR_MSIX_HW_INT_MASK_AD));
+			      iwl_trans_pcie_read32(trans, CSR_MSIX_HW_INT_MASK_AD));
 		if (inta_hw & ~trans_pcie->hw_mask)
 			IWL_DEBUG_ISR(trans,
 				      "We got a masked interrupt 0x%08x\n",
