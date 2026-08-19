@@ -2030,7 +2030,7 @@ static int iwl_drv_load_fseq_image(struct iwl_trans *trans, struct iwl_fw *fw,
 			 CNVI_AUX_MISC_CHIP_PROD_TYPE(v))
 
 	cnvi_id = trans->info.hw_cnv_id;
-	cnvr_id = iwl_read_prph_no_grab(trans, CNVR_AUX_MISC_CHIP);
+	cnvr_id = iwl_trans_read_prph_no_grab(trans, CNVR_AUX_MISC_CHIP);
 	scnprintf(filename, sizeof(filename), IWL_FSEQ_FILE,
 		  FSEQ_ID(cnvi_id), FSEQ_ID(cnvr_id));
 
