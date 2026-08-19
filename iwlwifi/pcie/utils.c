@@ -156,3 +156,19 @@ int iwl_pcie_poll_umac_prph_bit(struct iwl_trans *trans,
 				      trans->mac_cfg->umac_prph_offset,
 				      bits, mask, timeout);
 }
+
+int iwl_pcie_poll_umac_prph_bits_no_grab(struct iwl_trans *trans, u32 addr,
+					 u32 bits, u32 mask, int timeout)
+{
+	int t = 0;
+
+	do {
+		if ((iwl_read_umac_prph_no_grab(trans, addr) & mask) ==
+		    (bits & mask))
+			return 0;
+		udelay(IWL_PCIE_POLL_INTERVAL);
+		t += IWL_PCIE_POLL_INTERVAL;
+	} while (t < timeout);
+
+	return -ETIMEDOUT;
+}

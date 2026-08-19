@@ -122,22 +122,6 @@ void iwl_write_prph_delay(struct iwl_trans *trans, u32 ofs, u32 val, u32 delay_m
 }
 IWL_EXPORT_SYMBOL(iwl_write_prph_delay);
 
-int iwl_poll_umac_prph_bits_no_grab(struct iwl_trans *trans, u32 addr,
-				    u32 bits, u32 mask, int timeout)
-{
-	int t = 0;
-
-	do {
-		if ((iwl_read_umac_prph_no_grab(trans, addr) & mask) ==
-		    (bits & mask))
-			return 0;
-		udelay(IWL_POLL_INTERVAL);
-		t += IWL_POLL_INTERVAL;
-	} while (t < timeout);
-
-	return -ETIMEDOUT;
-}
-
 void iwl_set_bits_prph(struct iwl_trans *trans, u32 ofs, u32 mask)
 {
 	if (iwl_trans_grab_nic_access(trans)) {

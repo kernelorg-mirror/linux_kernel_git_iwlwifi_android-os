@@ -3969,11 +3969,11 @@ static void get_crf_id(struct iwl_trans *iwl_trans,
 			return;
 		}
 
-		ret = iwl_poll_umac_prph_bits_no_grab(iwl_trans,
-						      WFPM_RSRCS_4PHS_ACK_STTS,
-						      RSRC_ACK_CNVR_TOP,
-						      RSRC_ACK_CNVR_TOP,
-						      50 * 1000);
+		ret = iwl_pcie_poll_umac_prph_bits_no_grab(iwl_trans,
+							   WFPM_RSRCS_4PHS_ACK_STTS,
+							   RSRC_ACK_CNVR_TOP,
+							   RSRC_ACK_CNVR_TOP,
+							   50 * 1000);
 		if (ret < 0)
 			IWL_ERR(iwl_trans,
 				"WFPM_RSRCS_4PHS_ACK_STTS bit 6 is clear\n");
