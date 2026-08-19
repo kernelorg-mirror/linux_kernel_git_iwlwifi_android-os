@@ -784,7 +784,7 @@ static int iwl_pcie_load_cpu_sections_8000(struct iwl_trans *trans,
 			return ret;
 
 		/* Notify ucode of loaded section number and status */
-		val = iwl_read_direct32(trans, FH_UCODE_LOAD_STATUS);
+		val = iwl_pcie_read_direct32(trans, FH_UCODE_LOAD_STATUS);
 		val = val | (sec_num << shift_param);
 		iwl_write_direct32(trans, FH_UCODE_LOAD_STATUS, val);
 

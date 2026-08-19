@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0 OR BSD-3-Clause
 /*
- * Copyright (C) 2025 Intel Corporation
+ * Copyright (C) 2025-2026 Intel Corporation
  */
 
 #include <linux/pci.h>
@@ -101,4 +101,34 @@ err_read:
 out:
 	pcie_dbg_dumped_once = 1;
 	kfree(buf);
+}
+
+u32 iwl_pcie_read_direct32(struct iwl_trans *trans, u32 reg)
+{
+	if (iwl_trans_grab_nic_access(trans)) {
+		u32 value = iwl_read32(trans, reg);
+
+		iwl_trans_release_nic_access(trans);
+		return value;
+	}
+
+	/* return as if we have a HW timeout/failure */
+	return 0x5a5a5a5a;
+}
+
+#define IWL_PCIE_POLL_INTERVAL 10	/* microseconds */
+
+int iwl_pcie_poll_direct_bit(struct iwl_trans *trans,
+			     u32 addr, u32 mask, int timeout)
+{
+	int t = 0;
+
+	do {
+		if ((iwl_pcie_read_direct32(trans, addr) & mask) == mask)
+			return t;
+		udelay(IWL_PCIE_POLL_INTERVAL);
+		t += IWL_PCIE_POLL_INTERVAL;
+	} while (t < timeout);
+
+	return -ETIMEDOUT;
 }

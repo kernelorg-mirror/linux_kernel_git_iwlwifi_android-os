@@ -11,6 +11,7 @@
 #include "iwl-prph.h"
 #include "iwl-io.h"
 #include "internal.h"
+#include "pcie/utils.h"
 #include "iwl-op-mode.h"
 #include "iwl-context-info-v2.h"
 #include "fw/dbg.h"
@@ -155,9 +156,9 @@ int iwl_pcie_rx_stop(struct iwl_trans *trans)
 					   RXF_DMA_IDLE, RXF_DMA_IDLE, 1000);
 	} else {
 		iwl_write_direct32(trans, FH_MEM_RCSR_CHNL0_CONFIG_REG, 0);
-		return iwl_poll_direct_bit(trans, FH_MEM_RSSR_RX_STATUS_REG,
-					   FH_RSSR_CHNL0_RX_STATUS_CHNL_IDLE,
-					   1000);
+		return iwl_pcie_poll_direct_bit(trans, FH_MEM_RSSR_RX_STATUS_REG,
+						FH_RSSR_CHNL0_RX_STATUS_CHNL_IDLE,
+						1000);
 	}
 }
 

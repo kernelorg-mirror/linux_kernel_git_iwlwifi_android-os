@@ -30,10 +30,7 @@ static inline int iwl_poll_bits(struct iwl_trans *trans, u32 addr, u32 bits,
 {
 	return iwl_poll_bits_mask(trans, addr, bits, bits, timeout);
 }
-int iwl_poll_direct_bit(struct iwl_trans *trans, u32 addr, u32 mask,
-			int timeout);
 
-u32 iwl_read_direct32(struct iwl_trans *trans, u32 reg);
 void iwl_write_direct32(struct iwl_trans *trans, u32 reg, u32 value);
 void iwl_write_direct64(struct iwl_trans *trans, u64 reg, u64 value);
 
