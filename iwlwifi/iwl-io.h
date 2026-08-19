@@ -72,13 +72,6 @@ static inline u32 iwl_read_umac_prph(struct iwl_trans *trans, u32 ofs)
 	return iwl_read_prph(trans, ofs + trans->mac_cfg->umac_prph_offset);
 }
 
-static inline void iwl_write_umac_prph_no_grab(struct iwl_trans *trans, u32 ofs,
-					       u32 val)
-{
-	iwl_write_prph_no_grab(trans,  ofs + trans->mac_cfg->umac_prph_offset,
-			       val);
-}
-
 static inline void iwl_write_umac_prph(struct iwl_trans *trans, u32 ofs,
 				       u32 val)
 {

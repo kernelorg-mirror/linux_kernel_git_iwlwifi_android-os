@@ -1791,8 +1791,8 @@ static int iwl_trans_pcie_clear_persistence_bit(struct iwl_trans *trans)
 				"Error, can not clear persistence bit\n");
 			return -EPERM;
 		}
-		iwl_write_umac_prph_no_grab(trans, HPM_DEBUG,
-					    hpm & ~PERSISTENCE_BIT);
+		iwl_pcie_write_umac_prph_no_grab(trans, HPM_DEBUG,
+						 hpm & ~PERSISTENCE_BIT);
 	}
 
 	return 0;
@@ -3306,11 +3306,11 @@ iwl_trans_pci_dump_marbh_monitor(struct iwl_trans *trans,
 	if (!iwl_trans_grab_nic_access(trans))
 		return 0;
 
-	iwl_write_umac_prph_no_grab(trans, MON_DMARB_RD_CTL_ADDR, 0x1);
+	iwl_pcie_write_umac_prph_no_grab(trans, MON_DMARB_RD_CTL_ADDR, 0x1);
 	for (i = 0; i < buf_size_in_dwords; i++)
 		buffer[i] = iwl_read_umac_prph_no_grab(trans,
 						       MON_DMARB_RD_DATA_ADDR);
-	iwl_write_umac_prph_no_grab(trans, MON_DMARB_RD_CTL_ADDR, 0x0);
+	iwl_pcie_write_umac_prph_no_grab(trans, MON_DMARB_RD_CTL_ADDR, 0x0);
 
 	iwl_trans_release_nic_access(trans);
 
@@ -3982,7 +3982,7 @@ static void get_crf_id(struct iwl_trans *iwl_trans,
 	/* Enable access to peripheral registers */
 	val = iwl_read_umac_prph_no_grab(iwl_trans, WFPM_CTRL_REG);
 	val |= WFPM_AUX_CTL_AUX_IF_MAC_OWNER_MSK;
-	iwl_write_umac_prph_no_grab(iwl_trans, WFPM_CTRL_REG, val);
+	iwl_pcie_write_umac_prph_no_grab(iwl_trans, WFPM_CTRL_REG, val);
 
 	/* Read crf info */
 	info->hw_crf_id = iwl_read_prph_no_grab(iwl_trans, sd_reg_ver_addr);
