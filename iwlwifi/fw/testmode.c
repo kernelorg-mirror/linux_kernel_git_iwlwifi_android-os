@@ -224,8 +224,8 @@ static int iwl_tm_indirect_read(struct iwl_testmode *testmode,
 			return -EBUSY;
 		}
 		for (i = 0; i < size32; i++)
-			buf32[i] = iwl_trans_read_prph(trans,
-						       addr + i * sizeof(u32));
+			buf32[i] = iwl_trans_read_prph_no_grab(trans,
+							       addr + i * sizeof(u32));
 		iwl_trans_release_nic_access(trans);
 	} else {
 		/* target memory (SRAM) */
