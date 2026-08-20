@@ -1182,10 +1182,9 @@ void iwl_trans_pcie_resched_with_nic_access(struct iwl_trans *trans);
 void __releases(nic_access_nobh)
 iwl_trans_pcie_release_nic_access(struct iwl_trans *trans);
 void iwl_pcie_alloc_fw_monitor(struct iwl_trans *trans, u8 max_power);
-int iwl_pci_gen1_2_probe(struct pci_dev *pdev,
-			 const struct pci_device_id *ent,
-			 const struct iwl_mac_cfg *mac_cfg,
-			 u8 __iomem *hw_base, u32 hw_rev);
+int _iwl_pci_probe(struct pci_dev *pdev, const struct pci_device_id *ent,
+		   const struct iwl_mac_cfg *mac_cfg,
+		   u8 __iomem *hw_base, u32 hw_rev);
 
 /* transport gen 1 exported functions */
 void iwl_trans_pcie_fw_alive(struct iwl_trans *trans);

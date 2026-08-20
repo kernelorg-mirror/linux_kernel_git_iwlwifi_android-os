@@ -4129,10 +4129,9 @@ static void iwl_pcie_check_me_status(struct iwl_trans *trans)
 	schedule_delayed_work(&trans_pcie->me_recheck_wk, HZ);
 }
 
-int iwl_pci_gen1_2_probe(struct pci_dev *pdev,
-			 const struct pci_device_id *ent,
-			 const struct iwl_mac_cfg *mac_cfg,
-			 u8 __iomem *hw_base, u32 hw_rev)
+int _iwl_pci_probe(struct pci_dev *pdev, const struct pci_device_id *ent,
+		   const struct iwl_mac_cfg *mac_cfg,
+		   u8 __iomem *hw_base, u32 hw_rev)
 {
 	const struct iwl_dev_info *dev_info;
 	struct iwl_trans_info info = {
