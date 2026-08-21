@@ -168,6 +168,17 @@ static bool iwl_alive_fn(struct iwl_notif_wait_data *notif_wait,
 
 	iwl_mld_alive_imr_data(trans, &palive->imr);
 
+#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+	if (trans->dbg_cfg.FATAL_ERROR_TEST_MODE) {
+		if (le16_to_cpu(palive->flags) & IWL_ALIVE_FLG_RFKILL_TEST_MODE) {
+			IWL_INFO(mld, "Fatal Error Test Mode: accepted by FW\n");
+		} else {
+			trans->dbg_cfg.FATAL_ERROR_TEST_MODE = false;
+			IWL_INFO(mld, "Fatal Error Test Mode: rejected by FW\n");
+		}
+	}
+#endif
+
 	umac = &palive->umac_data;
 	lmac1 = &palive->lmac_data[0];
 	lmac2 = &palive->lmac_data[1];

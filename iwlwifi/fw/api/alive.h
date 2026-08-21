@@ -36,7 +36,11 @@ enum {
 #define IWL_ALIVE_STATUS_ERR 0xDEAD
 #define IWL_ALIVE_STATUS_OK 0xCAFE
 
-#define IWL_ALIVE_FLG_RFKILL	BIT(0)
+#define IWL_ALIVE_FLG_RFKILL		BIT(0)
+
+#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+#define IWL_ALIVE_FLG_RFKILL_TEST_MODE	BIT(2)
+#endif
 
 struct iwl_lmac_debug_addrs {
 	__le32 error_event_table_ptr;	/* SRAM address for error log */
