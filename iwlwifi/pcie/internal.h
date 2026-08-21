@@ -1125,6 +1125,12 @@ static inline bool iwl_is_rfkill_set(struct iwl_trans *trans)
 		return true;
 
 #ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+	if (trans->dbg_cfg.FATAL_ERROR_TEST_MODE) {
+		IWL_INFO(trans,
+			 "Fatal Error Test Mode: treating HW RF-Kill as off\n");
+		return false;
+	}
+
 	if (trans_pcie->debug_rfkill == -1 &&
 	    trans->dbg_cfg.STARTUP_RFKILL)
 		return true;

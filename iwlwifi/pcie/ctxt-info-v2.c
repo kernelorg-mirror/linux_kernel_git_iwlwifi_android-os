@@ -215,6 +215,11 @@ int iwl_pcie_ctxt_info_v2_alloc(struct iwl_trans *trans,
 	if (trans->conf.ext_32khz_clock_valid)
 		control_flags_ext |= IWL_PRPH_SCRATCH_EXT_32KHZ_CLK_VALID;
 
+#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+	if (trans->dbg_cfg.FATAL_ERROR_TEST_MODE)
+		control_flags_ext |= IWL_PRPH_SCRATCH_EXT_FATAL_ERROR_TEST;
+#endif
+
 	/* Allocate prph scratch */
 	prph_scratch = dma_alloc_coherent(trans->dev, sizeof(*prph_scratch),
 					  &trans_pcie->prph_scratch_dma_addr,

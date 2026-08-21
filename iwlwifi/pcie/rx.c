@@ -1815,6 +1815,12 @@ void iwl_pcie_handle_rfkill_irq(struct iwl_trans *trans, bool from_irq)
 	prev = test_bit(STATUS_RFKILL_OPMODE, &trans->status);
 	hw_rfkill = iwl_is_rfkill_set(trans);
 	if (hw_rfkill) {
+#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+		if (trans->dbg_cfg.FATAL_ERROR_TEST_MODE) {
+			mutex_unlock(&trans_pcie->mutex);
+			return;
+		}
+#endif
 		set_bit(STATUS_RFKILL_OPMODE, &trans->status);
 		set_bit(STATUS_RFKILL_HW, &trans->status);
 	}

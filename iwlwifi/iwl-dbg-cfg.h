@@ -61,6 +61,7 @@ struct iwl_dbg_cfg {
 	IWL_DBG_CFG_NODEF(bool, enable_timestamp_marker_cmd)
 #endif
 	IWL_DBG_CFG_NODEF(bool, STARTUP_RFKILL)
+	IWL_DBG_CFG_NODEF(bool, FATAL_ERROR_TEST_MODE)
 	IWL_DBG_CFG_NODEF(bool, mac80211_strict)
 #if IS_ENABLED(CPTCFG_IWLMVM)
 	IWL_DBG_CFG(u32, MVM_DEFAULT_PS_TX_DATA_TIMEOUT)
