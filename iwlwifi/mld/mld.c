@@ -684,6 +684,18 @@ iwl_mld_free_skb(struct iwl_op_mode *op_mode, struct sk_buff *skb)
 	struct ieee80211_tx_info *info = IEEE80211_SKB_CB(skb);
 
 	iwl_trans_free_tx_cmd(mld->trans, info->driver_data[1]);
+
+#ifdef CPTCFG_IWLMLD_WONDER
+	/*
+	 * Wonder frames are identified by a non-NULL driver_data[0].
+	 * They bypass mac80211 entirely, so just free the skb.
+	 */
+	if (info->driver_data[0]) {
+		dev_kfree_skb_any(skb);
+		return;
+	}
+#endif /* CPTCFG_IWLMLD_WONDER */
+
 	ieee80211_free_txskb(mld->hw, skb);
 }
 

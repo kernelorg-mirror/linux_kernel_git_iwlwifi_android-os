@@ -1138,6 +1138,17 @@ void iwl_mld_handle_tx_resp_notif(struct iwl_mld *mld,
 
 		iwl_trans_free_tx_cmd(mld->trans, info->driver_data[1]);
 
+#ifdef CPTCFG_IWLMLD_WONDER
+		/*
+		 * Wonder frames are identified by a non-NULL driver_data[0].
+		 * They bypass mac80211 entirely, so just free the skb.
+		 */
+		if (info->driver_data[0]) {
+			dev_kfree_skb_any(skb);
+			continue;
+		}
+#endif /* CPTCFG_IWLMLD_WONDER */
+
 		memset(&info->status, 0, sizeof(info->status));
 
 		info->flags &= ~(IEEE80211_TX_STAT_ACK | IEEE80211_TX_STAT_TX_FILTERED);
@@ -1232,6 +1243,17 @@ static void iwl_mld_tx_reclaim_txq(struct iwl_mld *mld, int txq, int index,
 		struct ieee80211_tx_info *info = IEEE80211_SKB_CB(skb);
 
 		iwl_trans_free_tx_cmd(mld->trans, info->driver_data[1]);
+
+#ifdef CPTCFG_IWLMLD_WONDER
+		/*
+		 * Wonder frames are identified by a non-NULL driver_data[0].
+		 * They bypass mac80211 entirely, so just free the skb.
+		 */
+		if (info->driver_data[0]) {
+			dev_kfree_skb_any(skb);
+			continue;
+		}
+#endif /* CPTCFG_IWLMLD_WONDER */
 
 		memset(&info->status, 0, sizeof(info->status));
 

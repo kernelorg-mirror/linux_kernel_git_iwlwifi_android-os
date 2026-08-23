@@ -6,6 +6,7 @@
 #define __iwl_mld_wonder_h__
 
 #include <linux/netdevice.h>
+#include <linux/spinlock.h>
 #include <wondertap.h>
 
 #include "mld.h"
@@ -37,6 +38,14 @@ DEFINE_GUARD(nested_wiphy, struct wiphy *,
  * @stas: station slots, managed via the set_station_info vtable op
  * @bssid_filter: the BSSID latched at init() time
  * @netdev: the wondertap0 netdev, created/destroyed with register/unregister
+ * @config_lock: protects @fixed_tx_rate against concurrent updates from
+ *	set_fixed_tx_rate() (process context) and reads from the TX path
+ *	(BH context). @rate_adaptation_enable needs no lock: only init()
+ *	ever writes it, before TX is possible.
+ * @fixed_tx_rate: rate used when @rate_adaptation_enable is false
+ * @rate_adaptation_enable: when true, let the firmware pick the rate instead
+ *	of using @fixed_tx_rate
+ * @capabilities: wondertap capabilities
  */
 struct iwl_mld_wonder_ctx {
 	struct wondertap_aux_dev *wonder_dev;
@@ -50,6 +59,10 @@ struct iwl_mld_wonder_ctx {
 	struct iwl_mld_wonder_sta stas[IWL_MLD_WONDER_MAX_STAS];
 	u8 bssid_filter[ETH_ALEN];
 	struct net_device *netdev;
+	spinlock_t config_lock; /* protects fixed_tx_rate */
+	struct wondertap_fixed_tx_rate_params fixed_tx_rate;
+	bool rate_adaptation_enable;
+	struct wondertap_capability capabilities;
 };
 
 int iwl_mld_wonder_register(struct iwl_mld *mld);

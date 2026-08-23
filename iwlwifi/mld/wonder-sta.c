@@ -209,7 +209,13 @@ iwl_mld_wonder_free_mcast_bcast_stas(struct iwl_mld *mld,
 					  IWL_MGMT_TID);
 }
 
-static struct iwl_mld_wonder_sta *
+/*
+ * Find the sta slot matching @addr, or NULL. Called without the wiphy lock
+ * from the TX fast path.
+ *
+ * TODO: evaluate whether this can race with a concurrent sta add/remove.
+ */
+struct iwl_mld_wonder_sta *
 iwl_mld_wonder_find_sta(struct iwl_mld_wonder_ctx *wonder_ctx, const u8 *addr)
 {
 	for (int i = 0; i < ARRAY_SIZE(wonder_ctx->stas); i++) {
@@ -265,25 +271,28 @@ static int iwl_mld_wonder_alloc_sta_queue(struct iwl_mld *mld,
 	return 0;
 }
 
-static void iwl_mld_wonder_free_sta_queue(struct iwl_mld *mld,
+static void iwl_mld_wonder_free_sta_queue(struct iwl_mld *mld, u8 sta_id,
 					  struct iwl_mld_wonder_sta *sta)
 {
 	if (WARN_ON(sta->queue_id == IWL_MLD_INVALID_QUEUE))
 		return;
 
-	iwl_mld_free_txq(mld, BIT(sta->sta_id), 0, sta->queue_id);
+	iwl_mld_free_txq(mld, BIT(sta_id), 0, sta->queue_id);
 	sta->queue_id = IWL_MLD_INVALID_QUEUE;
 }
 
 static void iwl_mld_wonder_release_sta(struct iwl_mld *mld,
 				       struct iwl_mld_wonder_sta *sta)
 {
-	iwl_mld_flush_link_sta_txqs(mld, sta->sta_id);
-	iwl_mld_wonder_free_sta_queue(mld, sta);
-	iwl_mld_wonder_rm_sta_from_fw(mld, sta->sta_id);
-	RCU_INIT_POINTER(mld->fw_id_to_link_sta[sta->sta_id], NULL);
+	u8 sta_id = sta->sta_id;
+
 	sta->sta_id = IWL_INVALID_STA;
 	eth_zero_addr(sta->addr);
+
+	iwl_mld_flush_link_sta_txqs(mld, sta_id);
+	iwl_mld_wonder_free_sta_queue(mld, sta_id, sta);
+	iwl_mld_wonder_rm_sta_from_fw(mld, sta_id);
+	RCU_INIT_POINTER(mld->fw_id_to_link_sta[sta_id], NULL);
 }
 
 /**
