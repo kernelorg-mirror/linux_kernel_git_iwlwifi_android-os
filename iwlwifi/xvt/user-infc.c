@@ -26,7 +26,6 @@
 #include "user-infc.h"
 #include "iwl-trans.h"
 #include "fw/dbg.h"
-#include "fw/acpi.h"
 #include "fw/img.h"
 #include "fw/pnvm.h"
 
@@ -459,8 +458,6 @@ static int iwl_xvt_continue_init_unified(struct iwl_xvt *xvt)
 				    XVT_UCODE_CALIB_TIMEOUT);
 	if (err)
 		goto init_error;
-
-	iwl_acpi_get_guid_lock_status(&xvt->fwrt);
 
 	ret = iwl_xvt_init_ppag_tables(xvt);
 	if (ret < 0) {
