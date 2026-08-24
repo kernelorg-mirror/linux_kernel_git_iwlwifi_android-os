@@ -2787,7 +2787,7 @@ void iwl_mld_rx_mpdu(struct iwl_mld *mld, struct napi_struct *napi,
 
 #ifdef CPTCFG_IWLMLD_WONDER
 	/* Consumed wonder frames must not enter driver reorder. */
-	if (iwl_mld_wonder_rx_frame(mld, skb, rx_status))
+	if (iwl_mld_wonder_rx_frame(mld, skb, rx_status, queue, mpdu_desc))
 		goto out;
 #endif
 

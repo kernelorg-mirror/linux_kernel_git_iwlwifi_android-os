@@ -6,6 +6,10 @@
 #include "sta.h"
 #include "hcmd.h"
 
+#ifdef CPTCFG_IWLMLD_WONDER
+#include "wonder-agg.h"
+#endif
+
 static void
 iwl_mld_reorder_release_frames(struct iwl_mld *mld, struct ieee80211_sta *sta,
 			       struct napi_struct *napi,
@@ -92,6 +96,15 @@ void iwl_mld_handle_frame_release_notif(struct iwl_mld *mld,
 			 pkt_len, sizeof(*release)))
 		return;
 
+#ifdef CPTCFG_IWLMLD_WONDER
+	if (iwl_mld_wonder_owns_baid(mld, release->baid)) {
+		iwl_mld_wonder_release_frames(mld, napi, release->baid,
+					      le16_to_cpu(release->nssn),
+					      queue);
+		return;
+	}
+#endif
+
 	iwl_mld_release_frames_from_notif(mld, napi, release->baid,
 					  le16_to_cpu(release->nssn),
 					  queue);
@@ -120,6 +133,16 @@ void iwl_mld_handle_bar_frame_release_notif(struct iwl_mld *mld,
 			       IWL_BAR_FRAME_RELEASE_STA_MASK);
 	tid = le32_get_bits(release->sta_tid,
 			    IWL_BAR_FRAME_RELEASE_TID_MASK);
+
+#ifdef CPTCFG_IWLMLD_WONDER
+	if (iwl_mld_wonder_owns_baid(mld, baid)) {
+		IWL_DEBUG_DROP(mld,
+			       "wonder BAR baid=%u, expect packet loss: nssn %d\n",
+			       baid, nssn);
+		iwl_mld_wonder_release_frames(mld, napi, baid, nssn, queue);
+		return;
+	}
+#endif
 
 	if (IWL_FW_CHECK(mld, baid >= ARRAY_SIZE(mld->fw_id_to_ba),
 			 "BAR release: invalid BAID (%x)\n", baid))

@@ -36,6 +36,8 @@
 #include "wonder-agg.h"
 #include "wonder-rx.h"
 
+#include "fw/api/rx.h"
+
 /* Fixed noise floor estimate placed in the DBM_ANTNOISE radiotap field. */
 #define IWL_MLD_WONDER_NOISE_FLOOR_DBM	(-95)
 
@@ -91,9 +93,53 @@ iwl_mld_wonder_fill_radiotap(struct iwl_mld_wonder_radiotap *rtap,
 	rtap->antenna    = rx_status->chains ? __ffs(rx_status->chains) : 0;
 }
 
+void iwl_mld_wonder_deliver_skb(struct iwl_mld_wonder_ctx *wonder_ctx,
+				struct sk_buff *skb)
+{
+	struct ieee80211_rx_status *rx_status = IEEE80211_SKB_RXCB(skb);
+	struct ieee80211_hdr *hdr = (struct ieee80211_hdr *)skb->data;
+	/* hdr may go stale across skb_cow_head() below; save DA for the log. */
+	u8 da[ETH_ALEN];
+	struct iwl_mld_wonder_radiotap *rtap;
+	/* Single read: wonder_ctx->netdev can be freed concurrently by
+	 * iwl_mld_wonder_netdev_destroy(). This can run well after the
+	 * initial filter checks (e.g. releasing a reorder-buffered frame),
+	 * so netdev must be re-validated here too.
+	 */
+	struct net_device *netdev = READ_ONCE(wonder_ctx->netdev);
+
+	if (!netdev) {
+		kfree_skb_reason(skb, SKB_DROP_REASON_DEV_READY);
+		return;
+	}
+
+	ether_addr_copy(da, hdr->addr1);
+
+	if (skb_cow_head(skb, sizeof(*rtap))) {
+		IWL_DEBUG_RX(wonder_ctx->mld,
+			     "wonder-rx: failed to expand skb head, dropping\n");
+		kfree_skb_reason(skb, SKB_DROP_REASON_NOMEM);
+		return;
+	}
+
+	rtap = skb_push(skb, sizeof(*rtap));
+	iwl_mld_wonder_fill_radiotap(rtap, rx_status);
+	skb_reset_mac_header(skb);
+
+	IWL_DEBUG_RX(wonder_ctx->mld,
+		     "wonder-rx: delivering to wondertap0: BSSID %pM DA %pM\n",
+		     wonder_ctx->bssid_filter, da);
+
+	skb->dev      = netdev;
+	skb->protocol = htons(ETH_P_802_2);
+	netif_receive_skb(skb);
+}
+
 bool iwl_mld_wonder_rx_frame(struct iwl_mld *mld,
 			     struct sk_buff *skb,
-			     struct ieee80211_rx_status *rx_status)
+			     struct ieee80211_rx_status *rx_status,
+			     int queue,
+			     const struct iwl_rx_mpdu_desc *mpdu_desc)
 {
 	struct iwl_mld_wonder_ctx *wonder_ctx = &iwl_mld_wonder_ctx;
 	/* Single read: wonder_ctx->netdev can be freed concurrently by
@@ -102,7 +148,6 @@ bool iwl_mld_wonder_rx_frame(struct iwl_mld *mld,
 	 */
 	struct net_device *netdev = READ_ONCE(wonder_ctx->netdev);
 	struct ieee80211_hdr *hdr = (void *)skb->data;
-	struct iwl_mld_wonder_radiotap *rtap;
 
 	if (!wonder_ctx->mld || wonder_ctx->mld != mld || !netdev ||
 	    !netif_running(netdev) ||
@@ -142,22 +187,28 @@ bool iwl_mld_wonder_rx_frame(struct iwl_mld *mld,
 		}
 	}
 
-	if (skb_cow_head(skb, sizeof(*rtap))) {
-		IWL_DEBUG_RX(mld, "wonder-rx: failed to expand skb head\n");
-		kfree_skb_reason(skb, SKB_DROP_REASON_NOMEM);
-		return true; /* consumed (dropped) */
+	/*
+	 * Data frames may need driver-side reordering when a real RX BA
+	 * session is active for their TID.
+	 */
+	if (ieee80211_is_data(hdr->frame_control)) {
+		enum iwl_mld_wonder_reorder_result res;
+
+		res = iwl_mld_wonder_reorder(wonder_ctx, queue, skb,
+					     mpdu_desc);
+		switch (res) {
+		case IWL_MLD_WONDER_REORDER_DROP:
+			dev_kfree_skb(skb);
+			return true; /* consumed (dropped) */
+		case IWL_MLD_WONDER_REORDER_BUFFERED:
+			return true; /* consumed (buffered) */
+		case IWL_MLD_WONDER_REORDER_PASS:
+		default:
+			break;
+		}
 	}
 
-	rtap = skb_push(skb, sizeof(*rtap));
-	iwl_mld_wonder_fill_radiotap(rtap, rx_status);
-	skb_reset_mac_header(skb);
-
-	IWL_DEBUG_RX(mld, "wonder-rx: delivering to wondertap0: BSSID %pM\n",
-		     wonder_ctx->bssid_filter);
-
-	skb->dev = netdev;
-	skb->protocol = htons(ETH_P_802_2);
-	netif_receive_skb(skb);
+	iwl_mld_wonder_deliver_skb(wonder_ctx, skb);
 
 	return true; /* consumed */
 }
