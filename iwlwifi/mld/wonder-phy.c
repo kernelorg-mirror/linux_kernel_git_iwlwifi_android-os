@@ -50,27 +50,46 @@ iwl_mld_wonder_bw_to_nl80211(enum wondertap_rate_bw bw)
 	}
 }
 
+/* JP channel 44 at 20 MHz is exempted from the no-IR rule. */
+static bool
+iwl_mld_wonder_no_ir_allowed(const struct ieee80211_channel *chan,
+			     const char *alpha2,
+			     enum nl80211_chan_width width)
+{
+	return width == NL80211_CHAN_WIDTH_20 &&
+	       alpha2[0] == 'J' && alpha2[1] == 'P' &&
+	       chan->band == NL80211_BAND_5GHZ &&
+	       chan->hw_value == 44;
+}
+
 static int
 iwl_mld_wonder_build_chandef(struct iwl_mld *mld,
 			     struct ieee80211_channel *chan,
+			     const char *alpha2,
 			     const struct wondertap_init_params *params,
 			     struct cfg80211_chan_def *chandef)
 {
 	u32 control_freq = params->channel.freq;
 	enum nl80211_chan_width width;
 	u32 offset = 0;
+	int ret = 0;
 
 	switch (params->channel.bandwidth) {
 	case WONDERTAP_RATE_BW_20:
 	case WONDERTAP_RATE_BW_40:
 	case WONDERTAP_RATE_BW_80:
-	case WONDERTAP_RATE_BW_160:
 		break;
 	default:
-		return -EOPNOTSUPP;
+		ret = -EOPNOTSUPP;
+		goto out;
 	}
 
 	width = iwl_mld_wonder_bw_to_nl80211(params->channel.bandwidth);
+
+	if (chan->band == NL80211_BAND_6GHZ) {
+		ret = -EOPNOTSUPP;
+		goto out;
+	}
 
 	memset(chandef, 0, sizeof(*chandef));
 	chandef->chan = chan;
@@ -78,20 +97,19 @@ iwl_mld_wonder_build_chandef(struct iwl_mld *mld,
 
 	if (width == NL80211_CHAN_WIDTH_20) {
 		chandef->center_freq1 = control_freq;
-		return 0;
+		goto check_usable;
 	}
 
 	/* HT40 is valid on 2.4 GHz, but wondertap gives us no secondary
-	 * channel offset (HT40+/-), and unlike 5/6 GHz this band isn't on
+	 * channel offset (HT40+/-), and unlike 5 GHz this band isn't on
 	 * a 20 MHz-aligned grid we could infer it from -- reject for now.
 	 */
-	if (chan->band == NL80211_BAND_2GHZ)
-		return -EOPNOTSUPP;
+	if (chan->band == NL80211_BAND_2GHZ) {
+		ret = -EOPNOTSUPP;
+		goto out;
+	}
 
 	switch (chan->band) {
-	case NL80211_BAND_6GHZ:
-		offset = control_freq - 5955;
-		break;
 	case NL80211_BAND_5GHZ:
 		if (control_freq >= 5745)
 			offset = control_freq - 5745;
@@ -99,7 +117,8 @@ iwl_mld_wonder_build_chandef(struct iwl_mld *mld,
 			offset = control_freq - 5180;
 		break;
 	default:
-		return -EOPNOTSUPP;
+		ret = -EOPNOTSUPP;
+		goto out;
 	}
 	offset /= 20;
 
@@ -110,19 +129,31 @@ iwl_mld_wonder_build_chandef(struct iwl_mld *mld,
 	case NL80211_CHAN_WIDTH_80:
 		chandef->center_freq1 = control_freq + 30 - (offset & 3) * 20;
 		break;
-	case NL80211_CHAN_WIDTH_160:
-		chandef->center_freq1 = control_freq + 70 - (offset & 7) * 20;
-		break;
 	default:
-		return -EOPNOTSUPP;
+		ret = -EOPNOTSUPP;
+		goto out;
 	}
 
+check_usable:
 	if (!cfg80211_chandef_valid(chandef) ||
 	    !cfg80211_chandef_usable(mld->wiphy, chandef,
-				     IEEE80211_CHAN_DISABLED))
-		return -EINVAL;
+				     IEEE80211_CHAN_DISABLED)) {
+		ret = -EINVAL;
+		goto out;
+	}
 
-	return 0;
+	if (!iwl_mld_wonder_no_ir_allowed(chan, alpha2, width) &&
+	    !cfg80211_chandef_usable(mld->wiphy, chandef,
+				     IEEE80211_CHAN_NO_IR))
+		ret = -EINVAL;
+
+out:
+	if (ret)
+		IWL_ERR(mld,
+			"Wonder: can't use ch %u (freq %u, bw %u) in %.2s: %d\n",
+			chan->hw_value, params->channel.freq,
+			params->channel.bandwidth, alpha2, ret);
+	return ret;
 }
 
 /**
@@ -144,6 +175,7 @@ int iwl_mld_wonder_allocate_phy_ctx(struct iwl_mld *mld,
 	struct iwl_phy_context_cmd phy_cmd = {
 		.action = cpu_to_le32(FW_CTXT_ACTION_ADD),
 	};
+	const struct ieee80211_regdomain *regd;
 	struct cfg80211_chan_def chandef;
 	struct ieee80211_channel *chan;
 	int fw_id;
@@ -154,6 +186,11 @@ int iwl_mld_wonder_allocate_phy_ctx(struct iwl_mld *mld,
 	if (WARN_ON(wonder_ctx->phy_id != IWL_MLD_INVALID_FW_ID))
 		return -EINVAL;
 
+	/* The regdomain must already be resolved; wonder doesn't set it. */
+	regd = wiphy_dereference(mld->wiphy, mld->wiphy->regd);
+	if (WARN_ON(!regd))
+		return -EINVAL;
+
 	chan = ieee80211_get_channel(mld->wiphy, params->channel.freq);
 	if (!chan || chan->flags & IEEE80211_CHAN_DISABLED) {
 		IWL_ERR(mld, "Wonder: invalid or disabled channel freq=%u\n",
@@ -161,11 +198,10 @@ int iwl_mld_wonder_allocate_phy_ctx(struct iwl_mld *mld,
 		return -EINVAL;
 	}
 
-	ret = iwl_mld_wonder_build_chandef(mld, chan, params, &chandef);
-	if (ret) {
-		IWL_ERR(mld, "Wonder: failed to build chandef: %d\n", ret);
+	ret = iwl_mld_wonder_build_chandef(mld, chan, regd->alpha2, params,
+					   &chandef);
+	if (ret)
 		return ret;
-	}
 
 	fw_id = iwl_mld_allocate_fw_phy_id(mld);
 	if (fw_id < 0) {
