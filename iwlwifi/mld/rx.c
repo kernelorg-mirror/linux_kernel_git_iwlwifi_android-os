@@ -2761,8 +2761,12 @@ void iwl_mld_rx_mpdu(struct iwl_mld *mld, struct napi_struct *napi,
 
 	iwl_mld_rx_fill_status(mld, link_id, hdr, skb, &phy_data);
 
-#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDE
-	IWL_FW_CHECK(mld, !rx_status->nss, "RX nss = 0 at timestamp 0x%x\n",
+#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+	/* nss is only filled in from VHT onwards */
+	IWL_FW_CHECK(mld,
+		     rx_status->encoding != RX_ENC_LEGACY &&
+		     rx_status->encoding != RX_ENC_HT && !rx_status->nss,
+		     "RX nss = 0 at timestamp 0x%x\n",
 		     rx_status->device_timestamp);
 #endif
 	if (iwl_mld_rx_crypto(mld, sta, hdr, rx_status, mpdu_desc, queue,
@@ -2990,8 +2994,12 @@ static void iwl_mld_no_data_rx(struct iwl_mld *mld,
 
 	/* link ID is ignored for NULL header */
 	iwl_mld_rx_fill_status(mld, -1, NULL, skb, &phy_data);
-#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDE
-	IWL_FW_CHECK(mld, !rx_status->nss, "RX nss = 0 at timestamp 0x%x\n",
+#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+	/* nss is only filled in from VHT onwards */
+	IWL_FW_CHECK(mld,
+		     rx_status->encoding != RX_ENC_LEGACY &&
+		     rx_status->encoding != RX_ENC_HT && !rx_status->nss,
+		     "RX nss = 0 at timestamp 0x%x\n",
 		     rx_status->device_timestamp);
 #endif
 
