@@ -65,6 +65,8 @@ struct iwl_mld_wonder_ctx {
 	struct wondertap_capability capabilities;
 };
 
+extern struct iwl_mld_wonder_ctx iwl_mld_wonder_ctx;
+
 int iwl_mld_wonder_register(struct iwl_mld *mld);
 void iwl_mld_wonder_unregister(struct iwl_mld *mld);
 

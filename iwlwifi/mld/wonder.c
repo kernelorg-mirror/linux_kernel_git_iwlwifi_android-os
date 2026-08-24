@@ -33,7 +33,7 @@
 #include "wonder-phy.h"
 #include "wonder-tx.h"
 
-static struct iwl_mld_wonder_ctx iwl_mld_wonder_ctx = {
+struct iwl_mld_wonder_ctx iwl_mld_wonder_ctx = {
 	.phy_id = IWL_MLD_INVALID_FW_ID,
 	.mac_id = IWL_MLD_INVALID_FW_ID,
 	.link_id = IWL_MLD_INVALID_FW_ID,
@@ -144,18 +144,20 @@ static int iwl_mld_wonder_netdev_create(struct iwl_mld_wonder_ctx *wonder_ctx)
 		return ret;
 	}
 
-	wonder_ctx->netdev = dev;
+	WRITE_ONCE(wonder_ctx->netdev, dev);
 	return 0;
 }
 
 static void iwl_mld_wonder_netdev_destroy(struct iwl_mld_wonder_ctx *wonder_ctx)
 {
-	if (WARN_ON(!wonder_ctx->netdev))
+	struct net_device *netdev = wonder_ctx->netdev;
+
+	if (WARN_ON(!netdev))
 		return;
 
-	unregister_netdev(wonder_ctx->netdev);
-	free_netdev(wonder_ctx->netdev);
-	wonder_ctx->netdev = NULL;
+	WRITE_ONCE(wonder_ctx->netdev, NULL);
+	unregister_netdev(netdev);
+	free_netdev(netdev);
 }
 
 static int iwl_mld_wondertap_get_capabilities(void *handle,
@@ -177,6 +179,7 @@ iwl_mld_wonder_set_capabilities(struct iwl_mld *mld,
 	cap->bits.rate_adaptation = 1;
 	cap->bits.ampdu_aggregation = 1;
 	cap->bits.dynamic_fixed_tx_rate = 1;
+	cap->bits.fcs_not_support = 1;
 	cap->bits.nss = hweight8(iwl_mld_get_valid_tx_ant(mld));
 }
 

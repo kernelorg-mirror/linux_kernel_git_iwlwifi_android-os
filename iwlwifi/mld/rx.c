@@ -15,6 +15,9 @@
 #include "time_sync.h"
 #include "fw/dbg.h"
 #include "fw/api/rx.h"
+#ifdef CPTCFG_IWLMLD_WONDER
+#include "wonder-rx.h"
+#endif
 
 /* stores relevant PHY data fields extracted from iwl_rx_mpdu_desc */
 struct iwl_mld_rx_phy_data {
@@ -2773,6 +2776,11 @@ void iwl_mld_rx_mpdu(struct iwl_mld *mld, struct napi_struct *napi,
 	 */
 	if (iwl_mld_time_sync_frame(mld, skb, hdr->addr2))
 		goto out;
+
+#ifdef CPTCFG_IWLMLD_WONDER
+	if (iwl_mld_wonder_rx_frame(mld, skb, rx_status, mpdu_desc))
+		goto out;
+#endif
 
 	reorder_res = iwl_mld_reorder(mld, napi, queue, link_sta, skb,
 				      mpdu_desc);
