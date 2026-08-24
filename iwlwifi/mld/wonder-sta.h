@@ -8,6 +8,7 @@
 #include <wondertap.h>
 
 #include "mld.h"
+#include "wonder-agg.h"
 
 struct iwl_mld_wonder_ctx;
 
@@ -20,11 +21,13 @@ struct iwl_mld_wonder_ctx;
  * @sta_id: firmware station id, or IWL_INVALID_STA when the slot is free
  * @queue_id: the station's single TX queue, used for all TIDs.
  *	IWL_MLD_INVALID_QUEUE when not yet allocated
+ * @rx_ba: per-TID RX BA session, NULL if none
  */
 struct iwl_mld_wonder_sta {
 	u8 addr[ETH_ALEN];
 	u8 sta_id;
 	u32 queue_id;
+	struct iwl_mld_wonder_rx_ba *rx_ba[IWL_MAX_TID_COUNT];
 };
 
 int
@@ -45,8 +48,6 @@ int iwl_mld_wonder_alloc_sta(struct iwl_mld *mld,
 void iwl_mld_wonder_free_sta(struct iwl_mld *mld,
 			     struct iwl_mld_wonder_ctx *wonder_ctx,
 			     const u8 *addr);
-void iwl_mld_wonder_free_all_ucast_stas(struct iwl_mld *mld,
-					struct iwl_mld_wonder_ctx *wonder_ctx);
 
 /*
  * Find the sta slot matching @addr, or NULL. Called without the wiphy

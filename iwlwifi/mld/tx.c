@@ -18,6 +18,9 @@
 #include "fw/api/txq.h"
 #include "fw/api/datapath.h"
 #include "fw/api/time-event.h"
+#ifdef CPTCFG_IWLMLD_WONDER
+#include "wonder.h"
+#endif
 
 #define MAX_ANT_NUM 2
 
@@ -1639,6 +1642,10 @@ void iwl_mld_handle_compressed_ba_notif(struct iwl_mld *mld,
 	rcu_read_lock();
 
 	link_sta = rcu_dereference(mld->fw_id_to_link_sta[sta_id]);
+#ifdef CPTCFG_IWLMLD_WONDER
+	if (iwl_mld_wonder_is_wonder_sta_id(mld, sta_id))
+		goto out;
+#endif
 	if (IWL_FW_CHECK(mld, IS_ERR_OR_NULL(link_sta),
 			 "Got valid sta_id (%d) but link_sta is NULL\n",
 			 sta_id))

@@ -33,6 +33,7 @@
 #include "wonder.h"
 #include "wonder-phy.h"
 #include "wonder-tx.h"
+#include "wonder-agg.h"
 
 struct iwl_mld_wonder_ctx iwl_mld_wonder_ctx = {
 	.phy_id = IWL_MLD_INVALID_FW_ID,
@@ -317,7 +318,16 @@ iwl_mld_wondertap_deinit(void *handle,
 	WARN_ON(!mld->fw_status.running);
 
 	iwl_mld_wonder_netdev_set_state(wonder_ctx, false);
-	iwl_mld_wonder_free_all_ucast_stas(mld, wonder_ctx);
+	/* Wait for RX that saw netif_running() before queueing agg work */
+	synchronize_net();
+
+	wiphy_work_cancel(mld->wiphy, &wonder_ctx->agg_work);
+	skb_queue_purge(&wonder_ctx->agg_pending);
+
+	/* wonder.ko deletes all stations before calling deinit */
+	for (int i = 0; i < ARRAY_SIZE(wonder_ctx->stas); i++)
+		WARN_ON_ONCE(wonder_ctx->stas[i].sta_id != IWL_INVALID_STA);
+
 	iwl_mld_wonder_free_mcast_bcast_stas(mld, wonder_ctx);
 
 	if (wonder_ctx->link_id != IWL_MLD_INVALID_FW_ID)
@@ -497,6 +507,12 @@ iwl_mld_wondertap_set_fixed_tx_rate(void *handle,
 	struct iwl_mld_wonder_ctx *wonder_ctx = handle;
 	struct wondertap_fixed_tx_rate_params rate =
 		iwl_mld_wonder_validate_tx_rate(params);
+	struct iwl_mld *mld = wonder_ctx->mld;
+
+	if (WARN_ON(!mld))
+		return -ENODEV;
+
+	guard(nested_wiphy)(mld->wiphy);
 
 	spin_lock_bh(&wonder_ctx->config_lock);
 	wonder_ctx->fixed_tx_rate = rate;
@@ -608,6 +624,9 @@ int iwl_mld_wonder_register(struct iwl_mld *mld)
 
 	wonder_ctx->wonder_dev = wonder_dev;
 	wonder_ctx->mld = mld;
+
+	skb_queue_head_init(&wonder_ctx->agg_pending);
+	wiphy_work_init(&wonder_ctx->agg_work, iwl_mld_wonder_agg_work);
 
 	ret = iwl_mld_wonder_netdev_create(wonder_ctx);
 	if (ret) {

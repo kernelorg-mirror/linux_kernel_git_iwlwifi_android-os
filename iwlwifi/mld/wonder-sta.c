@@ -295,20 +295,6 @@ static void iwl_mld_wonder_free_sta_queue(struct iwl_mld *mld, u8 sta_id,
 	sta->queue_id = IWL_MLD_INVALID_QUEUE;
 }
 
-static void iwl_mld_wonder_release_sta(struct iwl_mld *mld,
-				       struct iwl_mld_wonder_sta *sta)
-{
-	u8 sta_id = sta->sta_id;
-
-	sta->sta_id = IWL_INVALID_STA;
-	eth_zero_addr(sta->addr);
-
-	iwl_mld_flush_link_sta_txqs(mld, sta_id);
-	iwl_mld_wonder_free_sta_queue(mld, sta_id, sta);
-	iwl_mld_wonder_rm_sta_from_fw(mld, sta_id);
-	RCU_INIT_POINTER(mld->fw_id_to_link_sta[sta_id], NULL);
-}
-
 /**
  * iwl_mld_wonder_alloc_sta - add a station
  * @mld: the MLD instance
@@ -383,6 +369,7 @@ void iwl_mld_wonder_free_sta(struct iwl_mld *mld,
 			     const u8 *addr)
 {
 	struct iwl_mld_wonder_sta *sta;
+	u8 sta_id;
 
 	lockdep_assert_wiphy(mld->wiphy);
 
@@ -390,25 +377,16 @@ void iwl_mld_wonder_free_sta(struct iwl_mld *mld,
 	if (WARN_ON(!sta))
 		return;
 
-	iwl_mld_wonder_release_sta(mld, sta);
-}
+	sta_id = sta->sta_id;
 
-/**
- * iwl_mld_wonder_free_all_ucast_stas - remove all stations
- * @mld: the MLD instance
- * @wonder_ctx: the wonder context containing the stations to remove
- *
- * Must be called with wiphy lock held.
- */
-void iwl_mld_wonder_free_all_ucast_stas(struct iwl_mld *mld,
-					struct iwl_mld_wonder_ctx *wonder_ctx)
-{
-	lockdep_assert_wiphy(mld->wiphy);
+	iwl_mld_wonder_agg_stop(mld, sta);
+	sta->sta_id = IWL_INVALID_STA;
+	eth_zero_addr(sta->addr);
 
-	for (int i = 0; i < ARRAY_SIZE(wonder_ctx->stas); i++) {
-		struct iwl_mld_wonder_sta *sta = &wonder_ctx->stas[i];
-
-		if (sta->sta_id != IWL_INVALID_STA)
-			iwl_mld_wonder_release_sta(mld, sta);
-	}
+	iwl_mld_flush_link_sta_txqs(mld, sta_id);
+	if (!iwl_mld_error_before_recovery(mld))
+		iwl_trans_wait_txq_empty(mld->trans, sta->queue_id);
+	iwl_mld_wonder_free_sta_queue(mld, sta_id, sta);
+	iwl_mld_wonder_rm_sta_from_fw(mld, sta_id);
+	RCU_INIT_POINTER(mld->fw_id_to_link_sta[sta_id], NULL);
 }

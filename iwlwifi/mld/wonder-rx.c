@@ -34,6 +34,7 @@
 #include "fw/api/rx.h"
 #include "mld.h"
 #include "wonder.h"
+#include "wonder-agg.h"
 #include "wonder-rx.h"
 
 /* Fixed noise floor estimate placed in the DBM_ANTNOISE radiotap field. */
@@ -91,6 +92,26 @@ iwl_mld_wonder_fill_radiotap(struct iwl_mld_wonder_radiotap *rtap,
 	rtap->antenna    = rx_status->chains ? __ffs(rx_status->chains) : 0;
 }
 
+/* ADDBA request and initiator DELBA set up/tear down our RX BA session */
+static bool iwl_mld_wonder_is_rx_ba_action(struct sk_buff *skb)
+{
+	const struct ieee80211_mgmt *mgmt = (void *)skb->data;
+	u16 params;
+
+	switch (mgmt->u.action.action_code) {
+	case WLAN_ACTION_ADDBA_REQ:
+		return true;
+	case WLAN_ACTION_DELBA:
+		if (!pskb_may_pull(skb, IEEE80211_MIN_ACTION_SIZE(delba)))
+			return false;
+		mgmt = (void *)skb->data;
+		params = le16_to_cpu(mgmt->u.action.delba.params);
+		return params & IEEE80211_DELBA_PARAM_INITIATOR_MASK;
+	default:
+		return false;
+	}
+}
+
 bool iwl_mld_wonder_rx_frame(struct iwl_mld *mld,
 			     struct sk_buff *skb,
 			     struct ieee80211_rx_status *rx_status,
@@ -126,6 +147,29 @@ bool iwl_mld_wonder_rx_frame(struct iwl_mld *mld,
 			 "wonder-rx: frame on wonder link not addressed to us: %pM\n",
 			 hdr->addr1))
 		goto drop;
+
+	/* Consume all BACK frames: RX BA is handled here, TX BA is in FW */
+	if (ieee80211_is_action(hdr->frame_control)) {
+		const struct ieee80211_mgmt *mgmt;
+		unsigned int min_len = IEEE80211_MIN_ACTION_SIZE(action_code);
+
+		if (!pskb_may_pull(skb, min_len)) {
+			IWL_DEBUG_RX(mld,
+				     "wonder-rx: action frame too short (len=%u)\n",
+				     skb->len);
+			goto drop;
+		}
+
+		hdr = (void *)skb->data;
+		mgmt = (const void *)hdr;
+
+		if (mgmt->u.action.category == WLAN_CATEGORY_BACK) {
+			if (!iwl_mld_wonder_is_rx_ba_action(skb))
+				goto drop;
+			iwl_mld_wonder_rx_queue_back_action(wonder_ctx, skb);
+			return true;
+		}
+	}
 
 	if (skb_cow_head(skb, sizeof(*rtap))) {
 		IWL_DEBUG_RX(mld, "wonder-rx: failed to expand skb head\n");

@@ -12,6 +12,7 @@
 #include "mld.h"
 #include "sta.h"
 #include "wonder-sta.h"
+#include "wonder-agg.h"
 
 /*
  * wonder.ko has its own wiphy, whose mutex shares the same lockdep class as
@@ -50,6 +51,8 @@ DEFINE_GUARD(nested_wiphy, struct wiphy *,
  * @tx_rate_mask: RA ceiling (max preamble/bw/nss/mcs), set at init() and
  *	updated by set_tx_rate_mask()
  * @capabilities: wondertap capabilities
+ * @agg_work: processes @agg_pending under the wiphy lock
+ * @agg_pending: queue of BACK action frames waiting for @agg_work
  */
 struct iwl_mld_wonder_ctx {
 	struct wondertap_aux_dev *wonder_dev;
@@ -70,6 +73,8 @@ struct iwl_mld_wonder_ctx {
 	enum nl80211_band phy_band;
 	struct wondertap_tx_rate_mask_params tx_rate_mask;
 	struct wondertap_capability capabilities;
+	struct wiphy_work agg_work;
+	struct sk_buff_head agg_pending;
 };
 
 extern struct iwl_mld_wonder_ctx iwl_mld_wonder_ctx;
