@@ -33,7 +33,8 @@
 #include "wonder-phy.h"
 #include "wonder-tx.h"
 
-static struct iwl_mld_wonder_ctx iwl_mld_wonder_ctx = {
+/* Not static: referenced directly from wonder-rx.c. */
+struct iwl_mld_wonder_ctx iwl_mld_wonder_ctx = {
 	.phy_id = IWL_MLD_INVALID_FW_ID,
 	.mac_id = IWL_MLD_INVALID_FW_ID,
 	.link_id = IWL_MLD_INVALID_FW_ID,
@@ -144,18 +145,25 @@ static int iwl_mld_wonder_netdev_create(struct iwl_mld_wonder_ctx *wonder_ctx)
 		return ret;
 	}
 
-	wonder_ctx->netdev = dev;
+	WRITE_ONCE(wonder_ctx->netdev, dev);
 	return 0;
 }
 
 static void iwl_mld_wonder_netdev_destroy(struct iwl_mld_wonder_ctx *wonder_ctx)
 {
-	if (WARN_ON(!wonder_ctx->netdev))
+	struct net_device *netdev = wonder_ctx->netdev;
+
+	if (WARN_ON(!netdev))
 		return;
 
-	unregister_netdev(wonder_ctx->netdev);
-	free_netdev(wonder_ctx->netdev);
-	wonder_ctx->netdev = NULL;
+	/* Close the window for iwl_mld_wonder_rx_frame() (NAPI context, no
+	 * lock) to dereference a netdev we are about to free.
+	 */
+	WRITE_ONCE(wonder_ctx->netdev, NULL);
+	synchronize_net();
+
+	unregister_netdev(netdev);
+	free_netdev(netdev);
 }
 
 static int iwl_mld_wondertap_get_capabilities(void *handle,
