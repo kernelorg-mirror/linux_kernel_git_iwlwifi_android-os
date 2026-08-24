@@ -13,4 +13,9 @@ int iwl_mld_wonder_tx(struct iwl_mld_wonder_ctx *wonder_ctx,
 		      struct sk_buff *skb,
 		      const struct wonder_txd *txd);
 
+int iwl_mld_wonder_send_tlc_cfg(struct iwl_mld *mld,
+				struct iwl_mld_wonder_ctx *wonder_ctx,
+				const struct iwl_mld_wonder_sta *sta,
+				const struct wondertap_station_info *info);
+
 #endif /* __iwl_mld_wonder_tx_h__ */

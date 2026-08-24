@@ -55,4 +55,6 @@ void iwl_mld_wonder_free_all_ucast_stas(struct iwl_mld *mld,
 struct iwl_mld_wonder_sta *
 iwl_mld_wonder_find_sta(struct iwl_mld_wonder_ctx *wonder_ctx, const u8 *addr);
 
+bool iwl_mld_wonder_is_wonder_sta_id(struct iwl_mld *mld, u8 sta_id);
+
 #endif /* __iwl_mld_wonder_sta_h__ */

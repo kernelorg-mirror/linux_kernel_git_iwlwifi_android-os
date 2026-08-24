@@ -26,10 +26,13 @@
 #include <linux/skbuff.h>
 #include <wondertap.h>
 
+#include "fw/api/commands.h"
 #include "fw/api/rs.h"
 #include "fw/api/tx.h"
+#include "hcmd.h"
 #include "mld.h"
 #include "wonder.h"
+#include "wonder-phy.h"
 #include "wonder-sta.h"
 #include "wonder-tx.h"
 
@@ -309,4 +312,441 @@ submit:
 	}
 
 	return 0;
+}
+
+static int iwl_mld_wonder_vht_mcs_bitmap(u8 mcs, u8 max_ch_width)
+{
+	int supp;
+
+	switch (mcs) {
+	case IEEE80211_VHT_MCS_SUPPORT_0_7:
+		supp = BIT(IWL_TLC_MNG_HT_RATE_MCS7 + 1) - 1;
+		break;
+	case IEEE80211_VHT_MCS_SUPPORT_0_8:
+		supp = BIT(IWL_TLC_MNG_HT_RATE_MCS8 + 1) - 1;
+		break;
+	case IEEE80211_VHT_MCS_SUPPORT_0_9:
+		supp = BIT(IWL_TLC_MNG_HT_RATE_MCS9 + 1) - 1;
+		break;
+	case IEEE80211_VHT_MCS_NOT_SUPPORTED:
+	default:
+		return 0;
+	}
+
+	/* VHT MCS9 isn't valid at 20MHz for any NSS */
+	if (max_ch_width == IWL_TLC_MNG_CH_WIDTH_20MHZ)
+		supp &= ~BIT(IWL_TLC_MNG_HT_RATE_MCS9);
+
+	return supp;
+}
+
+static __le32 iwl_mld_wonder_vht_rate_word(u8 mcs, u8 max_ch_width)
+{
+	return cpu_to_le32(iwl_mld_wonder_vht_mcs_bitmap(mcs, max_ch_width));
+}
+
+static u8
+iwl_mld_wonder_get_fw_chains(struct iwl_mld *mld)
+{
+	u8 chains = iwl_mld_get_valid_tx_ant(mld);
+	u8 fw_chains = 0;
+
+	if (chains & ANT_A)
+		fw_chains |= IWL_TLC_MNG_CHAIN_A_MSK;
+	if (chains & ANT_B)
+		fw_chains |= IWL_TLC_MNG_CHAIN_B_MSK;
+
+	return fw_chains;
+}
+
+static bool
+iwl_mld_wonder_he_capa_valid(const struct wondertap_station_info *info)
+{
+	return info->he_capa_len >= sizeof(info->he_capa.mac_cap_info) + 3;
+}
+
+/* wondertap gives peer caps as raw bitmasks; derive max FW channel width. */
+static u8
+iwl_mld_wonder_fw_bw_from_sta_bw(const struct wondertap_station_info *info,
+				 enum nl80211_band band)
+{
+	u32 vht_chan_width = le32_to_cpu(info->vht_capa.vht_cap_info) &
+			     IEEE80211_VHT_CAP_SUPP_CHAN_WIDTH_MASK;
+	bool has_ht = info->capability_mask & BIT(WONDERTAP_STATION_CAP_HT);
+	bool has_vht = info->capability_mask & BIT(WONDERTAP_STATION_CAP_VHT);
+	bool has_he = (info->capability_mask & BIT(WONDERTAP_STATION_CAP_HE)) &&
+		      iwl_mld_wonder_he_capa_valid(info);
+	bool is_2ghz = band == NL80211_BAND_2GHZ;
+
+	if (has_he && !is_2ghz &&
+	    (info->he_capa.phy_cap_info[0] &
+	     IEEE80211_HE_PHY_CAP0_CHANNEL_WIDTH_SET_160MHZ_IN_5G))
+		return IWL_TLC_MNG_CH_WIDTH_160MHZ;
+
+	if (has_vht &&
+	    vht_chan_width == IEEE80211_VHT_CAP_SUPP_CHAN_WIDTH_160MHZ)
+		return IWL_TLC_MNG_CH_WIDTH_160MHZ;
+
+	if (has_vht ||
+	    (has_he && !is_2ghz &&
+	     (info->he_capa.phy_cap_info[0] &
+	      IEEE80211_HE_PHY_CAP0_CHANNEL_WIDTH_SET_40MHZ_80MHZ_IN_5G)))
+		return IWL_TLC_MNG_CH_WIDTH_80MHZ;
+
+	if ((has_ht && (le16_to_cpu(info->ht_capa.cap_info) &
+			IEEE80211_HT_CAP_SUP_WIDTH_20_40)) ||
+	    (has_he && is_2ghz &&
+	     (info->he_capa.phy_cap_info[0] &
+	      IEEE80211_HE_PHY_CAP0_CHANNEL_WIDTH_SET_40MHZ_IN_2G)))
+		return IWL_TLC_MNG_CH_WIDTH_40MHZ;
+
+	return IWL_TLC_MNG_CH_WIDTH_20MHZ;
+}
+
+static u8
+iwl_mld_wonder_tlc_bw_from_chan_width(enum nl80211_chan_width width)
+{
+	switch (width) {
+	case NL80211_CHAN_WIDTH_160:
+		return IWL_TLC_MNG_CH_WIDTH_160MHZ;
+	case NL80211_CHAN_WIDTH_80:
+		return IWL_TLC_MNG_CH_WIDTH_80MHZ;
+	case NL80211_CHAN_WIDTH_40:
+		return IWL_TLC_MNG_CH_WIDTH_40MHZ;
+	default:
+		return IWL_TLC_MNG_CH_WIDTH_20MHZ;
+	}
+}
+
+/* HE stations use HE MCS rates; SGI bits don't apply when HE mode is used. */
+static u8
+iwl_mld_wonder_get_fw_sgi(const struct wondertap_station_info *info,
+			  u8 max_ch_width, u8 mode)
+{
+	u8 sgi_chwidths = 0;
+
+	if (mode == IWL_TLC_MNG_MODE_HE)
+		return 0;
+
+	if (info->capability_mask & BIT(WONDERTAP_STATION_CAP_HT)) {
+		u16 ht_cap = le16_to_cpu(info->ht_capa.cap_info);
+
+		if (ht_cap & IEEE80211_HT_CAP_SGI_20)
+			sgi_chwidths |= BIT(IWL_TLC_MNG_CH_WIDTH_20MHZ);
+		if (max_ch_width >= IWL_TLC_MNG_CH_WIDTH_40MHZ &&
+		    (ht_cap & IEEE80211_HT_CAP_SGI_40))
+			sgi_chwidths |= BIT(IWL_TLC_MNG_CH_WIDTH_40MHZ);
+	}
+
+	if (info->capability_mask & BIT(WONDERTAP_STATION_CAP_VHT)) {
+		u32 vht_cap = le32_to_cpu(info->vht_capa.vht_cap_info);
+
+		if (max_ch_width >= IWL_TLC_MNG_CH_WIDTH_80MHZ &&
+		    (vht_cap & IEEE80211_VHT_CAP_SHORT_GI_80))
+			sgi_chwidths |= BIT(IWL_TLC_MNG_CH_WIDTH_80MHZ);
+		if (max_ch_width >= IWL_TLC_MNG_CH_WIDTH_160MHZ &&
+		    (vht_cap & IEEE80211_VHT_CAP_SHORT_GI_160))
+			sgi_chwidths |= BIT(IWL_TLC_MNG_CH_WIDTH_160MHZ);
+	}
+
+	return sgi_chwidths;
+}
+
+static __le16
+iwl_mld_wonder_get_tlc_flags(struct iwl_mld *mld,
+			     const struct wondertap_station_info *info,
+			     u8 max_nss)
+{
+	bool has_ht = info->capability_mask & BIT(WONDERTAP_STATION_CAP_HT);
+	bool has_vht = info->capability_mask & BIT(WONDERTAP_STATION_CAP_VHT);
+	bool has_he = (info->capability_mask & BIT(WONDERTAP_STATION_CAP_HE)) &&
+		      iwl_mld_wonder_he_capa_valid(info);
+	u32 vht_cap = le32_to_cpu(info->vht_capa.vht_cap_info);
+	u16 ht_cap = le16_to_cpu(info->ht_capa.cap_info);
+	u8 he_phy_cap1 = info->he_capa.phy_cap_info[1];
+	u8 he_phy_cap2 = info->he_capa.phy_cap_info[2];
+	bool sta_supports_stbc, sta_supports_ldpc;
+	u16 flags = 0;
+
+	sta_supports_stbc =
+		(has_he && (he_phy_cap2 &
+			    IEEE80211_HE_PHY_CAP2_STBC_RX_UNDER_80MHZ)) ||
+		(has_vht && (vht_cap & IEEE80211_VHT_CAP_RXSTBC_MASK)) ||
+		(has_ht && (ht_cap & IEEE80211_HT_CAP_RX_STBC));
+
+	if (mld->cfg->ht_params.stbc && max_nss >= 2 && sta_supports_stbc)
+		flags |= IWL_TLC_MNG_CFG_FLAGS_STBC_MSK;
+
+	sta_supports_ldpc =
+		(has_he && (he_phy_cap1 &
+			    IEEE80211_HE_PHY_CAP1_LDPC_CODING_IN_PAYLOAD)) ||
+		(has_vht && (vht_cap & IEEE80211_VHT_CAP_RXLDPC)) ||
+		(has_ht && (ht_cap & IEEE80211_HT_CAP_LDPC_CODING));
+
+	if (mld->cfg->ht_params.ldpc && sta_supports_ldpc)
+		flags |= IWL_TLC_MNG_CFG_FLAGS_LDPC_MSK;
+
+	return cpu_to_le16(flags);
+}
+
+#define WONDER_NON_HT_RATES_OFDM \
+	(IWL_RATE_BIT_MSK(6) | IWL_RATE_BIT_MSK(9) | IWL_RATE_BIT_MSK(12) | \
+	 IWL_RATE_BIT_MSK(18) | IWL_RATE_BIT_MSK(24) | IWL_RATE_BIT_MSK(36) | \
+	 IWL_RATE_BIT_MSK(48) | IWL_RATE_BIT_MSK(54))
+#define WONDER_NON_HT_RATES_CCK \
+	(IWL_RATE_BIT_MSK(1) | IWL_RATE_BIT_MSK(2) | IWL_RATE_BIT_MSK(5) | \
+	 IWL_RATE_BIT_MSK(11))
+
+static u16 iwl_mld_wonder_get_non_ht_rates(enum nl80211_band band)
+{
+	if (band == NL80211_BAND_2GHZ)
+		return WONDER_NON_HT_RATES_CCK | WONDER_NON_HT_RATES_OFDM;
+
+	return WONDER_NON_HT_RATES_OFDM;
+}
+
+/**
+ * struct iwl_mld_wonder_tlc_limits - resolved TLC config limits for a station
+ * @max_ch_width: final channel width (link width clamped by the RA mask)
+ * @max_nss: final NSS ceiling (radio capability clamped by the RA mask)
+ * @max_mcs: RA mask MCS ceiling, or U8_MAX when RA is disabled/unset
+ * @max_preamble: RA mask preamble ceiling, or the highest preamble by default
+ * @mode: resolved &enum iwl_tlc_mng_cfg_mode for this station
+ */
+struct iwl_mld_wonder_tlc_limits {
+	u8 max_ch_width;
+	u8 max_nss;
+	u8 max_mcs;
+	enum wondertap_rate_preamble max_preamble;
+	u8 mode;
+};
+
+static struct iwl_mld_wonder_tlc_limits
+iwl_mld_wonder_resolve_tlc_limits(struct iwl_mld_wonder_ctx *wonder_ctx,
+				  const struct wondertap_station_info *info,
+				  bool has_he, bool has_vht, bool has_ht)
+{
+	const struct wondertap_tx_rate_mask_params *mask =
+		&wonder_ctx->tx_rate_mask;
+	enum nl80211_chan_width chan_width = wonder_ctx->phy_chan_width;
+	bool ra_enabled = wonder_ctx->rate_adaptation_enable;
+	u8 link_bw = iwl_mld_wonder_tlc_bw_from_chan_width(chan_width);
+	u8 sta_bw;
+	struct iwl_mld_wonder_tlc_limits limits = {
+		.max_nss = wonder_ctx->capabilities.bits.nss,
+		.max_mcs = U8_MAX,
+		.max_preamble = WONDERTAP_RATE_PREAMBLE_EHT,
+	};
+
+	sta_bw = iwl_mld_wonder_fw_bw_from_sta_bw(info, wonder_ctx->phy_band);
+	limits.max_ch_width = min_t(u8, sta_bw, link_bw);
+
+	/* max_bw == NONE means "unbounded"; leave max_ch_width as-is */
+	if (ra_enabled && mask->max_bw != WONDERTAP_RATE_BW_NONE) {
+		enum nl80211_chan_width mask_width =
+			iwl_mld_wonder_bw_to_nl80211(mask->max_bw);
+		u8 mask_bw = iwl_mld_wonder_tlc_bw_from_chan_width(mask_width);
+
+		limits.max_ch_width = min_t(u8, limits.max_ch_width, mask_bw);
+	}
+
+	if (ra_enabled) {
+		/* max_nss == 0 is documented as invalid; ignore it */
+		if (mask->max_nss)
+			limits.max_nss = min_t(u8, limits.max_nss,
+					       mask->max_nss);
+		limits.max_preamble = mask->max_preamble;
+		limits.max_mcs = mask->max_mcs;
+	}
+
+	if (has_he && limits.max_preamble >= WONDERTAP_RATE_PREAMBLE_HE)
+		limits.mode = IWL_TLC_MNG_MODE_HE;
+	else if (has_vht && limits.max_preamble >= WONDERTAP_RATE_PREAMBLE_VHT)
+		limits.mode = IWL_TLC_MNG_MODE_VHT;
+	else if (has_ht && limits.max_preamble >= WONDERTAP_RATE_PREAMBLE_HT)
+		limits.mode = IWL_TLC_MNG_MODE_HT;
+	else
+		limits.mode = IWL_TLC_MNG_MODE_NON_HT;
+
+	return limits;
+}
+
+static void
+iwl_mld_wonder_fill_ht_rates(struct iwl_tlc_config_cmd *cmd,
+			     const struct wondertap_station_info *info,
+			     const struct iwl_mld_wonder_tlc_limits *limits)
+{
+	u16 vht_rx_map;
+
+	switch (limits->mode) {
+	case IWL_TLC_MNG_MODE_HE:
+		/* wondertap has no peer HE MCS/NSS map to derive from */
+		cmd->ht_rates[IWL_TLC_NSS_1][IWL_TLC_MCS_PER_BW_80] =
+			cpu_to_le32(BIT(IWL_TLC_MNG_HT_RATE_MCS7 + 1) - 1);
+
+		if (limits->max_nss >= 2)
+			cmd->ht_rates[IWL_TLC_NSS_2][IWL_TLC_MCS_PER_BW_80] =
+				cpu_to_le32(BIT(IWL_TLC_MNG_HT_RATE_MCS7 + 1) -
+					   1);
+		break;
+	case IWL_TLC_MNG_MODE_VHT:
+		vht_rx_map = le16_to_cpu(info->vht_capa.supp_mcs.rx_mcs_map);
+
+		cmd->ht_rates[IWL_TLC_NSS_1][IWL_TLC_MCS_PER_BW_80] =
+			iwl_mld_wonder_vht_rate_word(vht_rx_map & 0x3,
+						     limits->max_ch_width);
+
+		/* only fill NSS_2 rates if our radio has a second chain */
+		if (limits->max_nss >= 2) {
+			u8 nss2_mcs = (vht_rx_map >> 2) & 0x3;
+			u8 max_ch_width = limits->max_ch_width;
+
+			cmd->ht_rates[IWL_TLC_NSS_2][IWL_TLC_MCS_PER_BW_80] =
+				iwl_mld_wonder_vht_rate_word(nss2_mcs,
+							     max_ch_width);
+		}
+		break;
+	case IWL_TLC_MNG_MODE_HT:
+		cmd->ht_rates[IWL_TLC_NSS_1][IWL_TLC_MCS_PER_BW_80] =
+			cpu_to_le32(info->ht_capa.mcs.rx_mask[0]);
+
+		if (limits->max_nss >= 2)
+			cmd->ht_rates[IWL_TLC_NSS_2][IWL_TLC_MCS_PER_BW_80] =
+				cpu_to_le32(info->ht_capa.mcs.rx_mask[1]);
+		break;
+	default:
+		break;
+	}
+}
+
+static void
+iwl_mld_wonder_apply_max_mcs(struct iwl_tlc_config_cmd *cmd, u8 max_mcs,
+			     u16 non_ht_rates)
+{
+	if (max_mcs == U8_MAX)
+		return;
+
+	if (cmd->mode == IWL_TLC_MNG_MODE_NON_HT) {
+		u16 legacy_mask = 0;
+		int n_set = 0;
+
+		/* max_mcs is a legacy rate index, not a bit position */
+		for (int bit = 0; bit < 16 && n_set <= max_mcs; bit++) {
+			if (non_ht_rates & BIT(bit)) {
+				legacy_mask |= BIT(bit);
+				n_set++;
+			}
+		}
+		cmd->non_ht_rates &= cpu_to_le16(legacy_mask);
+	} else if (cmd->mode == IWL_TLC_MNG_MODE_HT) {
+		/*
+		 * wondertap's HT max_mcs is an absolute index (0-31)
+		 * across streams; ht_rates[] is a per-NSS 0-7 bitmap,
+		 * so split it into a per-stream ceiling instead of
+		 * masking every NSS row alike.
+		 */
+		u8 max_mcs_nss = max_mcs / 8;
+		u8 mcs_in_nss = max_mcs % 8;
+
+		if (max_mcs_nss < ARRAY_SIZE(cmd->ht_rates)) {
+			__le32 full_msk =
+				cpu_to_le32(BIT(IWL_TLC_MNG_HT_RATE_MCS7 + 1) -
+					   1);
+			__le32 partial_msk =
+				cpu_to_le32(BIT(mcs_in_nss + 1) - 1);
+			int n_bw = ARRAY_SIZE(cmd->ht_rates[0]);
+
+			for (int nss = 0; nss < ARRAY_SIZE(cmd->ht_rates);
+			     nss++) {
+				__le32 nss_msk;
+
+				if (nss < max_mcs_nss)
+					nss_msk = full_msk;
+				else if (nss == max_mcs_nss)
+					nss_msk = partial_msk;
+				else
+					nss_msk = 0;
+
+				for (int bw = 0; bw < n_bw; bw++)
+					cmd->ht_rates[nss][bw] &= nss_msk;
+			}
+		}
+	} else {
+		u8 mcs_ceil =
+			min_t(u8, max_mcs, IWL_TLC_MNG_HT_RATE_MAX);
+		__le32 mcs_msk = cpu_to_le32(BIT(mcs_ceil + 1) - 1);
+		int n_bw = ARRAY_SIZE(cmd->ht_rates[0]);
+
+		for (int nss = 0; nss < ARRAY_SIZE(cmd->ht_rates); nss++)
+			for (int bw = 0; bw < n_bw; bw++)
+				cmd->ht_rates[nss][bw] &= mcs_msk;
+	}
+}
+
+int
+iwl_mld_wonder_send_tlc_cfg(struct iwl_mld *mld,
+			    struct iwl_mld_wonder_ctx *wonder_ctx,
+			    const struct iwl_mld_wonder_sta *sta,
+			    const struct wondertap_station_info *info)
+{
+	bool has_he = (info->capability_mask & BIT(WONDERTAP_STATION_CAP_HE)) &&
+		      iwl_mld_wonder_he_capa_valid(info);
+	bool has_vht = info->capability_mask & BIT(WONDERTAP_STATION_CAP_VHT);
+	bool has_ht = info->capability_mask & BIT(WONDERTAP_STATION_CAP_HT);
+	enum nl80211_chan_width chan_width = wonder_ctx->phy_chan_width;
+	u16 non_ht = iwl_mld_wonder_get_non_ht_rates(wonder_ctx->phy_band);
+	u32 cmd_id = WIDE_ID(DATA_PATH_GROUP, TLC_MNG_CONFIG_CMD);
+	struct iwl_mld_wonder_tlc_limits limits;
+	struct iwl_tlc_config_cmd cmd;
+	u8 link_bw;
+	u8 cmd_ver;
+
+	lockdep_assert_wiphy(mld->wiphy);
+
+	if (WARN_ON(sta->sta_id == IWL_INVALID_STA ||
+		    wonder_ctx->phy_id == IWL_MLD_INVALID_FW_ID))
+		return -EINVAL;
+
+	cmd_ver = iwl_fw_lookup_cmd_ver(mld->fw, cmd_id, 0);
+	if (cmd_ver != 6) {
+		IWL_ERR(mld, "Unsupported TLC config cmd version %d\n",
+			cmd_ver);
+		return -EINVAL;
+	}
+
+	limits = iwl_mld_wonder_resolve_tlc_limits(wonder_ctx, info, has_he,
+						   has_vht, has_ht);
+	/* pre-RA-mask link width, kept only for the debug log below */
+	link_bw = iwl_mld_wonder_tlc_bw_from_chan_width(chan_width);
+
+	cmd = (struct iwl_tlc_config_cmd){
+		.max_ch_width = limits.max_ch_width,
+		.mode = limits.mode,
+		.chains = iwl_mld_wonder_get_fw_chains(mld),
+		.sgi_ch_width_supp =
+			iwl_mld_wonder_get_fw_sgi(info, limits.max_ch_width,
+						  limits.mode),
+		.non_ht_rates = cpu_to_le16(non_ht),
+	};
+
+	cmd.sta_mask = cpu_to_le32(BIT(sta->sta_id));
+	cmd.phy_id = cpu_to_le32(wonder_ctx->phy_id);
+	cmd.flags = iwl_mld_wonder_get_tlc_flags(mld, info, limits.max_nss);
+
+	iwl_mld_wonder_fill_ht_rates(&cmd, info, &limits);
+	iwl_mld_wonder_apply_max_mcs(&cmd, limits.max_mcs, non_ht);
+
+	IWL_DEBUG_RATE(mld,
+		       "wonder: TLC cfg sta=%u mode=%u cap=0x%x phy=%u max_ch_width=%u link_bw=%u max_preamble=%u sgi=0x%x chains=0x%x flags=0x%x nss1[80]=0x%x nss1[160]=0x%x nss2[80]=0x%x nss2[160]=0x%x\n",
+		       sta->sta_id, cmd.mode,
+		       info->capability_mask, wonder_ctx->phy_id,
+		       cmd.max_ch_width, link_bw, limits.max_preamble,
+		       cmd.sgi_ch_width_supp,
+		       cmd.chains, le16_to_cpu(cmd.flags),
+		       le32_to_cpu(cmd.ht_rates[IWL_TLC_NSS_1][IWL_TLC_MCS_PER_BW_80]),
+		       le32_to_cpu(cmd.ht_rates[IWL_TLC_NSS_1][IWL_TLC_MCS_PER_BW_160]),
+		       le32_to_cpu(cmd.ht_rates[IWL_TLC_NSS_2][IWL_TLC_MCS_PER_BW_80]),
+		       le32_to_cpu(cmd.ht_rates[IWL_TLC_NSS_2][IWL_TLC_MCS_PER_BW_160]));
+
+	return iwl_mld_send_cmd_pdu(mld, cmd_id, &cmd);
 }

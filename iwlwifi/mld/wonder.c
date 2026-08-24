@@ -228,6 +228,8 @@ static int iwl_mld_wondertap_init(void **handle,
 	wonder_ctx->fixed_tx_rate =
 		iwl_mld_wonder_validate_tx_rate(&params->tx_rate);
 	wonder_ctx->rate_adaptation_enable = params->rate_adaptation_enable;
+	if (params->rate_adaptation_enable)
+		wonder_ctx->tx_rate_mask = params->tx_rate_mask;
 
 	if (WARN_ON(wonder_ctx->phy_id != IWL_MLD_INVALID_FW_ID))
 		return -EINVAL;
@@ -401,6 +403,7 @@ iwl_mld_wondertap_set_station_info(void *handle,
 				   struct wondertap_station_info *info)
 {
 	struct iwl_mld_wonder_ctx *wonder_ctx = handle;
+	struct iwl_mld_wonder_sta *sta;
 	struct iwl_mld *mld;
 	int ret;
 
@@ -420,13 +423,33 @@ iwl_mld_wondertap_set_station_info(void *handle,
 	case WONDERTAP_STATION_STATE_NEW:
 		ret = iwl_mld_wonder_alloc_sta(mld, wonder_ctx,
 					       info->mac);
-		if (ret)
-			IWL_ERR(mld, "wonder: failed to add sta %pM: %d\n",
+		if (ret) {
+			IWL_ERR(mld,
+				"wonder: failed to add sta %pM: %d\n",
 				info->mac, ret);
+			return ret;
+		}
+		sta = iwl_mld_wonder_find_sta(wonder_ctx, info->mac);
+		if (WARN_ON(!sta))
+			return -EINVAL;
+		ret = iwl_mld_wonder_send_tlc_cfg(mld, wonder_ctx, sta, info);
+		if (ret) {
+			IWL_ERR(mld,
+				"wonder: TLC cfg failed for %pM: %d\n",
+				info->mac, ret);
+			iwl_mld_wonder_free_sta(mld, wonder_ctx, info->mac);
+		}
 		return ret;
 	case WONDERTAP_STATION_STATE_UPDATE:
-		/* Capability update -- nothing to do for basic data path. */
-		return 0;
+		sta = iwl_mld_wonder_find_sta(wonder_ctx, info->mac);
+		if (!sta)
+			return -ENOENT;
+		ret = iwl_mld_wonder_send_tlc_cfg(mld, wonder_ctx, sta, info);
+		if (ret)
+			IWL_WARN(mld,
+				 "wonder: TLC cfg update failed %pM: %d\n",
+				 info->mac, ret);
+		return ret;
 	case WONDERTAP_STATION_STATE_DEL:
 		iwl_mld_wonder_free_sta(mld, wonder_ctx, info->mac);
 		return 0;
@@ -451,6 +474,33 @@ iwl_mld_wondertap_set_fixed_tx_rate(void *handle,
 	return 0;
 }
 
+static int
+iwl_mld_wondertap_set_tx_rate_mask(void *handle,
+				   const struct wondertap_tx_rate_mask_params
+				   *params)
+{
+	struct iwl_mld_wonder_ctx *wonder_ctx = handle;
+	struct iwl_mld *mld;
+
+	if (WARN_ON(!wonder_ctx || !params))
+		return -EINVAL;
+
+	mld = wonder_ctx->mld;
+	if (WARN_ON(!mld))
+		return -ENODEV;
+
+	guard(nested_wiphy)(mld->wiphy);
+	wonder_ctx->tx_rate_mask = *params;
+
+	/*
+	 * TODO: this only updates wonder_ctx->tx_rate_mask; it takes effect
+	 * on the next station NEW/UPDATE, not on already-added stations.
+	 * Re-send TLC_MNG_CONFIG_CMD for existing stations here.
+	 */
+
+	return 0;
+}
+
 static const struct wondertap_ops iwl_mld_wondertap_ops = {
 	.init = iwl_mld_wondertap_init,
 	.deinit = iwl_mld_wondertap_deinit,
@@ -459,6 +509,7 @@ static const struct wondertap_ops iwl_mld_wondertap_ops = {
 	.channel_schedule_request = iwl_mld_wondertap_channel_schedule_request,
 	.set_station_info = iwl_mld_wondertap_set_station_info,
 	.set_fixed_tx_rate = iwl_mld_wondertap_set_fixed_tx_rate,
+	.set_tx_rate_mask = iwl_mld_wondertap_set_tx_rate_mask,
 };
 
 static void iwl_mld_wonder_adev_release(struct device *dev)

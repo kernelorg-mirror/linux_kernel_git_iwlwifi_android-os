@@ -33,7 +33,7 @@ static u8 iwl_mld_wonder_width_to_fw(enum nl80211_chan_width width)
 	}
 }
 
-static enum nl80211_chan_width
+enum nl80211_chan_width
 iwl_mld_wonder_bw_to_nl80211(enum wondertap_rate_bw bw)
 {
 	switch (bw) {
@@ -191,6 +191,8 @@ int iwl_mld_wonder_allocate_phy_ctx(struct iwl_mld *mld,
 	}
 
 	wonder_ctx->phy_id = fw_id;
+	wonder_ctx->phy_chan_width = chandef.width;
+	wonder_ctx->phy_band = chan->band;
 	return 0;
 }
 

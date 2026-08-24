@@ -229,6 +229,20 @@ iwl_mld_wonder_find_sta(struct iwl_mld_wonder_ctx *wonder_ctx, const u8 *addr)
 	return NULL;
 }
 
+bool iwl_mld_wonder_is_wonder_sta_id(struct iwl_mld *mld, u8 sta_id)
+{
+	if (mld != iwl_mld_wonder_ctx.mld)
+		return false;
+
+	for (int i = 0; i < ARRAY_SIZE(iwl_mld_wonder_ctx.stas); i++) {
+		if (iwl_mld_wonder_ctx.stas[i].sta_id != IWL_INVALID_STA &&
+		    iwl_mld_wonder_ctx.stas[i].sta_id == sta_id)
+			return true;
+	}
+
+	return false;
+}
+
 static struct iwl_mld_wonder_sta *
 iwl_mld_wonder_find_free_sta(struct iwl_mld_wonder_ctx *wonder_ctx)
 {

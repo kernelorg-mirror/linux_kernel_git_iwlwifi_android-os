@@ -14,6 +14,9 @@
 #include "fw/api/rs.h"
 #include "fw/api/context.h"
 #include "fw/api/dhc.h"
+#ifdef CPTCFG_IWLMLD_WONDER
+#include "wonder-sta.h"
+#endif
 
 static u8 iwl_mld_fw_bw_from_sta_bw(enum ieee80211_sta_rx_bandwidth bandwidth)
 {
@@ -963,6 +966,11 @@ void iwl_mld_handle_tlc_notif(struct iwl_mld *mld,
 			 "Invalid sta id (%d) in TLC notification\n",
 			 notif->sta_id))
 		return;
+
+#ifdef CPTCFG_IWLMLD_WONDER
+	if (iwl_mld_wonder_is_wonder_sta_id(mld, notif->sta_id))
+		return;
+#endif
 
 	link_sta = wiphy_dereference(mld->wiphy,
 				     mld->fw_id_to_link_sta[notif->sta_id]);
