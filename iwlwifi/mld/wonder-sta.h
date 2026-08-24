@@ -8,6 +8,7 @@
 #include <wondertap.h>
 
 #include "mld.h"
+#include "wonder-agg.h"
 
 struct iwl_mld_wonder_ctx;
 
@@ -20,11 +21,13 @@ struct iwl_mld_wonder_ctx;
  * @sta_id: firmware station id, or IWL_INVALID_STA when the slot is free
  * @queue_id: the station's single TX queue, used for all TIDs.
  *	IWL_MLD_INVALID_QUEUE when not yet allocated
+ * @rx_ba: per-TID RX Block Ack session state; managed by wonder-agg.c
  */
 struct iwl_mld_wonder_sta {
 	u8 addr[ETH_ALEN];
 	u8 sta_id;
 	u32 queue_id;
+	struct iwl_mld_wonder_rx_ba rx_ba[IEEE80211_NUM_TIDS];
 };
 
 int

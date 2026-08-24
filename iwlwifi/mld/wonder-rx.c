@@ -33,6 +33,7 @@
 
 #include "mld.h"
 #include "wonder.h"
+#include "wonder-agg.h"
 #include "wonder-rx.h"
 
 /* Fixed noise floor estimate placed in the DBM_ANTNOISE radiotap field. */
@@ -119,6 +120,27 @@ bool iwl_mld_wonder_rx_frame(struct iwl_mld *mld,
 	if (!is_multicast_ether_addr(hdr->addr1) &&
 	    !ether_addr_equal(hdr->addr1, netdev->dev_addr))
 		return false;
+
+	/*
+	 * BACK action frames (ADDBA req, DELBA) are processed in-driver
+	 * because mac80211 skips WLAN_CATEGORY_BACK for monitor VIFs.
+	 * Queue for deferred processing under the wiphy lock; do not
+	 * forward to wondertap0.
+	 */
+	if (ieee80211_is_action(hdr->frame_control)) {
+		const struct ieee80211_mgmt *mgmt = (const void *)hdr;
+
+		if (mgmt->u.action.category == WLAN_CATEGORY_BACK &&
+		    (mgmt->u.action.action_code == WLAN_ACTION_ADDBA_REQ ||
+		     mgmt->u.action.action_code == WLAN_ACTION_DELBA)) {
+			IWL_DEBUG_RX(mld,
+				     "wonder-rx: queuing BACK action=%u from %pM\n",
+				     mgmt->u.action.action_code,
+				     mgmt->sa);
+			iwl_mld_wonder_rx_queue_back_action(wonder_ctx, skb);
+			return true; /* consumed */
+		}
+	}
 
 	if (skb_cow_head(skb, sizeof(*rtap))) {
 		IWL_DEBUG_RX(mld, "wonder-rx: failed to expand skb head\n");

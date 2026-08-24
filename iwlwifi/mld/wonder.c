@@ -32,6 +32,7 @@
 #include "wonder.h"
 #include "wonder-phy.h"
 #include "wonder-tx.h"
+#include "wonder-agg.h"
 
 /* Not static: referenced directly from wonder-rx.c. */
 struct iwl_mld_wonder_ctx iwl_mld_wonder_ctx = {
@@ -290,8 +291,13 @@ iwl_mld_wondertap_deinit(void *handle,
 	/* See iwl_mld_wondertap_init() for why this is nested. */
 	guard(nested_wiphy)(mld->wiphy);
 
+	/* wiphy_work_cancel() requires wiphy->mtx, held above. */
+	wiphy_work_cancel(mld->wiphy, &wonder_ctx->agg_work);
+	skb_queue_purge(&wonder_ctx->agg_pending);
+
 	WARN_ON(!mld->fw_status.running);
 
+	iwl_mld_wonder_agg_stop_all(wonder_ctx);
 	iwl_mld_wonder_free_all_ucast_stas(mld, wonder_ctx);
 	iwl_mld_wonder_free_mcast_bcast_stas(mld, wonder_ctx);
 
@@ -424,7 +430,7 @@ iwl_mld_wonder_get_fw_chains(struct iwl_mld *mld)
 	return fw_chains;
 }
 
-/* wondertap gives peer caps as raw bitmasks; derive max FW channel width. */
+/* wondertap gives station caps as raw bitmasks; derive max FW channel width. */
 static u8
 iwl_mld_wonder_fw_bw_from_sta_bw(const struct wondertap_station_info *info)
 {
@@ -796,6 +802,8 @@ int iwl_mld_wonder_register(struct iwl_mld *mld)
 
 	wonder_ctx->wonder_dev = wonder_dev;
 	wonder_ctx->mld = mld;
+
+	iwl_mld_wonder_agg_init(wonder_ctx, mld);
 
 	ret = iwl_mld_wonder_netdev_create(wonder_ctx);
 	if (ret) {

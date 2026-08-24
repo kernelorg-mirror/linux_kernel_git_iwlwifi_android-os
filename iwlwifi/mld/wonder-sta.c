@@ -286,10 +286,13 @@ static void iwl_mld_wonder_release_sta(struct iwl_mld *mld,
 {
 	u8 sta_id = sta->sta_id;
 
+	iwl_mld_wonder_agg_stop_sta(mld, sta);
 	sta->sta_id = IWL_INVALID_STA;
 	eth_zero_addr(sta->addr);
 
 	iwl_mld_flush_link_sta_txqs(mld, sta_id);
+	if (!iwl_mld_error_before_recovery(mld))
+		iwl_trans_wait_txq_empty(mld->trans, sta->queue_id);
 	iwl_mld_wonder_free_sta_queue(mld, sta_id, sta);
 	iwl_mld_wonder_rm_sta_from_fw(mld, sta_id);
 	RCU_INIT_POINTER(mld->fw_id_to_link_sta[sta_id], NULL);
