@@ -14,6 +14,9 @@
 #include "fw/api/rs.h"
 #include "fw/api/context.h"
 #include "fw/api/dhc.h"
+#ifdef CPTCFG_IWLMLD_WONDER
+#include "wonder.h"
+#endif
 
 static u8 iwl_mld_fw_bw_from_sta_bw(enum ieee80211_sta_rx_bandwidth bandwidth)
 {
@@ -966,6 +969,18 @@ void iwl_mld_handle_tlc_notif(struct iwl_mld *mld,
 
 	link_sta = wiphy_dereference(mld->wiphy,
 				     mld->fw_id_to_link_sta[notif->sta_id]);
+
+#ifdef CPTCFG_IWLMLD_WONDER
+	{
+		int i;
+
+		for (i = 0; i < IWL_MLD_WONDER_MAX_STAS; i++) {
+			if (notif->sta_id ==
+			    iwl_mld_wonder_ctx.stas[i].sta_id)
+				return;
+		}
+	}
+#endif
 
 	if (WARN(IS_ERR_OR_NULL(link_sta),
 		 "link_sta of sta id (%d) doesn't exist\n", notif->sta_id))

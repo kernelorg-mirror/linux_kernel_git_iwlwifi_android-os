@@ -191,6 +191,7 @@ int iwl_mld_wonder_allocate_phy_ctx(struct iwl_mld *mld,
 	}
 
 	wonder_ctx->phy_id = fw_id;
+	wonder_ctx->phy_chan_width = chandef.width;
 	return 0;
 }
 

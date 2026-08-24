@@ -45,6 +45,9 @@ DEFINE_GUARD(nested_wiphy, struct wiphy *,
  * @fixed_tx_rate: rate used when @rate_adaptation_enable is false
  * @rate_adaptation_enable: when true, let the firmware pick the rate instead
  *	of using @fixed_tx_rate
+ * @phy_chan_width: channel width configured on @phy_id; used to clamp TLC config to it
+ * @tx_rate_mask: RA ceiling (max preamble/bw/nss/mcs) from init(); only valid
+ *	when @rate_adaptation_enable is true
  * @capabilities: wondertap capabilities
  */
 struct iwl_mld_wonder_ctx {
@@ -62,6 +65,8 @@ struct iwl_mld_wonder_ctx {
 	spinlock_t config_lock; /* protects fixed_tx_rate */
 	struct wondertap_fixed_tx_rate_params fixed_tx_rate;
 	bool rate_adaptation_enable;
+	enum nl80211_chan_width phy_chan_width;
+	struct wondertap_tx_rate_mask_params tx_rate_mask;
 	struct wondertap_capability capabilities;
 };
 
