@@ -25,6 +25,7 @@
 #include "fw/api/commands.h"
 #include "fw/api/mac-cfg.h"
 #include "hcmd.h"
+#include "mcc.h"
 #include "mld.h"
 #include "wonder-mac.h"
 #include "wonder-link.h"
@@ -237,6 +238,17 @@ static int iwl_mld_wondertap_init(void **handle,
 	/* wonder.ko only populates tx_rate_mask when RA is enabled. */
 	if (params->rate_adaptation_enable)
 		wonder_ctx->tx_rate_mask = params->tx_rate_mask;
+
+	{
+		struct ieee80211_regdomain *regd;
+
+		regd = iwl_mld_get_regdomain(mld, params->country_code,
+					     MCC_SOURCE_MCC_API, NULL);
+		if (IS_ERR_OR_NULL(regd))
+			return -EIO;
+		regulatory_set_wiphy_regd(mld->wiphy, regd);
+		kfree(regd);
+	}
 
 	if (WARN_ON(wonder_ctx->phy_id != IWL_MLD_INVALID_FW_ID))
 		return -EINVAL;
