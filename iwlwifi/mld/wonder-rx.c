@@ -112,16 +112,50 @@ static bool iwl_mld_wonder_is_rx_ba_action(struct sk_buff *skb)
 	}
 }
 
+void iwl_mld_wonder_deliver_skb(struct iwl_mld_wonder_ctx *wonder_ctx,
+				struct sk_buff *skb)
+{
+	struct ieee80211_rx_status *rx_status = IEEE80211_SKB_RXCB(skb);
+	struct ieee80211_hdr *hdr = (struct ieee80211_hdr *)skb->data;
+	/* netdev can be freed concurrently, see netdev_destroy(). */
+	struct net_device *netdev = READ_ONCE(wonder_ctx->netdev);
+	struct iwl_mld_wonder_radiotap *rtap;
+
+	if (!netdev) {
+		dev_kfree_skb(skb);
+		return;
+	}
+
+	IWL_DEBUG_RX(wonder_ctx->mld,
+		     "wonder-rx: delivering to wondertap0: BSSID %pM DA %pM\n",
+		     wonder_ctx->bssid_filter, hdr->addr1);
+
+	if (skb_cow_head(skb, sizeof(*rtap))) {
+		IWL_DEBUG_RX(wonder_ctx->mld,
+			     "wonder-rx: failed to expand skb head, dropping\n");
+		dev_kfree_skb(skb);
+		return;
+	}
+
+	rtap = skb_push(skb, sizeof(*rtap));
+	iwl_mld_wonder_fill_radiotap(rtap, rx_status);
+	skb_reset_mac_header(skb);
+
+	skb->dev = netdev;
+	skb->protocol = htons(ETH_P_802_2);
+	netif_receive_skb(skb);
+}
+
 bool iwl_mld_wonder_rx_frame(struct iwl_mld *mld,
 			     struct sk_buff *skb,
 			     struct ieee80211_rx_status *rx_status,
+			     int queue,
 			     const struct iwl_rx_mpdu_desc *mpdu_desc)
 {
 	struct iwl_mld_wonder_ctx *wonder_ctx = &iwl_mld_wonder_ctx;
 	/* netdev can be freed concurrently, see netdev_destroy(). */
 	struct net_device *netdev = READ_ONCE(wonder_ctx->netdev);
 	struct ieee80211_hdr *hdr = (void *)skb->data;
-	struct iwl_mld_wonder_radiotap *rtap;
 
 	if (!wonder_ctx->mld || wonder_ctx->mld != mld || !netdev ||
 	    !netif_running(netdev))
@@ -171,21 +205,23 @@ bool iwl_mld_wonder_rx_frame(struct iwl_mld *mld,
 		}
 	}
 
-	if (skb_cow_head(skb, sizeof(*rtap))) {
-		IWL_DEBUG_RX(mld, "wonder-rx: failed to expand skb head\n");
-		goto drop;
+	if (ieee80211_is_data(hdr->frame_control)) {
+		enum iwl_mld_wonder_reorder_result res;
+
+		res = iwl_mld_wonder_reorder(wonder_ctx, queue, skb,
+					     mpdu_desc);
+		switch (res) {
+		case IWL_MLD_WONDER_REORDER_DROP:
+			dev_kfree_skb(skb);
+			return true;
+		case IWL_MLD_WONDER_REORDER_BUFFERED:
+			return true;
+		case IWL_MLD_WONDER_REORDER_PASS:
+			break;
+		}
 	}
 
-	rtap = skb_push(skb, sizeof(*rtap));
-	iwl_mld_wonder_fill_radiotap(rtap, rx_status);
-	skb_reset_mac_header(skb);
-
-	IWL_DEBUG_RX(mld, "wonder-rx: delivering to wondertap0: BSSID %pM\n",
-		     wonder_ctx->bssid_filter);
-
-	skb->dev = netdev;
-	skb->protocol = htons(ETH_P_802_2);
-	netif_receive_skb(skb);
+	iwl_mld_wonder_deliver_skb(wonder_ctx, skb);
 
 	return true; /* consumed */
 

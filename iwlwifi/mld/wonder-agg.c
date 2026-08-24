@@ -11,12 +11,16 @@
 #include <linux/bitfield.h>
 #include <linux/ieee80211.h>
 #include <linux/skbuff.h>
+#include <net/mac80211.h>
 
 #include "fw/api/datapath.h"
+#include "agg.h"
 #include "hcmd.h"
+#include "iwl-trans.h"
 #include "mld.h"
 #include "wonder.h"
 #include "wonder-agg.h"
+#include "wonder-rx.h"
 #include "wonder-sta.h"
 #include "wonder-tx.h"
 
@@ -26,15 +30,41 @@
 #define WONDER_MAX_AGG_PENDING		(2 * IWL_MLD_WONDER_MAX_STAS)
 
 /**
+ * struct iwl_mld_wonder_reorder_buf - per-queue RX reorder window state
+ * @head_sn: next sequence number expected to be released
+ * @num_stored: number of MPDUs buffered
+ * @valid: a frame has been seen on this queue
+ */
+struct iwl_mld_wonder_reorder_buf {
+	u16 head_sn;
+	u16 num_stored;
+	bool valid;
+} ____cacheline_aligned_in_smp;
+
+/**
+ * struct iwl_mld_wonder_reorder_entry - one reorder window slot
+ * @frames: skbs sharing this sequence number (more than one for A-MSDU)
+ */
+struct iwl_mld_wonder_reorder_entry {
+	struct sk_buff_head frames;
+};
+
+/**
  * struct iwl_mld_wonder_rx_ba - RX Block Ack session data
+ * @rcu_head: RCU head for freeing this data
  * @baid: FW-assigned BAID
  * @dialog_token: dialog token of the ADDBA request that set up the session
  * @buf_size: negotiated BA window size
+ * @reorder_buf: per RX-queue reorder window state
+ * @entries: reorder window slots, num_rxqs * @buf_size
  */
 struct iwl_mld_wonder_rx_ba {
+	struct rcu_head rcu_head;
 	u8 baid;
 	u8 dialog_token;
 	u16 buf_size;
+	struct iwl_mld_wonder_reorder_buf reorder_buf[IWL_MAX_RX_HW_QUEUES];
+	struct iwl_mld_wonder_reorder_entry entries[];
 };
 
 /**
@@ -111,6 +141,67 @@ out:
 	return ret;
 }
 
+static struct iwl_mld_wonder_rx_ba *
+iwl_mld_wonder_reorder_alloc(struct iwl_mld *mld, u16 buf_size, u16 ssn)
+{
+	int num_rxqs = mld->trans->info.num_rxqs;
+	struct iwl_mld_wonder_rx_ba *session;
+
+	session = kzalloc_flex(*session, entries, num_rxqs * buf_size);
+	if (!session)
+		return NULL;
+
+	session->buf_size = buf_size;
+
+	for (int i = 0; i < num_rxqs; i++) {
+		session->reorder_buf[i].head_sn = ssn;
+
+		for (int j = 0; j < buf_size; j++) {
+			struct sk_buff_head *frames =
+				&session->entries[i * buf_size + j].frames;
+
+			__skb_queue_head_init(frames);
+		}
+	}
+
+	return session;
+}
+
+static void iwl_mld_wonder_reorder_free(struct iwl_mld *mld,
+					struct iwl_mld_wonder_rx_ba *session)
+{
+	int num_rxqs = mld->trans->info.num_rxqs;
+
+	for (int i = 0; i < num_rxqs; i++) {
+		struct iwl_mld_wonder_reorder_buf *buf =
+			&session->reorder_buf[i];
+
+		WARN_ON(buf->num_stored);
+
+		for (int j = 0; j < session->buf_size; j++) {
+			int idx = i * session->buf_size + j;
+
+			__skb_queue_purge(&session->entries[idx].frames);
+		}
+	}
+
+	kfree_rcu(session, rcu_head);
+}
+
+static void iwl_mld_wonder_reorder_teardown(struct iwl_mld *mld,
+					    struct iwl_mld_wonder_sta *sta,
+					    int tid)
+{
+	struct iwl_mld_wonder_rx_ba *session =
+		wiphy_dereference(mld->wiphy, sta->rx_ba[tid]);
+	struct iwl_mld_delba_data data = { .baid = session->baid };
+
+	iwl_mld_sync_rx_queues(mld, IWL_MLD_RXQ_NOTIF_DEL_BA,
+			       &data, sizeof(data));
+	RCU_INIT_POINTER(sta->rx_ba[tid], NULL);
+	iwl_mld_wonder_reorder_free(mld, session);
+}
+
 /* Release the FW BAID and free the session, if any */
 static void iwl_mld_wonder_stop_rx_ba(struct iwl_mld *mld,
 				      struct iwl_mld_wonder_sta *sta, int tid)
@@ -121,7 +212,8 @@ static void iwl_mld_wonder_stop_rx_ba(struct iwl_mld *mld,
 		.remove.tid = cpu_to_le32(tid),
 	};
 	u32 cmd_id = WIDE_ID(DATA_PATH_GROUP, RX_BAID_ALLOCATION_CONFIG_CMD);
-	struct iwl_mld_wonder_rx_ba *session = sta->rx_ba[tid];
+	struct iwl_mld_wonder_rx_ba *session =
+		wiphy_dereference(mld->wiphy, sta->rx_ba[tid]);
 
 	lockdep_assert_wiphy(mld->wiphy);
 
@@ -136,8 +228,7 @@ static void iwl_mld_wonder_stop_rx_ba(struct iwl_mld *mld,
 	IWL_DEBUG_HT(mld,
 		     "wonder-agg: RX BA stopped sta_id=%u tid=%d baid=%u\n",
 		     sta->sta_id, tid, session->baid);
-	sta->rx_ba[tid] = NULL;
-	kfree(session);
+	iwl_mld_wonder_reorder_teardown(mld, sta, tid);
 }
 
 static struct sk_buff *
@@ -240,7 +331,7 @@ wonder_handle_addba_req(struct iwl_mld_wonder_ctx *wonder_ctx,
 		buf_size = WONDER_MAX_RX_BA_BUF_SIZE;
 
 	sta_mask = BIT(sta->sta_id);
-	session = sta->rx_ba[tid];
+	session = wiphy_dereference(mld->wiphy, sta->rx_ba[tid]);
 
 	/*
 	 * Same token: retransmitted or updated ADDBA, keep the session.
@@ -255,7 +346,7 @@ wonder_handle_addba_req(struct iwl_mld_wonder_ctx *wonder_ctx,
 
 	iwl_mld_wonder_stop_rx_ba(mld, sta, tid);
 
-	session = kzalloc_obj(*session);
+	session = iwl_mld_wonder_reorder_alloc(mld, buf_size, ssn);
 	if (!session)
 		goto send_resp;
 
@@ -270,8 +361,7 @@ wonder_handle_addba_req(struct iwl_mld_wonder_ctx *wonder_ctx,
 
 	session->baid = (u8)baid;
 	session->dialog_token = dialog_token;
-	session->buf_size = buf_size;
-	sta->rx_ba[tid] = session;
+	rcu_assign_pointer(sta->rx_ba[tid], session);
 	status = WLAN_STATUS_SUCCESS;
 
 	IWL_DEBUG_HT(mld,
@@ -394,4 +484,186 @@ void iwl_mld_wonder_agg_stop(struct iwl_mld *mld,
 
 	for (int tid = 0; tid < IWL_MAX_TID_COUNT; tid++)
 		iwl_mld_wonder_stop_rx_ba(mld, sta, tid);
+}
+
+/*
+ * RX reorder, mirrors iwl_mld_reorder() in agg.c. Each per-queue buffer is
+ * only touched from that queue's RX softirq.
+ */
+
+static void wonder_release_frames(struct iwl_mld_wonder_ctx *wonder_ctx,
+				  struct iwl_mld_wonder_rx_ba *session,
+				  int queue, u16 nssn)
+{
+	struct iwl_mld_wonder_reorder_buf *buf = &session->reorder_buf[queue];
+	u16 ssn = buf->head_sn;
+
+	while (ieee80211_sn_less(ssn, nssn)) {
+		struct sk_buff_head *list =
+			&session->entries[queue * session->buf_size +
+					  ssn % session->buf_size].frames;
+		struct sk_buff *skb;
+
+		ssn = ieee80211_sn_inc(ssn);
+
+		while ((skb = __skb_dequeue(list))) {
+			iwl_mld_wonder_deliver_skb(wonder_ctx, skb);
+			buf->num_stored--;
+		}
+	}
+	buf->head_sn = nssn;
+}
+
+enum iwl_mld_wonder_reorder_result
+iwl_mld_wonder_reorder(struct iwl_mld_wonder_ctx *wonder_ctx, int queue,
+		       struct sk_buff *skb,
+		       const struct iwl_rx_mpdu_desc *mpdu_desc)
+{
+	struct ieee80211_hdr *hdr = (struct ieee80211_hdr *)skb->data;
+	u32 reorder = le32_to_cpu(mpdu_desc->reorder_data);
+	bool amsdu, last_subframe, is_old_sn, is_dup;
+	struct iwl_mld_wonder_reorder_buf *buf;
+	struct iwl_mld *mld = wonder_ctx->mld;
+	struct iwl_mld_wonder_rx_ba *session;
+	struct iwl_mld_wonder_sta *sta;
+	u16 nssn, sn;
+	u8 baid, tid;
+	int index;
+
+	baid = u32_get_bits(reorder, IWL_RX_MPDU_REORDER_BAID_MASK);
+
+	if (baid == IWL_RX_REORDER_DATA_INVALID_BAID)
+		return IWL_MLD_WONDER_REORDER_PASS;
+
+	if (!ieee80211_is_data_qos(hdr->frame_control) ||
+	    is_multicast_ether_addr(hdr->addr1))
+		return IWL_MLD_WONDER_REORDER_PASS;
+
+	tid = ieee80211_get_tid(hdr);
+	if (tid >= IWL_MAX_TID_COUNT)
+		return IWL_MLD_WONDER_REORDER_PASS;
+
+	sta = iwl_mld_wonder_find_sta(wonder_ctx, hdr->addr2);
+	if (!sta)
+		return IWL_MLD_WONDER_REORDER_PASS;
+
+	session = rcu_dereference(sta->rx_ba[tid]);
+	if (!session || session->baid != baid) {
+		IWL_DEBUG_HT(mld,
+			     "wonder-agg: valid BAID %u but no session, bypass (tid=%u)\n",
+			     baid, tid);
+		return IWL_MLD_WONDER_REORDER_PASS;
+	}
+
+	buf = &session->reorder_buf[queue];
+
+	is_old_sn = !!(reorder & IWL_RX_MPDU_REORDER_BA_OLD_SN);
+	if (!buf->valid && is_old_sn)
+		return IWL_MLD_WONDER_REORDER_PASS;
+	buf->valid = true;
+
+	is_dup = !!(mpdu_desc->status &
+		   cpu_to_le32(IWL_RX_MPDU_STATUS_DUPLICATE));
+	if (is_dup || is_old_sn) {
+		IWL_DEBUG_DROP(mld,
+			       "wonder-agg: drop dup=%d old_sn=%d tid=%u baid=%u\n",
+			       is_dup, is_old_sn, tid, baid);
+		return IWL_MLD_WONDER_REORDER_DROP;
+	}
+
+	sn = u32_get_bits(reorder, IWL_RX_MPDU_REORDER_SN_MASK);
+	nssn = u32_get_bits(reorder, IWL_RX_MPDU_REORDER_NSSN_MASK);
+	amsdu = mpdu_desc->mac_flags2 & IWL_RX_MPDU_MFLG2_AMSDU;
+	last_subframe = mpdu_desc->amsdu_info &
+		IWL_RX_MPDU_AMSDU_LAST_SUBFRAME;
+
+	if (!buf->num_stored && ieee80211_sn_less(sn, nssn)) {
+		if (!amsdu || last_subframe)
+			buf->head_sn = nssn;
+		return IWL_MLD_WONDER_REORDER_PASS;
+	}
+
+	if (!buf->num_stored && sn == buf->head_sn) {
+		if (!amsdu || last_subframe)
+			buf->head_sn = ieee80211_sn_inc(buf->head_sn);
+		return IWL_MLD_WONDER_REORDER_PASS;
+	}
+
+	index = sn % session->buf_size;
+	__skb_queue_tail(&session->entries[queue * session->buf_size +
+					   index].frames, skb);
+	buf->num_stored++;
+
+	if (!amsdu || last_subframe)
+		wonder_release_frames(wonder_ctx, session, queue, nssn);
+	else if (buf->num_stored == 1)
+		buf->head_sn = nssn;
+
+	return IWL_MLD_WONDER_REORDER_BUFFERED;
+}
+
+static struct iwl_mld_wonder_rx_ba *
+iwl_mld_wonder_find_rx_ba(struct iwl_mld_wonder_ctx *wonder_ctx, u8 baid)
+{
+	for (int i = 0; i < IWL_MLD_WONDER_MAX_STAS; i++) {
+		struct iwl_mld_wonder_sta *sta = &wonder_ctx->stas[i];
+
+		if (sta->sta_id == IWL_INVALID_STA)
+			continue;
+
+		for (int tid = 0; tid < IWL_MAX_TID_COUNT; tid++) {
+			struct iwl_mld_wonder_rx_ba *session =
+				rcu_dereference(sta->rx_ba[tid]);
+
+			if (session && session->baid == baid)
+				return session;
+		}
+	}
+	return NULL;
+}
+
+/* Return: true if @baid belongs to a wonder RX BA session */
+bool iwl_mld_wonder_release_frames(struct iwl_mld *mld, u8 baid, u16 nssn,
+				   int queue)
+{
+	struct iwl_mld_wonder_ctx *wonder_ctx = &iwl_mld_wonder_ctx;
+	struct iwl_mld_wonder_rx_ba *session;
+
+	if (wonder_ctx->mld != mld)
+		return false;
+
+	guard(rcu)();
+
+	session = iwl_mld_wonder_find_rx_ba(wonder_ctx, baid);
+	if (!session)
+		return false;
+
+	IWL_DEBUG_HT(mld, "wonder-agg: release notif baid=%u nssn=%u\n",
+		     baid, nssn);
+	wonder_release_frames(wonder_ctx, session, queue, nssn);
+
+	return true;
+}
+
+/* Return: true if @baid belongs to a wonder RX BA session */
+bool iwl_mld_wonder_del_ba(struct iwl_mld *mld, int queue, u8 baid)
+{
+	struct iwl_mld_wonder_ctx *wonder_ctx = &iwl_mld_wonder_ctx;
+	struct iwl_mld_wonder_rx_ba *session;
+	u16 nssn;
+
+	if (wonder_ctx->mld != mld)
+		return false;
+
+	guard(rcu)();
+
+	session = iwl_mld_wonder_find_rx_ba(wonder_ctx, baid);
+	if (!session)
+		return false;
+
+	nssn = ieee80211_sn_add(session->reorder_buf[queue].head_sn,
+				session->buf_size);
+	wonder_release_frames(wonder_ctx, session, queue, nssn);
+
+	return true;
 }

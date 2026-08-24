@@ -2781,7 +2781,7 @@ void iwl_mld_rx_mpdu(struct iwl_mld *mld, struct napi_struct *napi,
 		goto out;
 
 #ifdef CPTCFG_IWLMLD_WONDER
-	if (iwl_mld_wonder_rx_frame(mld, skb, rx_status, mpdu_desc))
+	if (iwl_mld_wonder_rx_frame(mld, skb, rx_status, queue, mpdu_desc))
 		goto out;
 #endif
 

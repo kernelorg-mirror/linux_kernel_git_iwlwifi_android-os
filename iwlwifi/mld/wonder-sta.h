@@ -27,7 +27,7 @@ struct iwl_mld_wonder_sta {
 	u8 addr[ETH_ALEN];
 	u8 sta_id;
 	u32 queue_id;
-	struct iwl_mld_wonder_rx_ba *rx_ba[IWL_MAX_TID_COUNT];
+	struct iwl_mld_wonder_rx_ba __rcu *rx_ba[IWL_MAX_TID_COUNT];
 };
 
 int

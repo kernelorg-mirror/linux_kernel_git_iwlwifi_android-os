@@ -6,6 +6,10 @@
 #include "sta.h"
 #include "hcmd.h"
 
+#ifdef CPTCFG_IWLMLD_WONDER
+#include "wonder-agg.h"
+#endif
+
 static void
 iwl_mld_reorder_release_frames(struct iwl_mld *mld,
 			       struct ieee80211_link_sta *link_sta,
@@ -93,6 +97,12 @@ void iwl_mld_handle_frame_release_notif(struct iwl_mld *mld,
 			 pkt_len, sizeof(*release)))
 		return;
 
+#ifdef CPTCFG_IWLMLD_WONDER
+	if (iwl_mld_wonder_release_frames(mld, release->baid,
+					  le16_to_cpu(release->nssn), queue))
+		return;
+#endif
+
 	iwl_mld_release_frames_from_notif(mld, napi, release->baid,
 					  le16_to_cpu(release->nssn),
 					  queue);
@@ -125,6 +135,11 @@ void iwl_mld_handle_bar_frame_release_notif(struct iwl_mld *mld,
 	if (IWL_FW_CHECK(mld, baid >= ARRAY_SIZE(mld->fw_id_to_ba),
 			 "BAR release: invalid BAID (%x)\n", baid))
 		return;
+
+#ifdef CPTCFG_IWLMLD_WONDER
+	if (iwl_mld_wonder_release_frames(mld, baid, nssn, queue))
+		return;
+#endif
 
 	rcu_read_lock();
 	baid_data = rcu_dereference(mld->fw_id_to_ba[baid]);
@@ -162,6 +177,12 @@ void iwl_mld_del_ba(struct iwl_mld *mld, int queue,
 
 	if (WARN_ONCE(baid >= IWL_MAX_BAID, "invalid BAID: %x\n", baid))
 		return;
+
+#ifdef CPTCFG_IWLMLD_WONDER
+	/* Must precede the fw_id_to_ba lookup, which WARNs for wonder BAIDs */
+	if (iwl_mld_wonder_del_ba(mld, queue, baid))
+		return;
+#endif
 
 	rcu_read_lock();
 
