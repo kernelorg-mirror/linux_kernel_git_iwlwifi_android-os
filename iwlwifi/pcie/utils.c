@@ -172,3 +172,10 @@ int iwl_pcie_poll_umac_prph_bits_no_grab(struct iwl_trans *trans, u32 addr,
 
 	return -ETIMEDOUT;
 }
+
+void iwl_pcie_write_prph64_no_grab(struct iwl_trans *trans, u32 ofs, u64 val)
+{
+	trace_iwlwifi_dev_iowrite_prph64(trans->dev, ofs, val);
+	iwl_write_prph_no_grab(trans, ofs, val & 0xffffffff);
+	iwl_write_prph_no_grab(trans, ofs + 4, val >> 32);
+}

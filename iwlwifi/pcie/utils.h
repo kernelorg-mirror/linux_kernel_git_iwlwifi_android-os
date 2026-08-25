@@ -19,6 +19,7 @@ int iwl_pcie_poll_umac_prph_bit(struct iwl_trans *trans, u32 addr,
 				u32 bits, u32 mask, int timeout);
 int iwl_pcie_poll_umac_prph_bits_no_grab(struct iwl_trans *trans, u32 addr,
 					 u32 bits, u32 mask, int timeout);
+void iwl_pcie_write_prph64_no_grab(struct iwl_trans *trans, u32 ofs, u64 val);
 
 static inline void iwl_pcie_write_umac_prph_no_grab(struct iwl_trans *trans,
 						    u32 ofs, u32 val)

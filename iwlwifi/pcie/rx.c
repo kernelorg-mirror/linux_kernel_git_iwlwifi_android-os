@@ -932,17 +932,17 @@ static void iwl_pcie_rx_mq_hw_init(struct iwl_trans *trans)
 
 	for (i = 0; i < trans->info.num_rxqs; i++) {
 		/* Tell device where to find RBD free table in DRAM */
-		iwl_write_prph64_no_grab(trans,
-					 RFH_Q_FRBDCB_BA_LSB(i),
-					 trans_pcie->rxq[i].bd_dma);
+		iwl_pcie_write_prph64_no_grab(trans,
+					      RFH_Q_FRBDCB_BA_LSB(i),
+					      trans_pcie->rxq[i].bd_dma);
 		/* Tell device where to find RBD used table in DRAM */
-		iwl_write_prph64_no_grab(trans,
-					 RFH_Q_URBDCB_BA_LSB(i),
-					 trans_pcie->rxq[i].used_bd_dma);
+		iwl_pcie_write_prph64_no_grab(trans,
+					      RFH_Q_URBDCB_BA_LSB(i),
+					      trans_pcie->rxq[i].used_bd_dma);
 		/* Tell device where in DRAM to update its Rx status */
-		iwl_write_prph64_no_grab(trans,
-					 RFH_Q_URBD_STTS_WPTR_LSB(i),
-					 trans_pcie->rxq[i].rb_stts_dma);
+		iwl_pcie_write_prph64_no_grab(trans,
+					      RFH_Q_URBD_STTS_WPTR_LSB(i),
+					      trans_pcie->rxq[i].rb_stts_dma);
 		/* Reset device indice tables */
 		iwl_write_prph_no_grab(trans, RFH_Q_FRBDCB_WIDX(i), 0);
 		iwl_write_prph_no_grab(trans, RFH_Q_FRBDCB_RIDX(i), 0);
