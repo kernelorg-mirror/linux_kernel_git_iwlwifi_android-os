@@ -493,8 +493,8 @@ int iwl_pnvm_load(struct iwl_trans *trans,
 				   iwl_pnvm_complete_fn, trans);
 
 	/* kick the doorbell */
-	iwl_write_umac_prph(trans, UREG_DOORBELL_TO_ISR6,
-			    UREG_DOORBELL_TO_ISR6_PNVM);
+	iwl_trans_write_umac_prph(trans, UREG_DOORBELL_TO_ISR6,
+				  UREG_DOORBELL_TO_ISR6_PNVM);
 
 	return iwl_wait_notification(notif_wait, &pnvm_wait,
 				     MVM_UCODE_PNVM_TIMEOUT);
@@ -533,24 +533,24 @@ int iwl_xvt_pnvm_load(struct iwl_trans *trans,
 				   ntf_cmds, ARRAY_SIZE(ntf_cmds),
 				   iwl_pnvm_complete_fn, trans);
 
-	reg_value_nic_en_isr6_bd = iwl_read_umac_prph(trans,
-						      LMPM2_NIC_EN_VEC_6);
-	reg_lmpm2_nic_isr6_bd = iwl_read_umac_prph(trans, LMPM2_NIC_ISR6);
+	reg_value_nic_en_isr6_bd = iwl_trans_read_umac_prph(trans,
+							    LMPM2_NIC_EN_VEC_6);
+	reg_lmpm2_nic_isr6_bd = iwl_trans_read_umac_prph(trans, LMPM2_NIC_ISR6);
 
 	/* kick the doorbell */
-	iwl_write_umac_prph(trans, UREG_DOORBELL_TO_ISR6,
-			    UREG_DOORBELL_TO_ISR6_PNVM);
+	iwl_trans_write_umac_prph(trans, UREG_DOORBELL_TO_ISR6,
+				  UREG_DOORBELL_TO_ISR6_PNVM);
 
-	reg_value_nic_en_isr6_bw = iwl_read_umac_prph(trans,
-						      LMPM2_NIC_EN_VEC_6);
-	reg_lmpm2_nic_isr6_bw = iwl_read_umac_prph(trans, LMPM2_NIC_ISR6);
+	reg_value_nic_en_isr6_bw = iwl_trans_read_umac_prph(trans,
+							    LMPM2_NIC_EN_VEC_6);
+	reg_lmpm2_nic_isr6_bw = iwl_trans_read_umac_prph(trans, LMPM2_NIC_ISR6);
 
 	ret = iwl_wait_notification(notif_wait, &pnvm_wait,
 				    MVM_UCODE_PNVM_TIMEOUT);
 
-	reg_value_nic_en_isr6_aw = iwl_read_umac_prph(trans,
-						      LMPM2_NIC_EN_VEC_6);
-	reg_lmpm2_nic_isr6_aw = iwl_read_umac_prph(trans, LMPM2_NIC_ISR6);
+	reg_value_nic_en_isr6_aw = iwl_trans_read_umac_prph(trans,
+							    LMPM2_NIC_EN_VEC_6);
+	reg_lmpm2_nic_isr6_aw = iwl_trans_read_umac_prph(trans, LMPM2_NIC_ISR6);
 
 	IWL_INFO(trans, "DOORBELL en_bd:0x%x en_bw:0x%x en_aw:0x%x\n",
 		 reg_value_nic_en_isr6_bd, reg_value_nic_en_isr6_bw,

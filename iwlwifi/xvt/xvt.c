@@ -629,9 +629,9 @@ static void iwl_xvt_nic_config(struct iwl_op_mode *op_mode)
 	 * to lose ownership and not being able to obtain it back.
 	 */
 	if (!xvt->trans->mac_cfg->base->apmg_not_supported)
-		iwl_set_bits_mask_prph(xvt->trans, APMG_PS_CTRL_REG,
-				       APMG_PS_CTRL_EARLY_PWR_OFF_RESET_DIS,
-				       ~APMG_PS_CTRL_EARLY_PWR_OFF_RESET_DIS);
+		iwl_trans_set_bits_mask_prph(xvt->trans, APMG_PS_CTRL_REG,
+					     APMG_PS_CTRL_EARLY_PWR_OFF_RESET_DIS,
+					     ~APMG_PS_CTRL_EARLY_PWR_OFF_RESET_DIS);
 }
 
 static void iwl_xvt_nic_error(struct iwl_op_mode *op_mode,

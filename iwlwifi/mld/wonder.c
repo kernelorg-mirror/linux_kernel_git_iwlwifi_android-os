@@ -308,8 +308,8 @@ static int iwl_mld_wondertap_get_mac_tsf(void *handle, u32 *mac_tsf)
 	if (WARN_ON(!mld->fw_status.running))
 		return -EIO;
 
-	*mac_tsf = iwl_read_prph(mld->trans,
-				 mld->trans->mac_cfg->base->gp2_reg_addr);
+	*mac_tsf = iwl_trans_read_prph(mld->trans,
+				       mld->trans->mac_cfg->base->gp2_reg_addr);
 	if (*mac_tsf == 0x5a5a5a5a)
 		return -EIO;
 

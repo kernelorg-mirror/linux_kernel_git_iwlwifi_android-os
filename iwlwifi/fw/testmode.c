@@ -267,8 +267,8 @@ static int iwl_tm_indirect_write(struct iwl_testmode *testmode,
 			}
 
 			for (i = 0; i < size32; i++)
-				iwl_write_prph(trans, addr + i * sizeof(u32),
-					       buf32[i]);
+				iwl_trans_write_prph(trans, addr + i * sizeof(u32),
+						     buf32[i]);
 		}
 	} else {
 		iwl_trans_write_mem(trans, addr, buf32, size32);
