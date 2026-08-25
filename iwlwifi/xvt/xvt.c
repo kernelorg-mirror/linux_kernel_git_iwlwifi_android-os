@@ -15,7 +15,6 @@
 #include "iwl-csr.h"
 #include "xvt.h"
 #include "user-infc.h"
-#include "iwl-io.h"
 #include "iwl-prph.h"
 #include "fw/dbg.h"
 #include "fw/api/rx.h"

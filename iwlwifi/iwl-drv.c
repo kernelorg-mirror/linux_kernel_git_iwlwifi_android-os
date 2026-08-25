@@ -24,7 +24,6 @@
 #include "fw/api/mac.h"
 #include "fw/api/mac-cfg.h"
 #ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
-#include "iwl-io.h"
 #include "iwl-prph.h"
 #include "iwl-dbg-cfg.h"
 #endif

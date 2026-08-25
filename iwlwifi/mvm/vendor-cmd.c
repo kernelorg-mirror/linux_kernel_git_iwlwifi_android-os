@@ -11,7 +11,7 @@
 #include "iwl-vendor-cmd.h"
 #include "fw/api/datapath.h"
 
-#include "iwl-io.h"
+#include "iwl-trans.h"
 #include "iwl-prph.h"
 
 static LIST_HEAD(device_list);

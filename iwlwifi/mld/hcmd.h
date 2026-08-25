@@ -8,7 +8,7 @@
 #include "mld.h"
 
 #ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
-#include "iwl-io.h"
+#include "iwl-trans.h"
 static void iwl_mld_check_random_nmi(struct iwl_mld *mld)
 {
 	struct iwl_mld_random_nmi *random_nmi = &mld->random_nmi;

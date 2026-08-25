@@ -7,7 +7,6 @@
 #include <linux/export.h>
 #include <net/genetlink.h>
 #include "iwl-drv.h"
-#include "iwl-io.h"
 #include "iwl-fh.h"
 #include "iwl-prph.h"
 #include "iwl-trans.h"

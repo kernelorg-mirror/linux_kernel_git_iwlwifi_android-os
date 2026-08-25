@@ -4,11 +4,12 @@
  * Copyright (C) 2013-2015 Intel Mobile Communications GmbH
  * Copyright (C) 2023, 2025-2026 Intel Corporation
  */
+#include <linux/pci.h>
+
 #include "iwl-trans.h"
 #include "iwl-tm-infc.h"
 #include "iwl-drv.h"
 #include "iwl-prph.h"
-#include "iwl-io.h"
 
 static int iwl_tm_send_hcmd(struct iwl_testmode *testmode,
 			    struct iwl_tm_data *data_in,

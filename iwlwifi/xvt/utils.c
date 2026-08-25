@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: GPL-2.0 OR BSD-3-Clause
 /*
- * Copyright (C) 2005-2014, 2018-2021, 2025 Intel Corporation
+ * Copyright (C) 2005-2014, 2018-2021, 2025-2026 Intel Corporation
  * Copyright (C) 2016-2017 Intel Deutschland GmbH
  */
 #include "iwl-debug.h"
-#include "iwl-io.h"
+#include "iwl-trans.h"
 
 #include "fw-api.h"
 #include "xvt.h"
