@@ -20,6 +20,14 @@ int iwl_pcie_poll_umac_prph_bit(struct iwl_trans *trans, u32 addr,
 int iwl_pcie_poll_umac_prph_bits_no_grab(struct iwl_trans *trans, u32 addr,
 					 u32 bits, u32 mask, int timeout);
 void iwl_pcie_write_prph64_no_grab(struct iwl_trans *trans, u32 ofs, u64 val);
+void iwl_pcie_write_direct64(struct iwl_trans *trans, u64 reg, u64 value);
+
+static inline void iwl_pcie_write64(struct iwl_trans *trans, u64 ofs, u64 val)
+{
+	trace_iwlwifi_dev_iowrite64(trans->dev, ofs, val);
+	iwl_trans_write32(trans, ofs, lower_32_bits(val));
+	iwl_trans_write32(trans, ofs + 4, upper_32_bits(val));
+}
 
 static inline void iwl_pcie_write_umac_prph_no_grab(struct iwl_trans *trans,
 						    u32 ofs, u32 val)

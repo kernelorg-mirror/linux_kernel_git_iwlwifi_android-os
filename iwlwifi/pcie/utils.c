@@ -179,3 +179,11 @@ void iwl_pcie_write_prph64_no_grab(struct iwl_trans *trans, u32 ofs, u64 val)
 	iwl_write_prph_no_grab(trans, ofs, val & 0xffffffff);
 	iwl_write_prph_no_grab(trans, ofs + 4, val >> 32);
 }
+
+void iwl_pcie_write_direct64(struct iwl_trans *trans, u64 reg, u64 value)
+{
+	if (iwl_trans_grab_nic_access(trans)) {
+		iwl_pcie_write64(trans, reg, value);
+		iwl_trans_release_nic_access(trans);
+	}
+}

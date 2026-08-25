@@ -549,9 +549,9 @@ void iwl_trans_pcie_tx_reset(struct iwl_trans *trans)
 	     txq_id++) {
 		struct iwl_txq *txq = trans_pcie->txqs.txq[txq_id];
 		if (trans->mac_cfg->gen2)
-			iwl_write_direct64(trans,
-					   FH_MEM_CBBC_QUEUE(trans, txq_id),
-					   txq->dma_addr);
+			iwl_pcie_write_direct64(trans,
+						FH_MEM_CBBC_QUEUE(trans, txq_id),
+						txq->dma_addr);
 		else
 			iwl_write_direct32(trans,
 					   FH_MEM_CBBC_QUEUE(trans, txq_id),

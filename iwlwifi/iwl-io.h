@@ -10,7 +10,6 @@
 
 void iwl_write8(struct iwl_trans *trans, u32 ofs, u8 val);
 void iwl_write32(struct iwl_trans *trans, u32 ofs, u32 val);
-void iwl_write64(struct iwl_trans *trans, u64 ofs, u64 val);
 u32 iwl_read32(struct iwl_trans *trans, u32 ofs);
 
 static inline void iwl_set_bit(struct iwl_trans *trans, u32 reg, u32 mask)
@@ -32,7 +31,6 @@ static inline int iwl_poll_bits(struct iwl_trans *trans, u32 addr, u32 bits,
 }
 
 void iwl_write_direct32(struct iwl_trans *trans, u32 reg, u32 value);
-void iwl_write_direct64(struct iwl_trans *trans, u64 reg, u64 value);
 
 
 u32 iwl_read_prph_no_grab(struct iwl_trans *trans, u32 ofs);
