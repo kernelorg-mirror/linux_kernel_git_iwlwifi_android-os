@@ -11,13 +11,6 @@
 #include "iwl-csr.h"
 #include "iwl-debug.h"
 
-void iwl_write8(struct iwl_trans *trans, u32 ofs, u8 val)
-{
-	trace_iwlwifi_dev_iowrite8(trans->dev, ofs, val);
-	iwl_trans_write8(trans, ofs, val);
-}
-IWL_EXPORT_SYMBOL(iwl_write8);
-
 void iwl_write32(struct iwl_trans *trans, u32 ofs, u32 val)
 {
 	trace_iwlwifi_dev_iowrite32(trans->dev, ofs, val);

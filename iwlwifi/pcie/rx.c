@@ -891,7 +891,7 @@ static void iwl_pcie_rx_hw_init(struct iwl_trans *trans, struct iwl_rxq *rxq)
 	iwl_trans_release_nic_access(trans);
 
 	/* Set interrupt coalescing timer to default (2048 usecs) */
-	iwl_write8(trans, CSR_INT_COALESCING, IWL_HOST_INT_TIMEOUT_DEF);
+	iwl_trans_pcie_write8(trans, CSR_INT_COALESCING, IWL_HOST_INT_TIMEOUT_DEF);
 
 	/* W/A for interrupt coalescing bug in 7260 and 3160 */
 	if (trans->cfg->host_interrupt_operation_mode)
@@ -983,7 +983,7 @@ static void iwl_pcie_rx_mq_hw_init(struct iwl_trans *trans)
 	iwl_trans_release_nic_access(trans);
 
 	/* Set interrupt coalescing timer to default (2048 usecs) */
-	iwl_write8(trans, CSR_INT_COALESCING, IWL_HOST_INT_TIMEOUT_DEF);
+	iwl_trans_pcie_write8(trans, CSR_INT_COALESCING, IWL_HOST_INT_TIMEOUT_DEF);
 }
 
 void iwl_pcie_rx_init_rxb_lists(struct iwl_rxq *rxq)
@@ -1190,7 +1190,7 @@ int iwl_pcie_rx_init(struct iwl_trans *trans)
 int iwl_pcie_gen2_rx_init(struct iwl_trans *trans)
 {
 	/* Set interrupt coalescing timer to default (2048 usecs) */
-	iwl_write8(trans, CSR_INT_COALESCING, IWL_HOST_INT_TIMEOUT_DEF);
+	iwl_trans_pcie_write8(trans, CSR_INT_COALESCING, IWL_HOST_INT_TIMEOUT_DEF);
 
 	/*
 	 * We don't configure the RFH.
@@ -2104,8 +2104,8 @@ irqreturn_t iwl_pcie_irq_handler(int irq, void *dev_id)
 		 */
 
 		/* Disable periodic interrupt; we use it as just a one-shot. */
-		iwl_write8(trans, CSR_INT_PERIODIC_REG,
-			    CSR_INT_PERIODIC_DIS);
+		iwl_trans_pcie_write8(trans, CSR_INT_PERIODIC_REG,
+				      CSR_INT_PERIODIC_DIS);
 
 		/*
 		 * Enable periodic interrupt in 8 msec only if we received
@@ -2115,8 +2115,8 @@ irqreturn_t iwl_pcie_irq_handler(int irq, void *dev_id)
 		 * to extend the periodic interrupt; one-shot is enough.
 		 */
 		if (inta & (CSR_INT_BIT_FH_RX | CSR_INT_BIT_SW_RX))
-			iwl_write8(trans, CSR_INT_PERIODIC_REG,
-				   CSR_INT_PERIODIC_ENA);
+			iwl_trans_pcie_write8(trans, CSR_INT_PERIODIC_REG,
+					      CSR_INT_PERIODIC_ENA);
 
 		isr_stats->rx++;
 
