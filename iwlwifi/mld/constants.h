@@ -45,6 +45,10 @@
 
 #define IWL_MLD_TPT_COUNT_WINDOW (5 * HZ)
 
+#define IWL_MLD_TX_GP2_VALID_PERIOD	(10 * HZ)
+#define IWL_MLD_TX_GP2_REFRESH_MARGIN	(5 * HZ)
+#define IWL_MLD_TX_GP2_RETRY_PERIOD	HZ
+
 #ifndef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
 #define IWL_MLD_DIS_RANDOM_FW_ID                false
 #define IWL_MLD_D3_DEBUG                        false
