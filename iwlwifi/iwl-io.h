@@ -34,7 +34,6 @@ void iwl_write_direct32(struct iwl_trans *trans, u32 reg, u32 value);
 
 u32 iwl_read_prph_no_grab(struct iwl_trans *trans, u32 ofs);
 u32 iwl_read_prph(struct iwl_trans *trans, u32 ofs);
-void iwl_write_prph_no_grab(struct iwl_trans *trans, u32 ofs, u32 val);
 void iwl_write_prph_delay(struct iwl_trans *trans, u32 ofs,
 			  u32 val, u32 delay_ms);
 static inline void iwl_write_prph(struct iwl_trans *trans, u32 ofs, u32 val)

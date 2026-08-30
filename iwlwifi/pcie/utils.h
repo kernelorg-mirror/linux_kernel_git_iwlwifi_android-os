@@ -7,6 +7,7 @@
 #define __iwl_pcie_utils_h__
 
 #include "iwl-io.h"
+#include "internal.h"
 
 void iwl_trans_pcie_dump_regs(struct iwl_trans *trans, struct pci_dev *pdev);
 
@@ -32,8 +33,8 @@ static inline void iwl_pcie_write64(struct iwl_trans *trans, u64 ofs, u64 val)
 static inline void iwl_pcie_write_umac_prph_no_grab(struct iwl_trans *trans,
 						    u32 ofs, u32 val)
 {
-	iwl_write_prph_no_grab(trans, ofs + trans->mac_cfg->umac_prph_offset,
-			       val);
+	iwl_pcie_write_prph_no_grab(trans, ofs + trans->mac_cfg->umac_prph_offset,
+				    val);
 }
 
 static inline void _iwl_trans_set_bits_mask(struct iwl_trans *trans,

@@ -1936,6 +1936,7 @@ void iwl_pcie_write_prph_no_grab(struct iwl_trans *trans, u32 addr, u32 val)
 {
 	u32 mask = iwl_trans_pcie_prph_msk(trans);
 
+	trace_iwlwifi_dev_iowrite_prph32(trans->dev, addr, val);
 	iwl_trans_pcie_write32(trans, HBUS_TARG_PRPH_WADDR,
 			       ((addr & mask) | (3 << 24)));
 	iwl_trans_pcie_write32(trans, HBUS_TARG_PRPH_WDAT, val);

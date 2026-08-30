@@ -61,12 +61,6 @@ u32 iwl_read_prph_no_grab(struct iwl_trans *trans, u32 ofs)
 	return val;
 }
 
-void iwl_write_prph_no_grab(struct iwl_trans *trans, u32 ofs, u32 val)
-{
-	trace_iwlwifi_dev_iowrite_prph32(trans->dev, ofs, val);
-	iwl_trans_write_prph_no_grab(trans, ofs, val);
-}
-
 u32 iwl_read_prph(struct iwl_trans *trans, u32 ofs)
 {
 	if (iwl_trans_grab_nic_access(trans)) {
@@ -86,7 +80,7 @@ void iwl_write_prph_delay(struct iwl_trans *trans, u32 ofs, u32 val, u32 delay_m
 {
 	if (iwl_trans_grab_nic_access(trans)) {
 		mdelay(delay_ms);
-		iwl_write_prph_no_grab(trans, ofs, val);
+		iwl_trans_write_prph_no_grab(trans, ofs, val);
 		iwl_trans_release_nic_access(trans);
 	}
 }
@@ -95,9 +89,9 @@ IWL_EXPORT_SYMBOL(iwl_write_prph_delay);
 void iwl_set_bits_prph(struct iwl_trans *trans, u32 ofs, u32 mask)
 {
 	if (iwl_trans_grab_nic_access(trans)) {
-		iwl_write_prph_no_grab(trans, ofs,
-				       iwl_read_prph_no_grab(trans, ofs) |
-				       mask);
+		iwl_trans_write_prph_no_grab(trans, ofs,
+					     iwl_read_prph_no_grab(trans, ofs) |
+					     mask);
 		iwl_trans_release_nic_access(trans);
 	}
 }
@@ -107,9 +101,9 @@ void iwl_set_bits_mask_prph(struct iwl_trans *trans, u32 ofs,
 			    u32 bits, u32 mask)
 {
 	if (iwl_trans_grab_nic_access(trans)) {
-		iwl_write_prph_no_grab(trans, ofs,
-				       (iwl_read_prph_no_grab(trans, ofs) &
-					mask) | bits);
+		iwl_trans_write_prph_no_grab(trans, ofs,
+					     (iwl_read_prph_no_grab(trans, ofs) &
+					      mask) | bits);
 		iwl_trans_release_nic_access(trans);
 	}
 }
@@ -121,7 +115,7 @@ void iwl_clear_bits_prph(struct iwl_trans *trans, u32 ofs, u32 mask)
 
 	if (iwl_trans_grab_nic_access(trans)) {
 		val = iwl_read_prph_no_grab(trans, ofs);
-		iwl_write_prph_no_grab(trans, ofs, (val & ~mask));
+		iwl_trans_write_prph_no_grab(trans, ofs, (val & ~mask));
 		iwl_trans_release_nic_access(trans);
 	}
 }

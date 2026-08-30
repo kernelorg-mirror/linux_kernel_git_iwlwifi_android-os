@@ -926,9 +926,9 @@ static void iwl_pcie_rx_mq_hw_init(struct iwl_trans *trans)
 		return;
 
 	/* Stop Rx DMA */
-	iwl_write_prph_no_grab(trans, RFH_RXF_DMA_CFG, 0);
+	iwl_pcie_write_prph_no_grab(trans, RFH_RXF_DMA_CFG, 0);
 	/* disable free amd used rx queue operation */
-	iwl_write_prph_no_grab(trans, RFH_RXF_RXQ_ACTIVE, 0);
+	iwl_pcie_write_prph_no_grab(trans, RFH_RXF_RXQ_ACTIVE, 0);
 
 	for (i = 0; i < trans->info.num_rxqs; i++) {
 		/* Tell device where to find RBD free table in DRAM */
@@ -944,9 +944,9 @@ static void iwl_pcie_rx_mq_hw_init(struct iwl_trans *trans)
 					      RFH_Q_URBD_STTS_WPTR_LSB(i),
 					      trans_pcie->rxq[i].rb_stts_dma);
 		/* Reset device indice tables */
-		iwl_write_prph_no_grab(trans, RFH_Q_FRBDCB_WIDX(i), 0);
-		iwl_write_prph_no_grab(trans, RFH_Q_FRBDCB_RIDX(i), 0);
-		iwl_write_prph_no_grab(trans, RFH_Q_URBDCB_WIDX(i), 0);
+		iwl_pcie_write_prph_no_grab(trans, RFH_Q_FRBDCB_WIDX(i), 0);
+		iwl_pcie_write_prph_no_grab(trans, RFH_Q_FRBDCB_RIDX(i), 0);
+		iwl_pcie_write_prph_no_grab(trans, RFH_Q_URBDCB_WIDX(i), 0);
 
 		enabled |= BIT(i) | BIT(i + 16);
 	}
@@ -958,27 +958,27 @@ static void iwl_pcie_rx_mq_hw_init(struct iwl_trans *trans)
 	 * Drop frames that exceed RB size
 	 * 512 RBDs
 	 */
-	iwl_write_prph_no_grab(trans, RFH_RXF_DMA_CFG,
-			       RFH_DMA_EN_ENABLE_VAL | rb_size |
-			       RFH_RXF_DMA_MIN_RB_4_8 |
-			       RFH_RXF_DMA_DROP_TOO_LARGE_MASK |
-			       RFH_RXF_DMA_RBDCB_SIZE_512);
+	iwl_pcie_write_prph_no_grab(trans, RFH_RXF_DMA_CFG,
+				    RFH_DMA_EN_ENABLE_VAL | rb_size |
+				    RFH_RXF_DMA_MIN_RB_4_8 |
+				    RFH_RXF_DMA_DROP_TOO_LARGE_MASK |
+				    RFH_RXF_DMA_RBDCB_SIZE_512);
 
 	/*
 	 * Activate DMA snooping.
 	 * Set RX DMA chunk size to 64B for IOSF and 128B for PCIe
 	 * Default queue is 0
 	 */
-	iwl_write_prph_no_grab(trans, RFH_GEN_CFG,
-			       RFH_GEN_CFG_RFH_DMA_SNOOP |
-			       RFH_GEN_CFG_VAL(DEFAULT_RXQ_NUM, 0) |
-			       RFH_GEN_CFG_SERVICE_DMA_SNOOP |
-			       RFH_GEN_CFG_VAL(RB_CHUNK_SIZE,
-					       trans->mac_cfg->integrated ?
-					       RFH_GEN_CFG_RB_CHUNK_SIZE_64 :
-					       RFH_GEN_CFG_RB_CHUNK_SIZE_128));
+	iwl_pcie_write_prph_no_grab(trans, RFH_GEN_CFG,
+				    RFH_GEN_CFG_RFH_DMA_SNOOP |
+				    RFH_GEN_CFG_VAL(DEFAULT_RXQ_NUM, 0) |
+				    RFH_GEN_CFG_SERVICE_DMA_SNOOP |
+				    RFH_GEN_CFG_VAL(RB_CHUNK_SIZE,
+						    trans->mac_cfg->integrated ?
+						    RFH_GEN_CFG_RB_CHUNK_SIZE_64 :
+						    RFH_GEN_CFG_RB_CHUNK_SIZE_128));
 	/* Enable the relevant rx queues */
-	iwl_write_prph_no_grab(trans, RFH_RXF_RXQ_ACTIVE, enabled);
+	iwl_pcie_write_prph_no_grab(trans, RFH_RXF_RXQ_ACTIVE, enabled);
 
 	iwl_trans_release_nic_access(trans);
 
