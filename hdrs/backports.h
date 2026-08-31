@@ -318,3 +318,21 @@ static inline ssize_t __bp_strscpy_pad(char *dst, const char *src, size_t cnt)
  * in 7.2 (upstream 5ccaf1e569f0). Map the new name to the old one.
  */
 #define sys_systime sys_realtime
+
+/**
+ *  * aes_cmac_zeroize_key() - Zeroize an aes_cmac_key structure
+ *   * @key: The location of the key structure that should be zeroized
+ *    */
+static inline void aes_cmac_zeroize_key(struct aes_cmac_key *key)
+{
+		memzero_explicit(key, sizeof(*key));
+}
+
+/**
+ *  * aes_cmac_zeroize_ctx() - Zeroize an aes_cmac_ctx structure
+ *   * @ctx: The location of the context that should be zeroized
+ *    */
+static inline void aes_cmac_zeroize_ctx(struct aes_cmac_ctx *ctx)
+{
+		memzero_explicit(ctx, sizeof(*ctx));
+}

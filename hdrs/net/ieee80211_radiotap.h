@@ -710,7 +710,7 @@ struct ieee80211_radiotap_service_field {
 } __packed;
 
 /*
- * ieee80211_radiotap_uhr_elr - content of UHR-ELR TLV (type 35)
+ * ieee80211_radiotap_uhr_elr - content of UHR-ELR TLV (type 37)
  * see https://www.radiotap.org/fields/UHR-ELR for details
  */
 struct ieee80211_radiotap_uhr_elr {
@@ -761,7 +761,7 @@ enum ieee80211_radiotap_uhr_elr_mark {
 };
 
 /*
- * ieee80211_radiotap_uhr - content of UHR TLV (type 36)
+ * ieee80211_radiotap_uhr - content of UHR TLV (type 38)
  * see https://www.radiotap.org/fields/UHR for details
  */
 struct ieee80211_radiotap_uhr {
