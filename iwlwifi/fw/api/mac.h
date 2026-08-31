@@ -70,6 +70,12 @@ enum iwl_mac_types {
 	FW_MAC_TYPE_P2P_STA,
 	FW_MAC_TYPE_GO,
 	FW_MAC_TYPE_NAN,
+#ifdef CPTCFG_IWLMLD_WONDER
+	/**
+	 * @FW_MAC_TYPE_CHAN_HOP: channel-hopping MAC
+	 */
+	FW_MAC_TYPE_CHAN_HOP,
+#endif
 }; /* MAC_CONTEXT_TYPE_API_E_VER_1 */
 
 /**

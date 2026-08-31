@@ -28,6 +28,9 @@
 #include "ftm-initiator.h"
 
 #include "iwl-nvm-parse.h"
+#ifdef CPTCFG_IWLMLD_WONDER
+#include "wonder.h"
+#endif
 
 #define DRV_DESCRIPTION "Intel(R) MLD wireless driver for Linux"
 MODULE_DESCRIPTION(DRV_DESCRIPTION);
@@ -274,6 +277,10 @@ static const struct iwl_hcmd_names iwl_mld_mac_conf_names[] = {
 	HCMD_NAME(NAN_CFG_CMD),
 	HCMD_NAME(NAN_SCHEDULE_CMD),
 	HCMD_NAME(NAN_PEER_CMD),
+#ifdef CPTCFG_IWLMLD_WONDER
+	HCMD_NAME(CHANNEL_HOPPING_CMD),
+	HCMD_NAME(CHANNEL_HOP_CALIB_DONE_NOTIF),
+#endif
 	HCMD_NAME(NAN_ULW_ATTR_NOTIF),
 	HCMD_NAME(NAN_SCHED_UPDATE_COMPLETED_NOTIF),
 	HCMD_NAME(NAN_DW_END_NOTIF),
@@ -527,6 +534,14 @@ iwl_op_mode_mld_start(struct iwl_trans *trans, const struct iwl_rf_cfg *cfg,
 #ifdef CPTCFG_IWLWIFI_DEVICE_TESTMODE
 	iwl_tm_init(trans, fw, &mld->wiphy->mtx, mld);
 #endif
+#ifdef CPTCFG_IWLMLD_WONDER
+	/*
+	 * It is ok to fail the wonder registration, we can still continue
+	 * the flow.
+	 */
+	if (iwl_mld_wonder_register(mld))
+		IWL_ERR(mld, "Unable to register MLD wonder driver\n");
+#endif
 	return op_mode;
 
 low_latency_free:
@@ -547,6 +562,10 @@ static void
 iwl_op_mode_mld_stop(struct iwl_op_mode *op_mode)
 {
 	struct iwl_mld *mld = IWL_OP_MODE_GET_MLD(op_mode);
+
+#ifdef CPTCFG_IWLMLD_WONDER
+	iwl_mld_wonder_unregister(mld);
+#endif
 
 	iwl_mld_ptp_remove(mld);
 	iwl_mld_leds_exit(mld);

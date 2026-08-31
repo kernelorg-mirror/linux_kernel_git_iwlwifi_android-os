@@ -82,6 +82,19 @@ enum iwl_mac_conf_subcmd_ids {
 	 * @NAN_PEER_CMD: &struct iwl_nan_peer_cmd
 	 */
 	NAN_PEER_CMD = 0x14,
+#ifdef CPTCFG_IWLMLD_WONDER
+	/**
+	 * @CHANNEL_HOPPING_CMD: &struct iwl_channel_hopping_cmd
+	 */
+	CHANNEL_HOPPING_CMD = 0x15,
+	/**
+	 * @CHANNEL_HOP_CALIB_DONE_NOTIF: &struct iwl_chan_hop_calib_done_notif
+	 *
+	 * Sent by FW when the CHAN_HOP_MAC_TYPE link has completed LMAC
+	 * calibration.
+	 */
+	CHANNEL_HOP_CALIB_DONE_NOTIF = 0xf0,
+#endif
 	/**
 	 * @NAN_ULW_ATTR_NOTIF: &struct iwl_nan_ulw_attr_notif
 	 */
@@ -1469,5 +1482,36 @@ struct iwl_nan_sched_update_completed_notif {
 	u8 status;
 	u8 reserved[3];
 } __packed; /* NAN_SCHED_UPDATE_COMPLETED_NTF_API_S_VER_1 */
+
+#ifdef CPTCFG_IWLMLD_WONDER
+/**
+ * struct iwl_channel_hopping_cmd - channel hopping command
+ *
+ * @link_id: the link ID for this channel hopping session
+ * @channel_list_length: number of channels in the hopping list
+ * @next_index: the index in the channel map to switch to
+ * @dwell_time: dwell time on each channel in Time Units (TU)
+ * @channel_hopping_bitmap: bitmap of slots for channel hopping
+ * @target_switch_time: TSF time for the next channel switch
+ */
+struct iwl_channel_hopping_cmd {
+	__le32 link_id;
+	__le32 channel_list_length;
+	__le32 next_index;
+	__le32 dwell_time;
+	__le32 channel_hopping_bitmap;
+	__le32 target_switch_time;
+} __packed; /* CHANNEL_HOPPING_CMD_API_S_VER_1 */
+
+/**
+ * struct iwl_chan_hop_calib_done_notif - CHANNEL_HOP_CALIB_DONE_NOTIF payload
+ * @link_id: firmware link ID of the CHAN_HOP_MAC_TYPE link that completed
+ *	calibration, matching the link_id in the preceding
+ *	CHANNEL_HOPPING_CMD.
+ */
+struct iwl_chan_hop_calib_done_notif {
+	__le32 link_id;
+} __packed; /* CALIB_DONE_NTF_API_S_VER_1 */
+#endif /* CPTCFG_IWLMLD_WONDER */
 
 #endif /* __iwl_fw_api_mac_cfg_h__ */
