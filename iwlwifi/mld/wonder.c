@@ -20,6 +20,7 @@
 #include <linux/auxiliary_bus.h>
 #include <linux/ieee80211.h>
 #include <linux/netdevice.h>
+#include <linux/rtnetlink.h>
 #include <wondertap.h>
 
 #include "fw/api/commands.h"
@@ -151,6 +152,30 @@ static int iwl_mld_wonder_netdev_create(struct iwl_mld_wonder_ctx *wonder_ctx)
 	return 0;
 }
 
+/* Called at wondertap init/deinit time; RTNL is already held by the caller. */
+static int
+iwl_mld_wonder_netdev_set_state(struct iwl_mld_wonder_ctx *wonder_ctx, bool up)
+{
+	struct iwl_mld *mld = wonder_ctx->mld;
+	int ret;
+
+	ASSERT_RTNL();
+
+	if (WARN_ON(!wonder_ctx->netdev))
+		return 0;
+
+	if (!up) {
+		dev_close(wonder_ctx->netdev);
+		return 0;
+	}
+
+	ret = dev_open(wonder_ctx->netdev, NULL);
+	if (ret)
+		IWL_ERR(mld, "Failed to bring up wondertap0: %d\n", ret);
+
+	return ret;
+}
+
 static void iwl_mld_wonder_netdev_destroy(struct iwl_mld_wonder_ctx *wonder_ctx)
 {
 	struct net_device *netdev = wonder_ctx->netdev;
@@ -223,8 +248,10 @@ static int iwl_mld_wondertap_init(void **handle,
 	/* wonder.ko calls this with its own (separate) wiphy mutex held. */
 	guard(nested_wiphy)(mld->wiphy);
 
-	if (wonder_ctx->netdev)
-		eth_hw_addr_set(wonder_ctx->netdev, params->mac_addr);
+	if (WARN_ON(!wonder_ctx->netdev))
+		return -ENODEV;
+
+	eth_hw_addr_set(wonder_ctx->netdev, params->mac_addr);
 
 	if (WARN_ON(!mld->fw_status.running))
 		return -ENODEV;
@@ -276,6 +303,10 @@ static int iwl_mld_wondertap_init(void **handle,
 	if (ret)
 		goto free_stas;
 
+	ret = iwl_mld_wonder_netdev_set_state(wonder_ctx, true);
+	if (ret)
+		goto free_stas;
+
 	*handle = wonder_ctx;
 	return 0;
 
@@ -309,6 +340,7 @@ iwl_mld_wondertap_deinit(void *handle,
 
 	WARN_ON(!mld->fw_status.running);
 
+	iwl_mld_wonder_netdev_set_state(wonder_ctx, false);
 	iwl_mld_wonder_agg_stop_all(wonder_ctx);
 	iwl_mld_wonder_free_all_ucast_stas(mld, wonder_ctx);
 	iwl_mld_wonder_free_mcast_bcast_stas(mld, wonder_ctx);
