@@ -131,6 +131,40 @@ struct iwl_mld_alive_data {
 	bool valid;
 };
 
+#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
+static void
+iwl_mld_determine_fatal_error_test_mode(struct iwl_mld *mld,
+					struct iwl_alive_ntf *palive)
+{
+	bool accepted;
+
+	if (!mld->trans->dbg_cfg.FATAL_ERROR_TEST_MODE)
+		return;
+
+	switch (mld->trans->dbg_cfg.FORCE_FATAL_ERR_TEST_MODE) {
+	case 1:
+		/* force reject */
+		accepted = false;
+		break;
+	case 2:
+		/* force accept */
+		accepted = true;
+		break;
+	default:
+		accepted = le16_to_cpu(palive->flags) &
+			   IWL_ALIVE_FLG_RFKILL_TEST_MODE;
+		break;
+	}
+
+	if (accepted) {
+		IWL_DEBUG_FW(mld, "Fatal Error Test Mode: accepted by FW\n");
+	} else {
+		mld->trans->dbg_cfg.FATAL_ERROR_TEST_MODE = false;
+		IWL_DEBUG_FW(mld, "Fatal Error Test Mode: rejected by FW\n");
+	}
+}
+#endif
+
 static bool iwl_alive_fn(struct iwl_notif_wait_data *notif_wait,
 			 struct iwl_rx_packet *pkt, void *data)
 {
@@ -169,14 +203,7 @@ static bool iwl_alive_fn(struct iwl_notif_wait_data *notif_wait,
 	iwl_mld_alive_imr_data(trans, &palive->imr);
 
 #ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
-	if (trans->dbg_cfg.FATAL_ERROR_TEST_MODE) {
-		if (le16_to_cpu(palive->flags) & IWL_ALIVE_FLG_RFKILL_TEST_MODE) {
-			IWL_INFO(mld, "Fatal Error Test Mode: accepted by FW\n");
-		} else {
-			trans->dbg_cfg.FATAL_ERROR_TEST_MODE = false;
-			IWL_INFO(mld, "Fatal Error Test Mode: rejected by FW\n");
-		}
-	}
+	iwl_mld_determine_fatal_error_test_mode(mld, palive);
 #endif
 
 	umac = &palive->umac_data;
