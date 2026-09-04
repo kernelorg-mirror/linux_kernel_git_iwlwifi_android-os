@@ -168,9 +168,11 @@ iwl_mld_wonder_allocate_link(struct iwl_mld *mld,
 
 	cmd.protection_flags = cpu_to_le32(LINK_PROT_FLG_HT_PROT |
 					    LINK_PROT_FLG_FAT_PROT);
-	cmd.qos_flags = cpu_to_le32(MAC_QOS_FLG_TGN);
 	cmd.cck_short_preamble = cpu_to_le32(1);
 	cmd.short_slot = cpu_to_le32(1);
+	/* Required for rates and protection fields, including on ADD. */
+	cmd.modify_mask = cpu_to_le32(LINK_CONTEXT_MODIFY_RATES_INFO |
+				      LINK_CONTEXT_MODIFY_PROTECT_FLAGS);
 
 	ret = iwl_mld_send_link_cmd(mld, &cmd, FW_CTXT_ACTION_ADD);
 	if (ret)
