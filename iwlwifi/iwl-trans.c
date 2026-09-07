@@ -942,6 +942,7 @@ int iwl_trans_get_rxq_dma_data(struct iwl_trans *trans, int queue,
 		return -EOPNOTSUPP;
 	return trans->ops->rxq_dma_data(trans, queue, data);
 }
+IWL_EXPORT_SYMBOL(iwl_trans_get_rxq_dma_data);
 
 int iwl_trans_load_pnvm(struct iwl_trans *trans,
 			const struct iwl_pnvm_image *pnvm_data,

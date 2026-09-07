@@ -516,6 +516,60 @@ out:
 	iwl_free_resp(&cmd);
 }
 
+static int iwl_mld_configure_rxq(struct iwl_mld *mld)
+{
+	int i, num_queues, ret;
+	struct iwl_rfh_queue_config *cmd;
+	struct iwl_host_cmd hcmd = {
+		.id = WIDE_ID(DATA_PATH_GROUP, RFH_QUEUE_CONFIG_CMD),
+		.dataflags[0] = IWL_HCMD_DFL_NOCOPY,
+	};
+
+	/*
+	 * The default queue is configured via context info, so if we
+	 * have a single queue, there's nothing to do here.
+	 */
+	if (mld->trans->info.num_rxqs == 1)
+		return 0;
+
+	/* skip the default queue */
+	num_queues = mld->trans->info.num_rxqs - 1;
+
+	cmd = kzalloc_flex(*cmd, data, num_queues);
+	if (!cmd)
+		return -ENOMEM;
+
+	cmd->num_queues = num_queues;
+
+	for (i = 0; i < num_queues; i++) {
+		struct iwl_trans_rxq_dma_data data;
+
+		cmd->data[i].q_num = i + 1;
+		ret = iwl_trans_get_rxq_dma_data(mld->trans, i + 1, &data);
+		if (ret)
+			goto out;
+
+		cmd->data[i].fr_bd_cb = cpu_to_le64(data.fr_bd_cb);
+		cmd->data[i].urbd_stts_wrptr =
+			cpu_to_le64(data.urbd_stts_wrptr);
+		cmd->data[i].ur_bd_cb = cpu_to_le64(data.ur_bd_cb);
+		cmd->data[i].fr_bd_wid = cpu_to_le32(data.fr_bd_wid);
+	}
+
+	hcmd.data[0] = cmd;
+	hcmd.len[0] = struct_size(cmd, data, num_queues);
+
+	ret = iwl_mld_send_cmd(mld, &hcmd);
+
+out:
+	kfree(cmd);
+
+	if (ret)
+		IWL_ERR(mld, "Failed to configure RX queues: %d\n", ret);
+
+	return ret;
+}
+
 static int iwl_mld_config_fw(struct iwl_mld *mld)
 {
 	int ret;
@@ -550,7 +604,7 @@ static int iwl_mld_config_fw(struct iwl_mld *mld)
 		return ret;
 #endif
 
-	ret = iwl_configure_rxq(&mld->fwrt);
+	ret = iwl_mld_configure_rxq(mld);
 	if (ret)
 		return ret;
 

@@ -1921,6 +1921,63 @@ static void iwl_mvm_send_system_features_control(struct iwl_mvm *mvm)
 }
 #endif
 
+static int iwl_mvm_configure_rxq(struct iwl_mvm *mvm)
+{
+	int i, num_queues, ret;
+	struct iwl_rfh_queue_config *cmd;
+	struct iwl_host_cmd hcmd = {
+		.id = WIDE_ID(DATA_PATH_GROUP, RFH_QUEUE_CONFIG_CMD),
+		.dataflags[0] = IWL_HCMD_DFL_NOCOPY,
+	};
+
+	/*
+	 * The default queue is configured via context info, so if we
+	 * have a single queue, there's nothing to do here.
+	 */
+	if (mvm->trans->info.num_rxqs == 1)
+		return 0;
+
+	if (mvm->trans->mac_cfg->device_family < IWL_DEVICE_FAMILY_22000)
+		return 0;
+
+	/* skip the default queue */
+	num_queues = mvm->trans->info.num_rxqs - 1;
+
+	cmd = kzalloc_flex(*cmd, data, num_queues);
+	if (!cmd)
+		return -ENOMEM;
+
+	cmd->num_queues = num_queues;
+
+	for (i = 0; i < num_queues; i++) {
+		struct iwl_trans_rxq_dma_data data;
+
+		cmd->data[i].q_num = i + 1;
+		ret = iwl_trans_get_rxq_dma_data(mvm->trans, i + 1, &data);
+		if (ret)
+			goto out;
+
+		cmd->data[i].fr_bd_cb = cpu_to_le64(data.fr_bd_cb);
+		cmd->data[i].urbd_stts_wrptr =
+			cpu_to_le64(data.urbd_stts_wrptr);
+		cmd->data[i].ur_bd_cb = cpu_to_le64(data.ur_bd_cb);
+		cmd->data[i].fr_bd_wid = cpu_to_le32(data.fr_bd_wid);
+	}
+
+	hcmd.data[0] = cmd;
+	hcmd.len[0] = struct_size(cmd, data, num_queues);
+
+	ret = iwl_mvm_send_cmd(mvm, &hcmd);
+
+out:
+	kfree(cmd);
+
+	if (ret)
+		IWL_ERR(mvm, "Failed to configure RX queues: %d\n", ret);
+
+	return ret;
+}
+
 int iwl_mvm_up(struct iwl_mvm *mvm)
 {
 	int ret, i;
@@ -1989,7 +2046,7 @@ int iwl_mvm_up(struct iwl_mvm *mvm)
 	iwl_mvm_tx_power_limit_cfg(mvm);
 
 	/* Init RSS configuration */
-	ret = iwl_configure_rxq(&mvm->fwrt);
+	ret = iwl_mvm_configure_rxq(mvm);
 	if (ret)
 		goto error;
 
