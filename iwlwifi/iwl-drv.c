@@ -670,8 +670,8 @@ static int iwl_request_firmware(struct iwl_drv *drv, bool first)
 	if (drv->trans->dbg_cfg.fw_file_pre) {
 		snprintf(fw_name_temp, sizeof(fw_name_temp), "%s%s",
 			 drv->trans->dbg_cfg.fw_file_pre, drv->firmware_name);
-		strncpy(drv->firmware_name, fw_name_temp,
-			sizeof(drv->firmware_name));
+		strscpy_pad(drv->firmware_name, fw_name_temp,
+			    sizeof(drv->firmware_name));
 	}
 #endif /* CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES */
 

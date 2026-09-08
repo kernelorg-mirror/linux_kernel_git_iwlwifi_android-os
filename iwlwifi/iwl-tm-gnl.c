@@ -318,8 +318,8 @@ static int iwl_tm_gnl_get_build_info(struct iwl_trans *trans,
 	resp = (struct iwl_tm_build_info *)data_out->data;
 
 	memset(resp, 0 , sizeof(*resp));
-	strncpy(resp->driver_version, BACKPORTS_GIT_TRACKED,
-		sizeof(resp->driver_version));
+	strscpy_pad(resp->driver_version, BACKPORTS_GIT_TRACKED,
+		    sizeof(resp->driver_version));
 
 	return 0;
 }
