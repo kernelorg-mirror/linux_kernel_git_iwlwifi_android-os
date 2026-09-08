@@ -807,7 +807,7 @@ out_free:
 	return ret;
 }
 
-int iwl_acpi_get_wrss_table(struct iwl_fw_runtime *fwrt)
+int iwl_acpi_get_wsss_table(struct iwl_fw_runtime *fwrt)
 {
 	union acpi_object *data __free(kfree) = NULL;
 	union acpi_object *wifi_pkg, *table;
@@ -821,7 +821,7 @@ int iwl_acpi_get_wrss_table(struct iwl_fw_runtime *fwrt)
 		return -EINVAL;
 	}
 
-	data = iwl_acpi_get_object(fwrt->dev, ACPI_WRSS_METHOD);
+	data = iwl_acpi_get_object(fwrt->dev, ACPI_WSSS_METHOD);
 	if (IS_ERR(data))
 		return PTR_ERR(data);
 
@@ -849,7 +849,7 @@ int iwl_acpi_get_wrss_table(struct iwl_fw_runtime *fwrt)
 
 	if (fwrt->wrds_table_revision != tbl_rev) {
 		IWL_DEBUG_RADIO(fwrt,
-				"Skipping standalone SAR: WRDS/WRSS revision mismatch (WRDS rev %d, WRSS rev %d)\n",
+				"Skipping standalone SAR: WRDS/WSSS revision mismatch (WRDS rev %d, WSSS rev %d)\n",
 				fwrt->wrds_table_revision,
 				tbl_rev);
 		return -EINVAL;
@@ -863,7 +863,7 @@ int iwl_acpi_get_wrss_table(struct iwl_fw_runtime *fwrt)
 		    ARRAY_SIZE(fwrt->sar_standalone_profiles[0].chains[0].subbands)))
 		return -EINVAL;
 
-	IWL_DEBUG_RADIO(fwrt, "Reading WRSS (WRDS Standalone) tbl_rev=%d\n",
+	IWL_DEBUG_RADIO(fwrt, "Reading WSSS (WRDS Standalone) tbl_rev=%d\n",
 			tbl_rev);
 
 	flags = wifi_pkg->package.elements[1].integer.value;

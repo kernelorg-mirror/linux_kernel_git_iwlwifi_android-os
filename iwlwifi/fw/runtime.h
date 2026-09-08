@@ -114,7 +114,7 @@ struct iwl_txf_iter_data {
  *	Trust the UEFI variables if locked or in test mode.
  * @sar_profiles: sar profiles as read from WRDS/EWRD BIOS tables
  * @sar_standalone_profiles: standalone sar profiles as read from
- *	WRSS/EWSS BIOS tables (for Wi-Fi HB/UHB without concurrent BT)
+ *	WSSS/EWSS BIOS tables (for Wi-Fi HB/UHB without concurrent BT)
  * @wrds_table_revision: revision of WRDS BIOS table
  * @ewrd_table_revision: revision of EWRD BIOS table
  * @geo_profiles: geographic profiles as read from WGDS BIOS table

@@ -227,7 +227,7 @@ int iwl_bios_get_wrds_table(struct iwl_fw_runtime *fwrt);
 
 int iwl_bios_get_ewrd_table(struct iwl_fw_runtime *fwrt);
 
-int iwl_bios_get_wrss_table(struct iwl_fw_runtime *fwrt);
+int iwl_bios_get_wsss_table(struct iwl_fw_runtime *fwrt);
 
 int iwl_bios_get_ewss_table(struct iwl_fw_runtime *fwrt);
 

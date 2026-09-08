@@ -74,14 +74,14 @@ void iwl_mld_get_bios_tables(struct iwl_mld *mld)
 					"EWRD SAR BIOS table invalid or unavailable. (%d)\n",
 					ret);
 
-		ret = iwl_bios_get_wrss_table(&mld->fwrt);
+		ret = iwl_bios_get_wsss_table(&mld->fwrt);
 		if (ret < 0)
 			IWL_DEBUG_RADIO(mld,
-					"WRSS (WRDS Standalone) SAR BIOS table invalid or unavailable. (%d)\n",
+					"WSSS (WRDS Standalone) SAR BIOS table invalid or unavailable. (%d)\n",
 					ret);
 
 		if (!ret) {
-			/* EWSS only extends the standalone SAR profiles from WRSS. */
+			/* EWSS only extends the standalone SAR profiles from WSSS. */
 			ret = iwl_bios_get_ewss_table(&mld->fwrt);
 			if (ret < 0)
 				IWL_DEBUG_RADIO(mld,

@@ -15,7 +15,7 @@
 #define IWL_UEFI_WRDS_NAME		L"UefiCnvWlanWRDS"
 #define IWL_UEFI_GLUI_NAME		L"UefiCnvCommonGLUI"
 #define IWL_UEFI_EWRD_NAME		L"UefiCnvWlanEWRD"
-#define IWL_UEFI_WRSS_NAME		L"UefiCnvWlanWRSS"
+#define IWL_UEFI_WSSS_NAME		L"UefiCnvWlanWSSS"
 #define IWL_UEFI_EWSS_NAME		L"UefiCnvWlanEWSS"
 #define IWL_UEFI_WGDS_NAME		L"UefiCnvWlanWGDS"
 #define IWL_UEFI_PPAG_NAME		L"UefiCnvWlanPPAG"
@@ -334,7 +334,7 @@ int iwl_uefi_handle_tlv_mem_desc(struct iwl_trans *trans, const u8 *data,
 				 u32 tlv_len, struct iwl_pnvm_image *pnvm_data);
 int iwl_uefi_get_wrds_table(struct iwl_fw_runtime *fwrt);
 int iwl_uefi_get_ewrd_table(struct iwl_fw_runtime *fwrt);
-int iwl_uefi_get_wrss_table(struct iwl_fw_runtime *fwrt);
+int iwl_uefi_get_wsss_table(struct iwl_fw_runtime *fwrt);
 int iwl_uefi_get_ewss_table(struct iwl_fw_runtime *fwrt);
 int iwl_uefi_get_wgds_table(struct iwl_fw_runtime *fwrt);
 int iwl_uefi_get_ppag_table(struct iwl_fw_runtime *fwrt);
@@ -398,7 +398,7 @@ static inline int iwl_uefi_get_ewrd_table(struct iwl_fw_runtime *fwrt)
 	return -ENOENT;
 }
 
-static inline int iwl_uefi_get_wrss_table(struct iwl_fw_runtime *fwrt)
+static inline int iwl_uefi_get_wsss_table(struct iwl_fw_runtime *fwrt)
 {
 	return -ENOENT;
 }

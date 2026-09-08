@@ -712,7 +712,7 @@ out:
 	return ret;
 }
 
-int iwl_uefi_get_wrss_table(struct iwl_fw_runtime *fwrt)
+int iwl_uefi_get_wsss_table(struct iwl_fw_runtime *fwrt)
 {
 	struct uefi_cnv_var_wrds *data __free(kfree) = NULL;
 	unsigned long expected_size;
@@ -726,8 +726,8 @@ int iwl_uefi_get_wrss_table(struct iwl_fw_runtime *fwrt)
 	}
 
 	data = iwl_uefi_get_verified_wifi_var(fwrt,
-					      IWL_UEFI_WRSS_NAME,
-					      "WRSS",
+					      IWL_UEFI_WSSS_NAME,
+					      "WSSS",
 					      UEFI_SAR_WRDS_TABLE_SIZE_REV2,
 					      &size);
 	if (IS_ERR(data))
@@ -744,7 +744,7 @@ int iwl_uefi_get_wrss_table(struct iwl_fw_runtime *fwrt)
 		break;
 	default:
 		IWL_DEBUG_RADIO(fwrt,
-				"Unsupported UEFI WRSS revision:%d\n",
+				"Unsupported UEFI WSSS revision:%d\n",
 				data->revision);
 		return -EINVAL;
 	}
@@ -754,13 +754,13 @@ int iwl_uefi_get_wrss_table(struct iwl_fw_runtime *fwrt)
 
 	if (fwrt->wrds_table_revision != data->revision) {
 		IWL_DEBUG_RADIO(fwrt,
-				"Skipping standalone SAR: WRDS/WRSS revision mismatch (WRDS rev %d, WRSS rev %d)\n",
+				"Skipping standalone SAR: WRDS/WSSS revision mismatch (WRDS rev %d, WSSS rev %d)\n",
 				fwrt->wrds_table_revision,
 				data->revision);
 		return -EINVAL;
 	}
 
-	IWL_DEBUG_RADIO(fwrt, "Reading WRSS (WRDS Standalone) tbl_rev=%d\n",
+	IWL_DEBUG_RADIO(fwrt, "Reading WSSS (WRDS Standalone) tbl_rev=%d\n",
 			data->revision);
 	iwl_uefi_set_sar_profile(fwrt->sar_standalone_profiles,
 				 data->vals, 0,
