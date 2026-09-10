@@ -552,7 +552,10 @@ iwl_mld_decode_he_tb_phy_data(struct iwl_mld_rx_phy_data *phy_data,
 
 	nsts = le32_get_bits(phy_data->ntfy->sigs.he_tb.tb_rx1,
 			     OFDM_UCODE_TRIG_BASE_RX_NSTS) + 1;
-	rx_status->nss = nsts >> !!(rate_n_flags & RATE_MCS_STBC_MSK);
+
+	rx_status->nss = nsts;
+	if (rate_n_flags & RATE_MCS_STBC_MSK)
+		rx_status->nss = 1;
 }
 
 static void
@@ -588,7 +591,9 @@ iwl_mld_decode_he_phy_data(struct iwl_mld_rx_phy_data *phy_data,
 		break;
 	}
 
-	rx_status->nss = nsts >> !!(rate_n_flags & RATE_MCS_STBC_MSK);
+	rx_status->nss = nsts;
+	if (rate_n_flags & RATE_MCS_STBC_MSK)
+		rx_status->nss = 1;
 
 	he->data1 |= cpu_to_le16(IEEE80211_RADIOTAP_HE_DATA1_LDPC_XSYMSEG_KNOWN |
 				 IEEE80211_RADIOTAP_HE_DATA1_DOPPLER_KNOWN);
@@ -2761,14 +2766,6 @@ void iwl_mld_rx_mpdu(struct iwl_mld *mld, struct napi_struct *napi,
 
 	iwl_mld_rx_fill_status(mld, link_id, hdr, skb, &phy_data);
 
-#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
-	/* nss is only filled in from VHT onwards */
-	IWL_FW_CHECK(mld,
-		     rx_status->encoding != RX_ENC_LEGACY &&
-		     rx_status->encoding != RX_ENC_HT && !rx_status->nss,
-		     "RX nss = 0 at timestamp 0x%x\n",
-		     rx_status->device_timestamp);
-#endif
 	if (iwl_mld_rx_crypto(mld, sta, hdr, rx_status, mpdu_desc, queue,
 			      le32_to_cpu(pkt->len_n_flags), &crypto_len))
 		goto drop;
@@ -2994,14 +2991,6 @@ static void iwl_mld_no_data_rx(struct iwl_mld *mld,
 
 	/* link ID is ignored for NULL header */
 	iwl_mld_rx_fill_status(mld, -1, NULL, skb, &phy_data);
-#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
-	/* nss is only filled in from VHT onwards */
-	IWL_FW_CHECK(mld,
-		     rx_status->encoding != RX_ENC_LEGACY &&
-		     rx_status->encoding != RX_ENC_HT && !rx_status->nss,
-		     "RX nss = 0 at timestamp 0x%x\n",
-		     rx_status->device_timestamp);
-#endif
 
 	/* No more radiotap info should be added after this point.
 	 * Mark it as mac header for upper layers to know where
