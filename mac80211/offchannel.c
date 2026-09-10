@@ -604,10 +604,13 @@ static int ieee80211_start_roc_work(struct ieee80211_local *local,
 	 * cookie is either the roc cookie (for normal roc)
 	 * or the mgmt_tx cookie; both are pre-assigned by cfg80211
 	 */
-	if (!txskb)
-		roc->cookie = *cookie;
-	else
+	if (!txskb) {
+		roc->cookie = ieee80211_mgmt_tx_cookie(local);
+		*cookie = roc->cookie;
+	}
+	else {
 		roc->mgmt_tx_cookie = *cookie;
+	}
 
 	req = wiphy_dereference(local->hw.wiphy, local->scan_req);
 
@@ -1019,6 +1022,9 @@ int ieee80211_mgmt_tx(struct wiphy *wiphy, struct wireless_dev *wdev,
 			kfree_skb(skb);
 			goto out_unlock;
 		}
+	} else
+	{
+		*cookie = 0xffffffff;
 	}
 
 	if (!need_offchan) {
