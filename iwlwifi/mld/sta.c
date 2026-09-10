@@ -439,6 +439,10 @@ static int iwl_mld_send_sta_cmd(struct iwl_mld *mld,
 		return -EINVAL;
 	}
 
+	/* cip_defer overlaps trig_rnd_alloc of older versions */
+	if (cmd_ver < 4)
+		cmd->cip_defer = 0;
+
 	ret = iwl_mld_send_cmd_pdu(mld, cmd_id, cmd, len);
 	if (ret)
 		IWL_ERR(mld, "STA_CONFIG_CMD send failed, ret=0x%x\n", ret);
@@ -513,6 +517,14 @@ int iwl_mld_add_modify_sta_cmd(struct iwl_mld *mld,
 		cmd.mic_compute_pad_delay = link_sta->cip_mic_padding;
 		cmd.mic_prep_pad_delay = link_sta->cip_mic_padding;
 	}
+
+	/* In case of EPP connection, tell the FW to defer unicast
+	 * control frame protection until we are associated, as the
+	 * control frame protection parameters are only negotiated
+	 * during association.
+	 */
+	cmd.cip_defer = sta->epp_peer &&
+		mld_sta->sta_state < IEEE80211_STA_ASSOC;
 #ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
 	cmd.use_icf = mld->trans->dbg_cfg.MLD_ICF_USE_TRIGGER;
 #endif
