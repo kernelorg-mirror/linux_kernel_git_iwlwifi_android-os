@@ -263,7 +263,7 @@ static void iwl_mvm_pass_packet_to_mac80211(struct iwl_mvm *mvm,
 		return;
 	}
 
-	ieee80211_rx_napi(mvm->hw, sta, skb, napi);
+	ieee80211_rx_napi(mvm->hw, sta ? &sta->deflink : NULL, skb, napi);
 }
 
 static bool iwl_mvm_used_average_energy(struct iwl_mvm *mvm,
@@ -2558,7 +2558,7 @@ void iwl_mvm_rx_monitor_no_data(struct iwl_mvm *mvm, struct napi_struct *napi,
 	}
 
 	rcu_read_lock();
-	ieee80211_rx_napi(mvm->hw, sta, skb, napi);
+	ieee80211_rx_napi(mvm->hw, sta ? &sta->deflink : NULL, skb, napi);
 	rcu_read_unlock();
 }
 
