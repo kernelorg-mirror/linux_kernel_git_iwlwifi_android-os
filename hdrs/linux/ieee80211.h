@@ -2910,8 +2910,17 @@ static inline bool ieee80211_check_tim(const struct ieee80211_tim_ie *tim,
 		     __ieee80211_check_tim(tim, tim_len, aid);
 }
 
-/* The MIC padding subfield in the CIP capabilities */
-#define WLAN_CIP_CAPA_MIC_PADDING	0x0F
+/**
+ * enum ieee80211_cip_cap_fields - CIP Capabilities element fields
+ * @IEEE80211_CIP_CAP_MIC_PADDING: The MIC padding subfield in the CIP
+ *	capabilities
+ * @IEEE80211_CIP_CAP_PROTECTED_CTRL_FRAME_ONLY: The MIC Padding For Protected
+ *	Control Frames Only bit in CIP capabilities
+ */
+enum ieee80211_cip_cap_fields {
+	IEEE80211_CIP_CAP_MIC_PADDING			= 0x0F,
+	IEEE80211_CIP_CAP_PROTECTED_CTRL_FRAME_ONLY	= 0x10,
+};
 
 /**
  * struct ieee80211_cip_cap - CIP Capabilities element
