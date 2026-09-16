@@ -514,8 +514,10 @@ int iwl_mld_add_modify_sta_cmd(struct iwl_mld *mld,
 		cmd.mfp = cpu_to_le32(1);
 
 	if (sta->cip) {
-		cmd.mic_compute_pad_delay = link_sta->cip_mic_padding;
-		cmd.mic_prep_pad_delay = link_sta->cip_mic_padding;
+		cmd.mic_prep_pad_delay =
+			u8_get_bits(link_sta->cip_cap,
+				    IEEE80211_CIP_CAP_MIC_PADDING);
+		cmd.mic_compute_pad_delay = cmd.mic_prep_pad_delay;
 	}
 
 	/* In case of EPP connection, tell the FW to defer unicast

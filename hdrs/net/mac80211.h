@@ -2637,8 +2637,7 @@ struct ieee80211_sta_aggregates {
  * @eht_cap: EHT capabilities of this STA
  * @uhr_cap: UHR capabilities of this STA
  * @s1g_cap: S1G capabilities of this STA
- * @cip_mic_padding: the MIC padding required by the STA as defined in its
- *	CIP Capabilities element
+ * @cip_cap: the CIP capabilities of this STA (or zero)
  * @agg: per-link data for multi-link aggregation
  * @bandwidth: current bandwidth the station can receive with.
  *	This is the minimum between the peer's capabilities and our own
@@ -2667,7 +2666,7 @@ struct ieee80211_link_sta {
 	struct ieee80211_sta_eht_cap eht_cap;
 	struct ieee80211_sta_uhr_cap uhr_cap;
 	struct ieee80211_sta_s1g_cap s1g_cap;
-	u8 cip_mic_padding;
+	u8 cip_cap;
 
 	struct ieee80211_sta_aggregates agg;
 

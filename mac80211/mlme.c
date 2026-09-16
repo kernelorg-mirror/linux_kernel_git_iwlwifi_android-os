@@ -6118,9 +6118,7 @@ static bool ieee80211_assoc_config_link(struct ieee80211_link_data *link,
 
 	if (assoc_data->cip) {
 		if (elems->cip_cap) {
-			link_sta->pub->cip_mic_padding =
-				u8_get_bits(elems->cip_cap->v,
-					    IEEE80211_CIP_CAP_MIC_PADDING);
+			link_sta->pub->cip_cap = elems->cip_cap->v;
 		} else {
 			sdata_info(sdata,
 				   "CIP Capabilities not included in association response\n");
