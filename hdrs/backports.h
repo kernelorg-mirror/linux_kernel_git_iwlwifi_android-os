@@ -336,3 +336,5 @@ static inline void aes_cmac_zeroize_ctx(struct aes_cmac_ctx *ctx)
 {
 		memzero_explicit(ctx, sizeof(*ctx));
 }
+
+#define ASSOC_REQ_PROTECTED_TWT	BIT(10)
