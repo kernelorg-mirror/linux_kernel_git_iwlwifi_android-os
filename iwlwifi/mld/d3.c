@@ -58,6 +58,7 @@ struct iwl_mld_suspend_key_iter_data {
 	__le32 gtk_cipher;
 	__le32 igtk_cipher;
 	__le32 bigtk_cipher;
+	__le32 cigtk_cipher;
 };
 
 struct iwl_mld_wake_pkt_iter_data {
@@ -65,6 +66,15 @@ struct iwl_mld_wake_pkt_iter_data {
 	u32 ivlen;
 	u32 icvlen;
 };
+
+/* CIP is set both on a CIGTK and on a pairwise key that protects control
+ * frames in addition to data
+ */
+static bool iwl_mld_is_cigtk(const struct ieee80211_key_conf *key)
+{
+	return !(key->flags & IEEE80211_KEY_FLAG_PAIRWISE) &&
+	       key->flags & 0/* IEEE80211_KEY_FLAG_CIP */;
+}
 
 static void
 iwl_mld_wake_pkt_key_iter(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
@@ -75,7 +85,7 @@ iwl_mld_wake_pkt_key_iter(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
 	struct iwl_mld_wake_pkt_iter_data *data = _data;
 
 	/* ignore anything that is not a PTK / GTK */
-	if (key->keyidx > 3)
+	if (key->keyidx > 3 || iwl_mld_is_cigtk(key))
 		return;
 	if (is_group_key != data->multicast)
 		return;
@@ -123,6 +133,7 @@ struct iwl_mld_wowlan_mlo_key {
  * @gtk: data of the last two used gtk's by the FW upon resume
  * @igtk: data of the last used igtk by the FW upon resume
  * @bigtk: data of the last two used gtk's by the FW upon resume
+ * @cigtk: data of the last two used cigtk's by the FW upon resume
  * @ptk: last seq numbers per tid passed by the FW,
  *	holds both in tkip and aes formats
  * @num_mlo_keys: number of &struct iwl_mld_wowlan_mlo_key structs
@@ -141,6 +152,7 @@ struct iwl_mld_wowlan_status {
 	struct iwl_mld_mcast_key_data gtk[WOWLAN_GTK_KEYS_NUM];
 	struct iwl_mld_mcast_key_data igtk;
 	struct iwl_mld_mcast_key_data bigtk[WOWLAN_BIGTK_KEYS_NUM];
+	struct iwl_mld_mcast_key_data cigtk[WOWLAN_CIGTK_KEYS_NUM];
 	struct {
 		struct ieee80211_key_seq aes_seq[IWL_MAX_TID_COUNT];
 		struct ieee80211_key_seq tkip_seq[IWL_MAX_TID_COUNT];
@@ -413,70 +425,42 @@ iwl_mld_convert_mcast_ipn(struct iwl_mld_mcast_key_data *key_status,
 	}
 }
 
+/* Convert the IGTK/BIGTK/CIGTK material of the notification, they all use the
+ * same format and only differ in the base key index.
+ */
 static void
-iwl_mld_convert_igtk_resume_data(struct iwl_mld_wowlan_status *wowlan_status,
-				 const struct iwl_wowlan_igtk_status *igtk)
-{
-	if (!igtk->key_status)
-		return;
-
-	BUILD_BUG_ON(sizeof(wowlan_status->igtk.key) < sizeof(igtk->key));
-
-	wowlan_status->igtk.len = igtk->key_len;
-	wowlan_status->igtk.flags = igtk->key_flags;
-	wowlan_status->igtk.id =
-		u32_get_bits(igtk->key_flags,
-			     IWL_WOWLAN_IGTK_BIGTK_IDX_MASK) +
-		WOWLAN_IGTK_MIN_INDEX;
-
-	if (igtk->key_status == IWL_WOWLAN_STATUS_NEW_KEY)
-		memcpy(wowlan_status->igtk.key, igtk->key, sizeof(igtk->key));
-	else
-		/* If the key status is WOWLAN_STATUS_OLD_KEY, it indicates
-		 * that no key material is present. Set the key length to 0
-		 * as an indication.
-		 */
-		wowlan_status->igtk.len = 0;
-
-	iwl_mld_convert_mcast_ipn(&wowlan_status->igtk, igtk);
-}
-
-static void
-iwl_mld_convert_bigtk_resume_data(struct iwl_mld_wowlan_status *wowlan_status,
-				  const struct iwl_wowlan_igtk_status *bigtk)
+iwl_mld_convert_mcast_keys_resume_data(struct iwl_mld_mcast_key_data *key_data,
+				       const struct iwl_wowlan_igtk_status *keys,
+				       int num_keys, u8 min_key_idx)
 {
 	int status_idx = 0;
 
-	BUILD_BUG_ON(ARRAY_SIZE(wowlan_status->bigtk) < WOWLAN_BIGTK_KEYS_NUM);
-
-	for (int notif_idx = 0; notif_idx < WOWLAN_BIGTK_KEYS_NUM;
-	     notif_idx++) {
-		if (!bigtk[notif_idx].key_status)
+	for (int notif_idx = 0; notif_idx < num_keys; notif_idx++) {
+		if (!keys[notif_idx].key_status)
 			continue;
 
-		wowlan_status->bigtk[status_idx].len = bigtk[notif_idx].key_len;
-		wowlan_status->bigtk[status_idx].flags =
-			bigtk[notif_idx].key_flags;
-		wowlan_status->bigtk[status_idx].id =
-			u32_get_bits(bigtk[notif_idx].key_flags,
+		key_data[status_idx].len = keys[notif_idx].key_len;
+		key_data[status_idx].flags = keys[notif_idx].key_flags;
+		key_data[status_idx].id =
+			u32_get_bits(keys[notif_idx].key_flags,
 				     IWL_WOWLAN_IGTK_BIGTK_IDX_MASK)
-			+ WOWLAN_BIGTK_MIN_INDEX;
+			+ min_key_idx;
 
-		BUILD_BUG_ON(sizeof(wowlan_status->bigtk[status_idx].key) <
-			     sizeof(bigtk[notif_idx].key));
-		if (bigtk[notif_idx].key_status == IWL_WOWLAN_STATUS_NEW_KEY)
-			memcpy(wowlan_status->bigtk[status_idx].key,
-			       bigtk[notif_idx].key,
-			       sizeof(bigtk[notif_idx].key));
+		BUILD_BUG_ON(sizeof(key_data[status_idx].key) <
+			     sizeof(keys[notif_idx].key));
+		if (keys[notif_idx].key_status == IWL_WOWLAN_STATUS_NEW_KEY)
+			memcpy(key_data[status_idx].key,
+			       keys[notif_idx].key,
+			       sizeof(keys[notif_idx].key));
 		else
 			/* If the key status is WOWLAN_STATUS_OLD_KEY, it
 			 * indicates that no key material is present. Set the
 			 * key length to 0 as an indication.
 			 */
-			wowlan_status->bigtk[status_idx].len = 0;
+			key_data[status_idx].len = 0;
 
-		iwl_mld_convert_mcast_ipn(&wowlan_status->bigtk[status_idx],
-					  &bigtk[notif_idx]);
+		iwl_mld_convert_mcast_ipn(&key_data[status_idx],
+					  &keys[notif_idx]);
 		status_idx++;
 	}
 }
@@ -766,8 +750,21 @@ iwl_mld_handle_wowlan_info_notif(struct iwl_mld *mld,
 		iwl_mld_convert_ptk_resume_seq(mld, wowlan_status,
 					       &notif->gtk[0].sc);
 	/* only one igtk is passed by FW */
-	iwl_mld_convert_igtk_resume_data(wowlan_status, &notif->igtk[0]);
-	iwl_mld_convert_bigtk_resume_data(wowlan_status, notif->bigtk);
+	iwl_mld_convert_mcast_keys_resume_data(&wowlan_status->igtk,
+					       notif->igtk, 1,
+					       WOWLAN_IGTK_MIN_INDEX);
+
+	BUILD_BUG_ON(ARRAY_SIZE(wowlan_status->bigtk) < WOWLAN_BIGTK_KEYS_NUM);
+	iwl_mld_convert_mcast_keys_resume_data(wowlan_status->bigtk,
+					       notif->bigtk,
+					       WOWLAN_BIGTK_KEYS_NUM,
+					       WOWLAN_BIGTK_MIN_INDEX);
+
+	/* CIGTK key indices start at 0 */
+	BUILD_BUG_ON(ARRAY_SIZE(wowlan_status->cigtk) < WOWLAN_CIGTK_KEYS_NUM);
+	iwl_mld_convert_mcast_keys_resume_data(wowlan_status->cigtk,
+					       notif->cigtk,
+					       WOWLAN_CIGTK_KEYS_NUM, 0);
 
 	wowlan_status->replay_ctr = le64_to_cpu(notif->replay_ctr);
 	wowlan_status->pattern_number = le16_to_cpu(notif->pattern_number);
@@ -987,6 +984,12 @@ static void
 iwl_mld_update_mcast_rx_seq(struct ieee80211_key_conf *key,
 			    struct iwl_mld_mcast_key_data *key_data)
 {
+	if (iwl_mld_is_cigtk(key)) {
+		ieee80211_set_key_rx_seq(key, 0,
+					 &key_data->igtk_bigtk.cmac_gmac_seq);
+		return;
+	}
+
 	switch (key->cipher) {
 	case WLAN_CIPHER_SUITE_CCMP:
 	case WLAN_CIPHER_SUITE_GCMP:
@@ -1056,6 +1059,19 @@ iwl_mld_resume_keys_iter(struct ieee80211_hw *hw,
 						    RSC_NOTIF,
 						    IWL_FW_CMD_VER_UNKNOWN);
 
+	if (iwl_mld_is_cigtk(key)) {
+		for (int i = 0; i < ARRAY_SIZE(wowlan_status->cigtk); i++) {
+			struct iwl_mld_mcast_key_data *cigtk =
+				&wowlan_status->cigtk[i];
+
+			if (cigtk->id == key->keyidx) {
+				iwl_mld_update_mcast_rx_seq(key, cigtk);
+				break;
+			}
+		}
+		return;
+	}
+
 	/* If RSC_NOTIF is not supported */
 	if (rsc_notif_ver == IWL_FW_CMD_VER_UNKNOWN &&
 	    key->keyidx >= 0 && key->keyidx <= 3) {
@@ -1097,7 +1113,7 @@ iwl_mld_rsc_update_key_iter(struct ieee80211_hw *hw,
 	struct iwl_mld_rsc_resume_iter_data *data = _data;
 	struct ieee80211_key_seq seq;
 
-	if (key->keyidx > 3)
+	if (key->keyidx > 3 || iwl_mld_is_cigtk(key))
 		return;
 
 	if (key->flags & IEEE80211_KEY_FLAG_PAIRWISE) {
@@ -1190,7 +1206,8 @@ static void
 iwl_mld_add_mcast_rekey(struct ieee80211_vif *vif,
 			struct iwl_mld *mld,
 			struct iwl_mld_mcast_key_data *key_data,
-			struct ieee80211_bss_conf *link_conf)
+			struct ieee80211_bss_conf *link_conf,
+			bool cigtk)
 {
 	struct ieee80211_key_conf *key_config;
 	int link_id = vif->active_links ? __ffs(vif->active_links) : -1;
@@ -1200,7 +1217,7 @@ iwl_mld_add_mcast_rekey(struct ieee80211_vif *vif,
 
 	key_config = ieee80211_gtk_rekey_add(vif, key_data->id, key_data->key,
 					     sizeof(key_data->key), link_id,
-					     false);
+					     cigtk);
 	if (IS_ERR(key_config))
 		return;
 
@@ -1243,13 +1260,18 @@ iwl_mld_add_all_rekeys(struct iwl_mld *mld,
 
 	for (i = 0; i < ARRAY_SIZE(wowlan_status->gtk); i++)
 		iwl_mld_add_mcast_rekey(vif, mld, &wowlan_status->gtk[i],
-					link_conf);
+					link_conf, false);
 
-	iwl_mld_add_mcast_rekey(vif, mld, &wowlan_status->igtk, link_conf);
+	iwl_mld_add_mcast_rekey(vif, mld, &wowlan_status->igtk, link_conf,
+				false);
 
 	for (i = 0; i < ARRAY_SIZE(wowlan_status->bigtk); i++)
 		iwl_mld_add_mcast_rekey(vif, mld, &wowlan_status->bigtk[i],
-					link_conf);
+					link_conf, false);
+
+	for (i = 0; i < ARRAY_SIZE(wowlan_status->cigtk); i++)
+		iwl_mld_add_mcast_rekey(vif, mld, &wowlan_status->cigtk[i],
+					link_conf, true);
 }
 
 static void iwl_mld_mlo_rekey(struct iwl_mld *mld,
@@ -1283,7 +1305,8 @@ static void iwl_mld_mlo_rekey(struct iwl_mld *mld,
 
 		key = ieee80211_gtk_rekey_add(vif, mlo_key->idx, mlo_key->key,
 					      sizeof(mlo_key->key), link_id,
-					      false);
+					      mlo_key->type ==
+					      WOWLAN_MLO_GTK_KEY_TYPE_CIGTK);
 
 		if (IS_ERR(key))
 			continue;
@@ -1838,6 +1861,10 @@ iwl_mld_suspend_key_data_iter(struct ieee80211_hw *hw,
 			data->have_rsc = true;
 			return;
 		}
+		if (iwl_mld_is_cigtk(key)) {
+			data->cigtk_cipher = cipher;
+			return;
+		}
 		/* We're iterating from old to new, there're 4 possible
 		 * gtk ids, and only the last two keys matter
 		 */
@@ -1913,6 +1940,7 @@ iwl_mld_send_kek_kck_cmd(struct iwl_mld *mld,
 	kek_kck_cmd.gtk_cipher = data.gtk_cipher;
 	kek_kck_cmd.igtk_cipher = data.igtk_cipher;
 	kek_kck_cmd.bigtk_cipher = data.bigtk_cipher;
+	kek_kck_cmd.cigtk_cipher = data.cigtk_cipher;
 
 	IWL_DEBUG_WOWLAN(mld, "setting akm %d\n",
 			 rekey_data->akm);
