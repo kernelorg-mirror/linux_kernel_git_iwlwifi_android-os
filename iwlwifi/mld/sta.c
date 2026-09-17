@@ -514,10 +514,15 @@ int iwl_mld_add_modify_sta_cmd(struct iwl_mld *mld,
 		cmd.mfp = cpu_to_le32(1);
 
 	if (sta->cip) {
+		/* Always add padding when soliciting protected frames */
 		cmd.mic_prep_pad_delay =
 			u8_get_bits(link_sta->cip_cap,
 				    IEEE80211_CIP_CAP_MIC_PADDING);
-		cmd.mic_compute_pad_delay = cmd.mic_prep_pad_delay;
+
+		/* But skip adding it inside our own protected frames */
+		if (!(link_sta->cip_cap &
+		      IEEE80211_CIP_CAP_PROTECTED_CTRL_FRAME_ONLY))
+			cmd.mic_compute_pad_delay = cmd.mic_prep_pad_delay;
 	}
 
 	/* In case of EPP connection, tell the FW to defer unicast
