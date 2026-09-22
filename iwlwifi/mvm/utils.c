@@ -1315,8 +1315,8 @@ u32 iwl_mvm_v3_rate_from_fw(__le32 rate, u8 rate_ver)
 			u32 he_gi_ltf = (rate_v1 & RATE_MCS_HE_GI_LTF_MSK_V1) >>
 				RATE_MCS_HE_GI_LTF_POS;
 
-			if ((he_type_bits == RATE_MCS_HE_TYPE_SU ||
-			     he_type_bits == RATE_MCS_HE_TYPE_EXT_SU) &&
+			if ((he_type_bits == RATE_MCS_HE_TYPE_SU_V1 ||
+			     he_type_bits == RATE_MCS_HE_TYPE_EXT_SU_V1) &&
 			    he_gi_ltf == RATE_MCS_HE_SU_4_LTF)
 				/* the new rate have an additional bit to
 				 * represent the value 4 rather then using SGI
