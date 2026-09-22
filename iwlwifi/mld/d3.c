@@ -50,6 +50,12 @@ struct iwl_mld_rsc_resume_iter_data {
 	int queue;
 };
 
+struct iwl_mld_validate_keys_iter_data {
+	struct iwl_mld *mld;
+	const struct iwl_wowlan_info_notif *notif;
+	bool missing_key_status;
+};
+
 struct iwl_mld_suspend_key_iter_data {
 	struct iwl_wowlan_rsc_tsc_params_cmd *rsc;
 	bool have_rsc;
@@ -672,6 +678,90 @@ static bool iwl_mld_validate_wowlan_notif_size(struct iwl_mld *mld, u32 len,
 	return true;
 }
 
+static void
+iwl_mld_validate_keys_iter(struct ieee80211_hw *hw,
+			   struct ieee80211_vif *vif,
+			   struct ieee80211_sta *sta,
+			   struct ieee80211_key_conf *key,
+			   void *_data)
+{
+	struct iwl_mld_validate_keys_iter_data *data = _data;
+	const struct iwl_wowlan_igtk_status *keys;
+	u8 min_key_idx;
+	int num_keys;
+
+	if (key->hw_key_idx == STA_KEY_IDX_INVALID ||
+	    key->flags & IEEE80211_KEY_FLAG_PAIRWISE)
+		return;
+
+	if (key->keyidx == 4 || key->keyidx == 5) {
+		/* only one igtk should be passed by FW */
+		keys = &data->notif->igtk[0];
+		num_keys = 1;
+		min_key_idx = WOWLAN_IGTK_MIN_INDEX;
+	} else if (key->keyidx == 6 || key->keyidx == 7) {
+		keys = data->notif->bigtk;
+		num_keys = WOWLAN_BIGTK_KEYS_NUM;
+		min_key_idx = WOWLAN_BIGTK_MIN_INDEX;
+	} else if (iwl_mld_is_cigtk(key)) {
+		keys = data->notif->cigtk;
+		num_keys = WOWLAN_CIGTK_KEYS_NUM;
+		min_key_idx = 0;
+	} else if (key->keyidx >= 0 && key->keyidx <= 3) {
+		/* The sequences are sent in RSC_NOTIF, so we don't care */
+		return;
+	} else {
+		WARN_ON(1);
+		return;
+	}
+
+	for (int i = 0; i < num_keys; i++) {
+		u32 idx =
+			u32_get_bits(keys[i].key_flags,
+				     IWL_WOWLAN_IGTK_BIGTK_IDX_MASK) + min_key_idx;
+
+		if (keys[i].key_status == IWL_WOWLAN_NOTIF_NO_KEY)
+			continue;
+
+		if (idx == key->keyidx)
+			return;
+
+		/* There is only one slot for IGTK, so if the ID changed -
+		 * it must be because of a rekey.
+		 */
+		if ((key->keyidx == 4 || key->keyidx == 5) && (idx == 4 || idx == 5) &&
+		    keys[i].key_status == IWL_WOWLAN_STATUS_NEW_KEY)
+			return;
+	}
+
+	IWL_FW_CHECK_FAILED(data->mld,
+			    "No status for key idx %d in wowlan_info_notif\n",
+			    key->keyidx);
+	data->missing_key_status = true;
+}
+
+static bool
+iwl_mld_validate_keys_status(struct iwl_mld *mld,
+			     const struct iwl_wowlan_info_notif *notif)
+{
+	struct iwl_mld_validate_keys_iter_data data = {
+		.mld = mld,
+		.notif = notif,
+	};
+	struct ieee80211_vif *bss_vif;
+
+	guard(rcu)();
+
+	bss_vif = iwl_mld_get_bss_vif(mld);
+	if (WARN_ON(!bss_vif))
+		return false;
+
+	ieee80211_iter_keys_atomic(mld->hw, bss_vif,
+				   iwl_mld_validate_keys_iter, &data);
+
+	return !data.missing_key_status;
+}
+
 static bool
 iwl_mld_handle_wowlan_info_notif(struct iwl_mld *mld,
 				 struct iwl_mld_wowlan_status *wowlan_status,
@@ -742,6 +832,9 @@ iwl_mld_handle_wowlan_info_notif(struct iwl_mld *mld,
 	if (IWL_FW_CHECK(mld, notif->tid_offloaded_tx != IWL_WOWLAN_OFFLOAD_TID,
 			 "Invalid tid_offloaded_tx %d\n",
 			 notif->tid_offloaded_tx))
+		return true;
+
+	if (!iwl_mld_validate_keys_status(mld, notif))
 		return true;
 
 	iwl_mld_convert_gtk_resume_data(mld, wowlan_status, notif->gtk,
