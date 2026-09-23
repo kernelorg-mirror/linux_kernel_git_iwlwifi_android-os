@@ -2334,11 +2334,9 @@ void iwl_fw_error_dump_wk(struct work_struct *work)
 		container_of(work, typeof(*wks), wk.work);
 	struct iwl_fw_runtime *fwrt;
 
-	if (wks->idx >= IWL_FW_RUNTIME_DUMP_WK_NUM) {
-		fwrt = container_of(wks, typeof(*fwrt), dump.wks[0]);
-		IWL_ERR(fwrt, "invalid worker index %d\n", wks->idx);
+	if (WARN_ONCE(wks->idx >= IWL_FW_RUNTIME_DUMP_WK_NUM,
+		      "invalid worker index %d\n", wks->idx))
 		return;
-	}
 
 	fwrt = container_of(wks, typeof(*fwrt), dump.wks[wks->idx]);
 
