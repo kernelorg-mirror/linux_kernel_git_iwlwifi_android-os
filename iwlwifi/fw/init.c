@@ -33,8 +33,6 @@ void iwl_fw_runtime_init(struct iwl_fw_runtime *fwrt, struct iwl_trans *trans,
 	fwrt->sanitize_ops = sanitize_ops;
 	fwrt->sanitize_ctx = sanitize_ctx;
 	fwrt->ops_ctx = ops_ctx;
-	/* default until the connectivity GUID lock status is resolved */
-	fwrt->uefi_tables_lock_status = UEFI_CNV_GUID_UNKNOWN;
 	for (i = 0; i < IWL_FW_RUNTIME_DUMP_WK_NUM; i++) {
 		fwrt->dump.wks[i].idx = i;
 		INIT_DELAYED_WORK(&fwrt->dump.wks[i].wk, iwl_fw_error_dump_wk);

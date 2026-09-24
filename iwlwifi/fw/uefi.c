@@ -148,7 +148,7 @@ iwl_uefi_get_verified_variable_guid(struct iwl_fw_runtime *fwrt,
 	u32 attributes = 0;
 	void *var;
 
-	if (fwrt->uefi_tables_lock_status == UEFI_CNV_GUID_UNLOCKED)
+	if (fwrt->trans->uefi_tables_lock_status == UEFI_CNV_GUID_UNLOCKED)
 		return ERR_PTR(-EINVAL);
 
 #ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
@@ -157,7 +157,8 @@ iwl_uefi_get_verified_variable_guid(struct iwl_fw_runtime *fwrt,
 #endif
 
 	/* In x86 either GLUI or GLAI should exist */
-	if (is_x86 && fwrt->uefi_tables_lock_status == UEFI_CNV_GUID_UNKNOWN)
+	if (is_x86 &&
+	    fwrt->trans->uefi_tables_lock_status == UEFI_CNV_GUID_UNKNOWN)
 		return ERR_PTR(-EINVAL);
 
 	var = iwl_uefi_get_variable_guid(fwrt->trans,
@@ -168,7 +169,7 @@ iwl_uefi_get_verified_variable_guid(struct iwl_fw_runtime *fwrt,
 	if (IS_ERR(var))
 		return var;
 
-	if (fwrt->uefi_tables_lock_status != UEFI_CNV_GUID_UNKNOWN)
+	if (fwrt->trans->uefi_tables_lock_status != UEFI_CNV_GUID_UNKNOWN)
 		goto out;
 
 	/*
@@ -1303,10 +1304,10 @@ int iwl_uefi_get_phy_filters(struct iwl_fw_runtime *fwrt)
 	return 0;
 }
 
-void iwl_uefi_get_guid_lock_status(struct iwl_fw_runtime *fwrt)
+void iwl_uefi_get_guid_lock_status(struct iwl_trans *trans)
 {
 	struct uefi_cnv_var_glui *data __free(kfree) =
-		iwl_uefi_get_variable_guid(fwrt->trans,
+		iwl_uefi_get_variable_guid(trans,
 					   &IWL_EFI_GLUI_GUID,
 					   IWL_UEFI_GLUI_NAME, "GLUI",
 					   sizeof(*data), NULL, NULL);
@@ -1315,20 +1316,20 @@ void iwl_uefi_get_guid_lock_status(struct iwl_fw_runtime *fwrt)
 		return;
 
 	if (data->revision != IWL_UEFI_GLUI_REVISION) {
-		IWL_DEBUG_RADIO(fwrt, "Unsupported UEFI GLUI revision:%d\n",
+		IWL_DEBUG_RADIO(trans, "Unsupported UEFI GLUI revision:%d\n",
 				data->revision);
 		return;
 	}
 
 	/* UEFI_CNV_GUID_TEST_MODE is the max value the BIOS can report */
 	if (data->guid_lock_status > UEFI_CNV_GUID_TEST_MODE) {
-		IWL_DEBUG_RADIO(fwrt, "Invalid UEFI GUID lock status:%d\n",
+		IWL_DEBUG_RADIO(trans, "Invalid UEFI GUID lock status:%d\n",
 				data->guid_lock_status);
 		return;
 	}
 
-	fwrt->uefi_tables_lock_status = data->guid_lock_status;
+	trans->uefi_tables_lock_status = data->guid_lock_status;
 
-	IWL_DEBUG_RADIO(fwrt, "Loaded UEFI WIFI GUID lock status: %d\n",
-			fwrt->uefi_tables_lock_status);
+	IWL_DEBUG_RADIO(trans, "Loaded UEFI WIFI GUID lock status: %d\n",
+			trans->uefi_tables_lock_status);
 }

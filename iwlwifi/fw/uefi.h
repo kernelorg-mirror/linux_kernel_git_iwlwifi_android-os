@@ -355,7 +355,7 @@ void iwl_uefi_get_uneb_table(struct iwl_trans *trans,
 int iwl_uefi_get_puncturing(struct iwl_fw_runtime *fwrt);
 int iwl_uefi_get_dsbr(struct iwl_fw_runtime *fwrt, u32 *value);
 int iwl_uefi_get_phy_filters(struct iwl_fw_runtime *fwrt);
-void iwl_uefi_get_guid_lock_status(struct iwl_fw_runtime *fwrt);
+void iwl_uefi_get_guid_lock_status(struct iwl_trans *trans);
 #else /* CONFIG_EFI */
 static inline void *iwl_uefi_get_pnvm(struct iwl_trans *trans, size_t *len)
 {
@@ -484,7 +484,7 @@ static inline int iwl_uefi_get_phy_filters(struct iwl_fw_runtime *fwrt)
 	return -ENOENT;
 }
 
-static inline void iwl_uefi_get_guid_lock_status(struct iwl_fw_runtime *fwrt)
+static inline void iwl_uefi_get_guid_lock_status(struct iwl_trans *trans)
 {
 }
 #endif /* CONFIG_EFI */

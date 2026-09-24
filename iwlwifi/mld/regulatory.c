@@ -36,8 +36,6 @@ void iwl_mld_get_bios_tables(struct iwl_mld *mld)
 {
 	int ret;
 
-	iwl_bios_get_guid_lock_status(&mld->fwrt);
-
 	ret = iwl_bios_get_ppag_table(&mld->fwrt);
 	if (ret < 0) {
 		IWL_DEBUG_RADIO(mld,

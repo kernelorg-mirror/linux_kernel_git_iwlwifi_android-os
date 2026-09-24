@@ -481,7 +481,7 @@ IWL_EXPORT_SYMBOL(iwl_rfi_is_enabled_in_bios);
 
 /**
  * iwl_bios_get_guid_lock_status - resolve connectivity variables lock status
- * @fwrt: the firmware runtime context
+ * @trans: the transport context
  *
  * Determine the root-of-trust for the connectivity UEFI variables. The UEFI
  * GUID Lock Indicator (GLUI) is preferred: if it attests the tables as locked
@@ -489,16 +489,18 @@ IWL_EXPORT_SYMBOL(iwl_rfi_is_enabled_in_bios);
  * reports unlocked) the ACPI GUID Lock Indicator is consulted and can override
  * the GLUI result.
  *
- * This only caches the result in &fwrt->uefi_tables_lock_status
+ * This only caches the result in &trans->uefi_tables_lock_status
  * (see &enum iwl_uefi_cnv_guid_status).
  */
-void iwl_bios_get_guid_lock_status(struct iwl_fw_runtime *fwrt)
+void iwl_bios_get_guid_lock_status(struct iwl_trans *trans)
 {
-	iwl_uefi_get_guid_lock_status(fwrt);
-	if (fwrt->uefi_tables_lock_status == UEFI_CNV_GUID_LOCKED ||
-	    fwrt->uefi_tables_lock_status == UEFI_CNV_GUID_TEST_MODE)
+	/* default until the GUID lock status is resolved */
+	trans->uefi_tables_lock_status = UEFI_CNV_GUID_UNKNOWN;
+
+	iwl_uefi_get_guid_lock_status(trans);
+	if (trans->uefi_tables_lock_status == UEFI_CNV_GUID_LOCKED ||
+	    trans->uefi_tables_lock_status == UEFI_CNV_GUID_TEST_MODE)
 		return;
 
-	iwl_acpi_get_guid_lock_status(fwrt);
+	iwl_acpi_get_guid_lock_status(trans);
 }
-IWL_EXPORT_SYMBOL(iwl_bios_get_guid_lock_status);

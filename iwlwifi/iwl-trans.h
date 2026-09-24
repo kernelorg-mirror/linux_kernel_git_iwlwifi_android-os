@@ -788,6 +788,9 @@ struct iwl_trans_ops;
  *	worker that should be scheduled (with appropriate reason)
  * @do_top_reset: indication to the (PCIe) transport/context-info
  *	to do the TOP reset
+ * @uefi_tables_lock_status: the status of the WIFI GUID UEFI variables lock,
+ *	see &enum iwl_uefi_cnv_guid_status.
+ *	Trust the UEFI variables if locked or in test mode.
  */
 struct iwl_trans {
 	bool csme_own;
@@ -853,6 +856,7 @@ struct iwl_trans {
 
 	u8 request_top_reset:1,
 	   do_top_reset:1;
+	u8 uefi_tables_lock_status;
 
 	/* pointer to trans specific struct */
 	/*Ensure that this pointer will always be aligned to sizeof pointer */

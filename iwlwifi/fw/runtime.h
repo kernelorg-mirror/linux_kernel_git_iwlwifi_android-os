@@ -109,9 +109,6 @@ struct iwl_txf_iter_data {
  * @ap_type_cmd: AP type tables (for enablement on 6 GHz)
  * @ap_type_cmd_valid: if &ap_type_cmd is valid
  * @dt_compatible: true if the DT node compatible matches a supported device
- * @uefi_tables_lock_status: the status of the WIFI GUID UEFI variables lock,
- *	see &enum iwl_uefi_cnv_guid_status.
- *	Trust the UEFI variables if locked or in test mode.
  * @sar_profiles: sar profiles as read from WRDS/EWRD BIOS tables
  * @sar_standalone_profiles: standalone sar profiles as read from
  *	WSSS/EWSS BIOS tables (for Wi-Fi HB/UHB without concurrent BT)
@@ -230,7 +227,6 @@ struct iwl_fw_runtime {
 	bool sgom_enabled;
 	struct iwl_mcc_allowed_ap_type_cmd ap_type_cmd;
 	bool ap_type_cmd_valid;
-	u8 uefi_tables_lock_status;
 	struct iwl_phy_specific_cfg phy_filters;
 	enum bios_source dsm_source;
 	u8 dsm_revision;

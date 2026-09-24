@@ -190,7 +190,7 @@ int iwl_acpi_get_ppag_table(struct iwl_fw_runtime *fwrt);
 
 int iwl_acpi_get_phy_filters(struct iwl_fw_runtime *fwrt);
 
-void iwl_acpi_get_guid_lock_status(struct iwl_fw_runtime *fwrt);
+void iwl_acpi_get_guid_lock_status(struct iwl_trans *trans);
 
 int iwl_acpi_get_dsm(struct iwl_fw_runtime *fwrt,
 		     enum iwl_dsm_funcs func, u32 *value);
@@ -266,7 +266,7 @@ static inline int iwl_acpi_get_phy_filters(struct iwl_fw_runtime *fwrt)
 	return -ENOENT;
 }
 
-static inline void iwl_acpi_get_guid_lock_status(struct iwl_fw_runtime *fwrt)
+static inline void iwl_acpi_get_guid_lock_status(struct iwl_trans *trans)
 {
 }
 

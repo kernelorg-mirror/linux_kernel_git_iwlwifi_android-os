@@ -1263,23 +1263,23 @@ int iwl_acpi_get_phy_filters(struct iwl_fw_runtime *fwrt)
 }
 IWL_EXPORT_SYMBOL(iwl_acpi_get_phy_filters);
 
-void iwl_acpi_get_guid_lock_status(struct iwl_fw_runtime *fwrt)
+void iwl_acpi_get_guid_lock_status(struct iwl_trans *trans)
 {
 	union acpi_object *wifi_pkg, *data;
 	int tbl_rev;
 
-	data = iwl_acpi_get_object(fwrt->dev, ACPI_GLAI_METHOD);
+	data = iwl_acpi_get_object(trans->dev, ACPI_GLAI_METHOD);
 	if (IS_ERR(data))
 		return;
 
-	wifi_pkg = iwl_acpi_get_wifi_pkg(fwrt->dev, data,
+	wifi_pkg = iwl_acpi_get_wifi_pkg(trans->dev, data,
 					 ACPI_GLAI_WIFI_DATA_SIZE,
 					 &tbl_rev);
 	if (IS_ERR(wifi_pkg))
 		goto out_free;
 
 	if (tbl_rev != 0) {
-		IWL_DEBUG_RADIO(fwrt, "Invalid GLAI revision: %d\n", tbl_rev);
+		IWL_DEBUG_RADIO(trans, "Invalid GLAI revision: %d\n", tbl_rev);
 		goto out_free;
 	}
 
@@ -1288,12 +1288,12 @@ void iwl_acpi_get_guid_lock_status(struct iwl_fw_runtime *fwrt)
 	    UEFI_CNV_GUID_TEST_MODE)
 		goto out_free;
 
-	fwrt->uefi_tables_lock_status =
+	trans->uefi_tables_lock_status =
 		wifi_pkg->package.elements[1].integer.value;
 
-	IWL_DEBUG_RADIO(fwrt,
+	IWL_DEBUG_RADIO(trans,
 			"Loaded UEFI WIFI GUID lock status: %d from ACPI\n",
-			fwrt->uefi_tables_lock_status);
+			trans->uefi_tables_lock_status);
 out_free:
 	kfree(data);
 }

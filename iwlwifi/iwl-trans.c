@@ -14,6 +14,7 @@
 #include "iwl-prph.h"
 #include <linux/dmapool.h>
 #include "fw/api/commands.h"
+#include "fw/regulatory.h"
 
 struct iwl_trans_dev_restart_data {
 	struct list_head list;
@@ -287,6 +288,7 @@ struct iwl_trans *iwl_trans_alloc(unsigned int priv_size,
 #endif
 
 	trans->dev = dev;
+	iwl_bios_get_guid_lock_status(trans);
 
 	INIT_DELAYED_WORK(&trans->restart.wk, iwl_trans_restart_wk);
 
