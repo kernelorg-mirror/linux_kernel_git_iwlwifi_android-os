@@ -838,14 +838,16 @@ static void iwl_mvm_init_modparams(struct iwl_mvm *mvm)
 }
 #endif
 
-static void iwl_mvm_fwrt_dump_start(void *ctx)
+static void
+iwl_mvm_fwrt_dump_start(void *ctx) __acquires(&((struct iwl_mvm *)ctx)->mutex)
 {
 	struct iwl_mvm *mvm = ctx;
 
 	mutex_lock(&mvm->mutex);
 }
 
-static void iwl_mvm_fwrt_dump_end(void *ctx)
+static void
+iwl_mvm_fwrt_dump_end(void *ctx) __releases(&((struct iwl_mvm *)ctx)->mutex)
 {
 	struct iwl_mvm *mvm = ctx;
 
@@ -1789,13 +1791,16 @@ static void iwl_mvm_async_handlers_by_context(struct iwl_mvm *mvm,
 	spin_unlock_bh(&mvm->async_handlers_lock);
 
 	list_for_each_entry_safe(entry, tmp, &local_list, list) {
-		if (entry->context != RX_HANDLER_ASYNC_UNLOCKED)
+		if (entry->context == RX_HANDLER_ASYNC_UNLOCKED) {
+			entry->fn(mvm, &entry->rxb);
+		} else {
 			mutex_lock(&mvm->mutex);
-		entry->fn(mvm, &entry->rxb);
+			entry->fn(mvm, &entry->rxb);
+			mutex_unlock(&mvm->mutex);
+		}
+
 		iwl_free_rxb(&entry->rxb);
 		list_del(&entry->list);
-		if (entry->context != RX_HANDLER_ASYNC_UNLOCKED)
-			mutex_unlock(&mvm->mutex);
 		kfree(entry);
 	}
 }
