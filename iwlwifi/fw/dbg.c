@@ -95,6 +95,7 @@ struct iwl_dump_ini_region_data {
 static int iwl_dump_ini_prph_mac_iter_common(struct iwl_fw_runtime *fwrt,
 					     void *range_ptr, u32 addr,
 					     __le32 size)
+	__must_hold(iwl_nic_access)
 {
 	struct iwl_fw_ini_error_dump_range *range = range_ptr;
 	__le32 *val = range->data;
@@ -112,6 +113,7 @@ static int
 iwl_dump_ini_prph_mac_iter(struct iwl_fw_runtime *fwrt,
 			   struct iwl_dump_ini_region_data *reg_data,
 			   void *range_ptr, int idx)
+	__must_hold(iwl_nic_access)
 {
 	struct iwl_fw_ini_region_tlv *reg = (void *)reg_data->reg_tlv->data;
 	u32 addr = le32_to_cpu(reg->addrs[idx]) +
@@ -125,6 +127,7 @@ static int
 iwl_dump_ini_prph_mac_block_iter(struct iwl_fw_runtime *fwrt,
 				 struct iwl_dump_ini_region_data *reg_data,
 				 void *range_ptr, int idx)
+	__must_hold(iwl_nic_access)
 {
 	struct iwl_fw_ini_region_tlv *reg = (void *)reg_data->reg_tlv->data;
 	struct iwl_fw_ini_addr_size *pairs = (void *)reg->addrs;
@@ -138,6 +141,7 @@ iwl_dump_ini_prph_mac_block_iter(struct iwl_fw_runtime *fwrt,
 static int iwl_dump_ini_prph_phy_iter_common(struct iwl_fw_runtime *fwrt,
 					     void *range_ptr, u32 addr,
 					     __le32 size, __le32 offset)
+	__must_hold(iwl_nic_access)
 {
 	struct iwl_fw_ini_error_dump_range *range = range_ptr;
 	__le32 *val = range->data;
@@ -198,6 +202,7 @@ static int
 iwl_dump_ini_prph_phy_iter(struct iwl_fw_runtime *fwrt,
 			   struct iwl_dump_ini_region_data *reg_data,
 			   void *range_ptr, int idx)
+	__must_hold(iwl_nic_access)
 {
 	struct iwl_fw_ini_region_tlv *reg = (void *)reg_data->reg_tlv->data;
 	u32 addr = le32_to_cpu(reg->addrs[idx]);
@@ -211,6 +216,7 @@ static int
 iwl_dump_ini_prph_phy_block_iter(struct iwl_fw_runtime *fwrt,
 				 struct iwl_dump_ini_region_data *reg_data,
 				 void *range_ptr, int idx)
+	__must_hold(iwl_nic_access)
 {
 	struct iwl_fw_ini_region_tlv *reg = (void *)reg_data->reg_tlv->data;
 	struct iwl_fw_ini_addr_size *pairs = (void *)reg->addrs;
@@ -271,6 +277,7 @@ static int iwl_dump_ini_config_iter(struct iwl_fw_runtime *fwrt,
 static int iwl_dump_ini_dev_mem_iter(struct iwl_fw_runtime *fwrt,
 				     struct iwl_dump_ini_region_data *reg_data,
 				     void *range_ptr, int idx)
+	__must_hold(iwl_nic_access)
 {
 	struct iwl_fw_ini_region_tlv *reg = (void *)reg_data->reg_tlv->data;
 	struct iwl_fw_ini_error_dump_range *range = range_ptr;
@@ -360,6 +367,7 @@ iwl_dump_ini_mon_dram_iter(struct iwl_fw_runtime *fwrt,
 static int iwl_dump_ini_mon_smem_iter(struct iwl_fw_runtime *fwrt,
 				      struct iwl_dump_ini_region_data *reg_data,
 				      void *range_ptr, int idx)
+	__must_hold(iwl_nic_access)
 {
 	struct iwl_fw_ini_region_tlv *reg = (void *)reg_data->reg_tlv->data;
 	struct iwl_fw_ini_error_dump_range *range = range_ptr;
@@ -428,6 +436,7 @@ static bool iwl_ini_txf_iter(struct iwl_fw_runtime *fwrt,
 static int iwl_dump_ini_txf_iter(struct iwl_fw_runtime *fwrt,
 				 struct iwl_dump_ini_region_data *reg_data,
 				 void *range_ptr, int idx)
+	__must_hold(iwl_nic_access)
 {
 	struct iwl_fw_ini_region_tlv *reg = (void *)reg_data->reg_tlv->data;
 	struct iwl_fw_ini_error_dump_range *range = range_ptr;
@@ -492,6 +501,7 @@ static int
 iwl_dump_ini_prph_snps_dphyip_iter(struct iwl_fw_runtime *fwrt,
 				   struct iwl_dump_ini_region_data *reg_data,
 				   void *range_ptr, int idx)
+	__must_hold(iwl_nic_access)
 {
 	struct iwl_fw_ini_region_tlv *reg = (void *)reg_data->reg_tlv->data;
 	struct iwl_fw_ini_error_dump_range *range = range_ptr;
@@ -601,6 +611,7 @@ static void iwl_ini_get_rxf_data(struct iwl_fw_runtime *fwrt,
 static int iwl_dump_ini_rxf_iter(struct iwl_fw_runtime *fwrt,
 				 struct iwl_dump_ini_region_data *reg_data,
 				 void *range_ptr, int idx)
+	__must_hold(iwl_nic_access)
 {
 	struct iwl_fw_ini_region_tlv *reg = (void *)reg_data->reg_tlv->data;
 	struct iwl_fw_ini_error_dump_range *range = range_ptr;
@@ -662,6 +673,7 @@ static int
 iwl_dump_ini_err_table_iter(struct iwl_fw_runtime *fwrt,
 			    struct iwl_dump_ini_region_data *reg_data,
 			    void *range_ptr, int idx)
+	__must_hold(iwl_nic_access)
 {
 	struct iwl_fw_ini_region_tlv *reg = (void *)reg_data->reg_tlv->data;
 	struct iwl_fw_ini_region_err_table *err_table = &reg->err_table;
@@ -681,6 +693,7 @@ static int
 iwl_dump_ini_special_mem_iter(struct iwl_fw_runtime *fwrt,
 			      struct iwl_dump_ini_region_data *reg_data,
 			      void *range_ptr, int idx)
+	__must_hold(iwl_nic_access)
 {
 	struct iwl_fw_ini_region_tlv *reg = (void *)reg_data->reg_tlv->data;
 	struct iwl_fw_ini_region_special_device_memory *special_mem =
@@ -702,6 +715,7 @@ static int
 iwl_dump_ini_dbgi_sram_iter(struct iwl_fw_runtime *fwrt,
 			    struct iwl_dump_ini_region_data *reg_data,
 			    void *range_ptr, int idx)
+	__must_hold(iwl_nic_access)
 {
 	struct iwl_fw_ini_region_tlv *reg = (void *)reg_data->reg_tlv->data;
 	struct iwl_fw_ini_error_dump_range *range = range_ptr;
@@ -748,6 +762,7 @@ static int iwl_dump_ini_fw_pkt_iter(struct iwl_fw_runtime *fwrt,
 static int iwl_dump_ini_imr_iter(struct iwl_fw_runtime *fwrt,
 				 struct iwl_dump_ini_region_data *reg_data,
 				 void *range_ptr, int idx)
+	__must_hold(iwl_nic_access)
 {
 	/* read the IMR memory and DMA it to SRAM */
 	struct iwl_fw_ini_error_dump_range *range = range_ptr;
@@ -801,6 +816,7 @@ static u32 mask_apply_and_normalize(u32 val, u32 mask)
 
 static __le32 iwl_get_mon_reg(struct iwl_fw_runtime *fwrt, u32 alloc_id,
 			      const struct iwl_fw_mon_reg *reg_info)
+	__must_hold(iwl_nic_access)
 {
 	u32 val, offs;
 
@@ -821,6 +837,7 @@ static void *
 iwl_dump_ini_mon_fill_header(struct iwl_fw_runtime *fwrt, u32 alloc_id,
 			     struct iwl_fw_ini_monitor_dump *data,
 			     const struct iwl_fw_mon_regs *addrs)
+	__must_hold(iwl_nic_access)
 {
 	data->write_ptr = iwl_get_mon_reg(fwrt, alloc_id,
 					  &addrs->write_ptr);
@@ -843,6 +860,7 @@ static void *
 iwl_dump_ini_mon_dram_fill_header(struct iwl_fw_runtime *fwrt,
 				  struct iwl_dump_ini_region_data *reg_data,
 				  void *data, u32 data_len)
+	__must_hold(iwl_nic_access)
 {
 	struct iwl_fw_ini_monitor_dump *mon_dump = (void *)data;
 	struct iwl_fw_ini_region_tlv *reg = (void *)reg_data->reg_tlv->data;
@@ -856,6 +874,7 @@ static void *
 iwl_dump_ini_mon_smem_fill_header(struct iwl_fw_runtime *fwrt,
 				  struct iwl_dump_ini_region_data *reg_data,
 				  void *data, u32 data_len)
+	__must_hold(iwl_nic_access)
 {
 	struct iwl_fw_ini_monitor_dump *mon_dump = (void *)data;
 	struct iwl_fw_ini_region_tlv *reg = (void *)reg_data->reg_tlv->data;
@@ -869,6 +888,7 @@ static void *
 iwl_dump_ini_mon_dbgi_fill_header(struct iwl_fw_runtime *fwrt,
 				  struct iwl_dump_ini_region_data *reg_data,
 				  void *data, u32 data_len)
+	__must_hold(iwl_nic_access)
 {
 	struct iwl_fw_ini_monitor_dump *mon_dump = (void *)data;
 
@@ -1756,6 +1776,7 @@ static u32
 iwl_dump_ini_dump_entries(struct iwl_fw_runtime *fwrt,
 			  struct list_head *list,
 			  enum iwl_dump_ini_region_selector which)
+	__context_unsafe("NIC access is tracked in a bool across the loop")
 {
 	struct iwl_fw_ini_dump_entry *entry, *tmp;
 	bool have_nic_access;

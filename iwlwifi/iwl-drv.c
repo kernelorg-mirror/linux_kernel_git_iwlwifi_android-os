@@ -2161,6 +2161,7 @@ iwl_drv_find_fseq_image(struct iwl_trans *trans,
 
 static int iwl_drv_load_fseq_image(struct iwl_trans *trans, struct iwl_fw *fw,
 				   struct iwl_firmware_pieces *pieces)
+	__context_unsafe("FIXME: the CNVR_AUX_MISC_CHIP access might be broken")
 {
 	bool mandatory_fseq = fw_has_capa(&fw->ucode_capa,
 					  IWL_UCODE_TLV_CAPA_EXT_FSEQ_IMAGE_MANDATORY);

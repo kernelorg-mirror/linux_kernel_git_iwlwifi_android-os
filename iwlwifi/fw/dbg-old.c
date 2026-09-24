@@ -61,6 +61,7 @@ static void iwl_read_radio_regs(struct iwl_fw_runtime *fwrt,
 static void iwl_fwrt_dump_rxf(struct iwl_fw_runtime *fwrt,
 			      struct iwl_fw_error_dump_data **dump_data,
 			      int size, u32 offset, int fifo_num)
+	__must_hold(iwl_nic_access)
 {
 	struct iwl_fw_error_dump_fifo *fifo_hdr;
 	u32 *fifo_data;
@@ -116,6 +117,7 @@ static void iwl_fwrt_dump_rxf(struct iwl_fw_runtime *fwrt,
 static void iwl_fwrt_dump_txf(struct iwl_fw_runtime *fwrt,
 			      struct iwl_fw_error_dump_data **dump_data,
 			      int size, u32 offset, int fifo_num)
+	__must_hold(iwl_nic_access)
 {
 	struct iwl_fw_error_dump_fifo *fifo_hdr;
 	u32 *fifo_data;
@@ -510,6 +512,7 @@ static const struct iwl_prph_range iwl_prph_dump_addr_ax210[] = {
 
 static void iwl_read_prph_block(struct iwl_trans *trans, u32 start,
 				u32 len_bytes, __le32 *data)
+	__must_hold(iwl_nic_access)
 {
 	u32 i;
 

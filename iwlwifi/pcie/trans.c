@@ -1782,6 +1782,7 @@ static int iwl_pcie_init_msix_handler(struct pci_dev *pdev,
 }
 
 static int iwl_trans_pcie_clear_persistence_bit(struct iwl_trans *trans)
+	__context_unsafe("FIXME: the HPM_DEBUG access might be broken?")
 {
 	u32 hpm, wprot;
 
@@ -2401,6 +2402,7 @@ static void iwl_trans_pcie_reset(struct iwl_trans *trans, enum iwl_reset_mode mo
  * already disabled.
  */
 bool _iwl_trans_pcie_grab_nic_access(struct iwl_trans *trans, bool silent)
+	__cond_acquires(true, &IWL_TRANS_GET_PCIE_TRANS(trans)->reg_lock)
 {
 	int ret;
 	struct iwl_trans_pcie *trans_pcie = IWL_TRANS_GET_PCIE_TRANS(trans);
@@ -2490,6 +2492,7 @@ out:
 }
 
 bool iwl_trans_pcie_grab_nic_access(struct iwl_trans *trans)
+	__cond_acquires(true, &IWL_TRANS_GET_PCIE_TRANS(trans)->reg_lock)
 {
 	bool ret;
 
@@ -2504,6 +2507,7 @@ bool iwl_trans_pcie_grab_nic_access(struct iwl_trans *trans)
 }
 
 void iwl_trans_pcie_resched_with_nic_access(struct iwl_trans *trans)
+	__must_hold(&IWL_TRANS_GET_PCIE_TRANS(trans)->reg_lock)
 {
 	struct iwl_trans_pcie *trans_pcie = IWL_TRANS_GET_PCIE_TRANS(trans);
 
@@ -2515,6 +2519,7 @@ void iwl_trans_pcie_resched_with_nic_access(struct iwl_trans *trans)
 }
 
 void iwl_trans_pcie_release_nic_access(struct iwl_trans *trans)
+	__releases(&IWL_TRANS_GET_PCIE_TRANS(trans)->reg_lock)
 {
 	struct iwl_trans_pcie *trans_pcie = IWL_TRANS_GET_PCIE_TRANS(trans);
 
@@ -4049,6 +4054,7 @@ int iwl_trans_pcie_copy_imr(struct iwl_trans *trans,
 static void get_crf_id(struct iwl_trans *iwl_trans,
 		       struct iwl_trans_info *info,
 		       u32 *hw_wfpm_id)
+	__must_hold(iwl_nic_access)
 {
 	u32 sd_reg_ver_addr;
 	u32 val = 0;

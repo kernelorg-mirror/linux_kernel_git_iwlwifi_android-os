@@ -29,7 +29,8 @@ void iwl_trans_pcie_write8(struct iwl_trans *trans, u32 ofs, u8 val);
 void iwl_trans_pcie_write32(struct iwl_trans *trans, u32 ofs, u32 val);
 u32 iwl_trans_pcie_read32(struct iwl_trans *trans, u32 ofs);
 u32 iwl_trans_pcie_read_prph(struct iwl_trans *trans, u32 reg);
-void iwl_pcie_write_prph_no_grab(struct iwl_trans *trans, u32 addr, u32 val);
+void iwl_pcie_write_prph_no_grab(struct iwl_trans *trans, u32 addr, u32 val)
+	__must_hold(iwl_nic_access);
 
 /* bus-specific transport operations table */
 extern const struct iwl_trans_ops iwl_trans_pcie_ops;
@@ -631,7 +632,8 @@ void iwl_trans_pcie_free(struct iwl_trans *trans);
 void iwl_trans_pcie_free_pnvm_dram_regions(struct iwl_dram_regions *dram_regions,
 					   struct device *dev);
 
-bool _iwl_trans_pcie_grab_nic_access(struct iwl_trans *trans, bool silent);
+bool _iwl_trans_pcie_grab_nic_access(struct iwl_trans *trans, bool silent)
+	__cond_acquires(true, &IWL_TRANS_GET_PCIE_TRANS(trans)->reg_lock);
 
 void iwl_trans_pcie_check_product_reset_status(struct pci_dev *pdev);
 void iwl_trans_pcie_check_product_reset_mode(struct pci_dev *pdev);
@@ -1171,7 +1173,8 @@ void iwl_trans_pcie_op_mode_leave(struct iwl_trans *trans);
 int iwl_trans_pcie_read_mem(struct iwl_trans *trans, u32 addr,
 			    void *buf, int dwords);
 int iwl_trans_pcie_read_mem_no_grab(struct iwl_trans *trans, u32 addr,
-				    void *buf, u32 dwords);
+				    void *buf, u32 dwords)
+	__must_hold(iwl_nic_access);
 int iwl_trans_pcie_sw_reset(struct iwl_trans *trans, bool retake_ownership);
 void iwl_trans_pcie_fw_reset_handshake(struct iwl_trans *trans);
 struct iwl_trans_dump_data *
@@ -1187,9 +1190,12 @@ void iwl_trans_pcie_set_bits_mask(struct iwl_trans *trans, u32 reg,
 				  u32 mask, u32 value);
 int iwl_trans_pcie_read_config32(struct iwl_trans *trans, u32 ofs,
 				 u32 *val);
-bool iwl_trans_pcie_grab_nic_access(struct iwl_trans *trans);
-void iwl_trans_pcie_resched_with_nic_access(struct iwl_trans *trans);
-void iwl_trans_pcie_release_nic_access(struct iwl_trans *trans);
+bool iwl_trans_pcie_grab_nic_access(struct iwl_trans *trans)
+	__cond_acquires(true, &IWL_TRANS_GET_PCIE_TRANS(trans)->reg_lock);
+void iwl_trans_pcie_resched_with_nic_access(struct iwl_trans *trans)
+	__must_hold(&IWL_TRANS_GET_PCIE_TRANS(trans)->reg_lock);
+void iwl_trans_pcie_release_nic_access(struct iwl_trans *trans)
+	__releases(&IWL_TRANS_GET_PCIE_TRANS(trans)->reg_lock);
 void iwl_pcie_alloc_fw_monitor(struct iwl_trans *trans, u8 max_power);
 int _iwl_pci_probe(struct pci_dev *pdev, const struct pci_device_id *ent,
 		   const struct iwl_mac_cfg *mac_cfg,

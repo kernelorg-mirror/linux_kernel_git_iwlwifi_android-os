@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0 OR BSD-3-Clause */
 /*
- * Copyright (C) 2005-2014, 2023 Intel Corporation
+ * Copyright (C) 2005-2014, 2023, 2026 Intel Corporation
  * Copyright (C) 2015-2017 Intel Deutschland GmbH
  */
 #ifndef __iwl_notif_wait_h__
@@ -17,6 +17,9 @@ struct iwl_notif_wait_data {
 };
 
 #define MAX_NOTIF_CMDS	5
+
+/* separate for kernel-doc */
+context_lock_struct(iwl_notification_wait);
 
 /**
  * struct iwl_notification_wait - notification wait entry
@@ -77,21 +80,24 @@ iwl_notification_wait_notify(struct iwl_notif_wait_data *notif_data,
 }
 
 /* user functions */
-void __acquires(wait_entry)
+void
 iwl_init_notification_wait(struct iwl_notif_wait_data *notif_data,
 			   struct iwl_notification_wait *wait_entry,
 			   const u16 *cmds, int n_cmds,
 			   bool (*fn)(struct iwl_notif_wait_data *notif_data,
 				      struct iwl_rx_packet *pkt, void *data),
-			   void *fn_data);
+			   void *fn_data)
+	__acquires(wait_entry);
 
-int __must_check __releases(wait_entry)
+int __must_check
 iwl_wait_notification(struct iwl_notif_wait_data *notif_data,
 		      struct iwl_notification_wait *wait_entry,
-		      unsigned long timeout);
+		      unsigned long timeout)
+	__releases(wait_entry);
 
-void __releases(wait_entry)
+void
 iwl_remove_notification(struct iwl_notif_wait_data *notif_data,
-			struct iwl_notification_wait *wait_entry);
+			struct iwl_notification_wait *wait_entry)
+	__releases(wait_entry);
 
 #endif /* __iwl_notif_wait_h__ */

@@ -19,8 +19,10 @@ int iwl_pcie_poll_prph_bit(struct iwl_trans *trans, u32 addr,
 int iwl_pcie_poll_umac_prph_bit(struct iwl_trans *trans, u32 addr,
 				u32 bits, u32 mask, int timeout);
 int iwl_pcie_poll_umac_prph_bits_no_grab(struct iwl_trans *trans, u32 addr,
-					 u32 bits, u32 mask, int timeout);
-void iwl_pcie_write_prph64_no_grab(struct iwl_trans *trans, u32 ofs, u64 val);
+					 u32 bits, u32 mask, int timeout)
+	__must_hold(iwl_nic_access);
+void iwl_pcie_write_prph64_no_grab(struct iwl_trans *trans, u32 ofs, u64 val)
+	__must_hold(iwl_nic_access);
 void iwl_pcie_write_direct64(struct iwl_trans *trans, u64 reg, u64 value);
 
 static inline void iwl_pcie_write64(struct iwl_trans *trans, u64 ofs, u64 val)
@@ -31,6 +33,7 @@ static inline void iwl_pcie_write64(struct iwl_trans *trans, u64 ofs, u64 val)
 
 static inline void iwl_pcie_write_umac_prph_no_grab(struct iwl_trans *trans,
 						    u32 ofs, u32 val)
+	__must_hold(iwl_nic_access)
 {
 	iwl_pcie_write_prph_no_grab(trans, ofs + trans->mac_cfg->umac_prph_offset,
 				    val);

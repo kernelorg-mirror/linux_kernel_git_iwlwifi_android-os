@@ -1612,11 +1612,14 @@ static void iwl_set_hw_address_family_8000(struct iwl_trans *trans,
 	}
 
 	if (nvm_hw) {
+		/* FIXME: is the no-grab correct? */
+		disable_context_analysis();
 		/* read the mac address from WFMP registers */
 		__le32 mac_addr0 = cpu_to_le32(iwl_trans_read_prph_no_grab(trans,
 									   WFMP_MAC_ADDR_0));
 		__le32 mac_addr1 = cpu_to_le32(iwl_trans_read_prph_no_grab(trans,
 									   WFMP_MAC_ADDR_1));
+		enable_context_analysis();
 
 		iwl_flip_hw_address(mac_addr0, mac_addr1, data->hw_addr);
 

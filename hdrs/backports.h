@@ -48,6 +48,16 @@ cfg80211_6ghz_power_type(u8 control, u32 client_flags)
 	}
 }
 
+#undef __cond_acquires
+#define __cond_acquires(...)
+#define token_context_lock(...)
+#define __must_hold_shared(...)
+#define __acquires_shared(...)
+#define context_lock_struct(x) struct x
+#define __context_unsafe(...)
+#define disable_context_analysis()
+#define enable_context_analysis()
+
 #ifndef __flex_counter
 #define __flex_counter(FAM)	((void *)NULL)
 #endif

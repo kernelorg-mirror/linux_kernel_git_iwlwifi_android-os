@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0 OR BSD-3-Clause
 /*
- * Copyright (C) 2005-2014, 2021 Intel Corporation
+ * Copyright (C) 2005-2014, 2021, 2026 Intel Corporation
  * Copyright (C) 2015-2017 Intel Deutschland GmbH
  */
 #include <linux/sched.h>
@@ -86,6 +86,7 @@ iwl_init_notification_wait(struct iwl_notif_wait_data *notif_wait,
 			   bool (*fn)(struct iwl_notif_wait_data *notif_wait,
 				      struct iwl_rx_packet *pkt, void *data),
 			   void *fn_data)
+	__acquires(wait_entry)
 {
 	if (WARN_ON(n_cmds > MAX_NOTIF_CMDS))
 		n_cmds = MAX_NOTIF_CMDS;
@@ -100,21 +101,25 @@ iwl_init_notification_wait(struct iwl_notif_wait_data *notif_wait,
 	spin_lock_bh(&notif_wait->notif_wait_lock);
 	list_add(&wait_entry->list, &notif_wait->notif_waits);
 	spin_unlock_bh(&notif_wait->notif_wait_lock);
+	__acquire(wait_entry);
 }
 IWL_EXPORT_SYMBOL(iwl_init_notification_wait);
 
 void iwl_remove_notification(struct iwl_notif_wait_data *notif_wait,
 			     struct iwl_notification_wait *wait_entry)
+	__releases(wait_entry)
 {
 	spin_lock_bh(&notif_wait->notif_wait_lock);
 	list_del(&wait_entry->list);
 	spin_unlock_bh(&notif_wait->notif_wait_lock);
+	__release(wait_entry);
 }
 IWL_EXPORT_SYMBOL(iwl_remove_notification);
 
 int iwl_wait_notification(struct iwl_notif_wait_data *notif_wait,
 			  struct iwl_notification_wait *wait_entry,
 			  unsigned long timeout)
+	__releases(wait_entry)
 {
 	int ret;
 

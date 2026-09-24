@@ -961,9 +961,14 @@ void iwl_trans_write32(struct iwl_trans *trans, u32 ofs, u32 val);
 
 u32 iwl_trans_read32(struct iwl_trans *trans, u32 ofs);
 
-u32 iwl_trans_read_prph_no_grab(struct iwl_trans *trans, u32 ofs);
+/* held between successful iwl_trans_grab_nic_access() and release */
+token_context_lock(iwl_nic_access);
 
-void iwl_trans_write_prph_no_grab(struct iwl_trans *trans, u32 ofs, u32 val);
+u32 iwl_trans_read_prph_no_grab(struct iwl_trans *trans, u32 ofs)
+	__must_hold(iwl_nic_access);
+
+void iwl_trans_write_prph_no_grab(struct iwl_trans *trans, u32 ofs, u32 val)
+	__must_hold(iwl_nic_access);
 
 int iwl_trans_read_mem(struct iwl_trans *trans, u32 addr,
 		       void *buf, int dwords);
@@ -974,7 +979,8 @@ int iwl_trans_read_mem(struct iwl_trans *trans, u32 addr,
  * not release NIC access.
  */
 int iwl_trans_read_mem_no_grab(struct iwl_trans *trans, u32 addr,
-			       void *buf, u32 dwords);
+			       void *buf, u32 dwords)
+	__must_hold(iwl_nic_access);
 
 int iwl_trans_read_config32(struct iwl_trans *trans, u32 ofs,
 			    u32 *val);
@@ -990,6 +996,7 @@ int iwl_trans_read_config32(struct iwl_trans *trans, u32 ofs,
 static inline int
 iwl_trans_read_mem_bytes_no_grab(struct iwl_trans *trans,
 				 u32 addr, void *buf, u32 bufsize)
+	__must_hold(iwl_nic_access)
 {
 	return iwl_trans_read_mem_no_grab(trans, addr, buf,
 					  bufsize / sizeof(u32));
@@ -1068,6 +1075,7 @@ static inline u32 iwl_trans_umac_prph(struct iwl_trans *trans, u32 ofs)
 }
 
 static inline u32 iwl_trans_read_umac_prph_no_grab(struct iwl_trans *trans, u32 ofs)
+	__must_hold(iwl_nic_access)
 {
 	return iwl_trans_read_prph_no_grab(trans, ofs +
 					   trans->mac_cfg->umac_prph_offset);
@@ -1084,7 +1092,8 @@ static inline void iwl_trans_write_umac_prph(struct iwl_trans *trans, u32 ofs,
 	iwl_trans_write_prph(trans, ofs + trans->mac_cfg->umac_prph_offset, val);
 }
 
-bool iwl_trans_grab_nic_access(struct iwl_trans *trans);
+bool iwl_trans_grab_nic_access(struct iwl_trans *trans)
+	__cond_acquires(true, iwl_nic_access);
 
 /**
  * iwl_trans_resched_with_nic_access - reschedule while holding NIC access
@@ -1095,9 +1104,11 @@ bool iwl_trans_grab_nic_access(struct iwl_trans *trans);
  * but a lot of processing is happening and the CPU may need to be
  * released. In practice, this is only during FW dump.
  */
-void iwl_trans_resched_with_nic_access(struct iwl_trans *trans);
+void iwl_trans_resched_with_nic_access(struct iwl_trans *trans)
+	__must_hold(iwl_nic_access);
 
-void iwl_trans_release_nic_access(struct iwl_trans *trans);
+void iwl_trans_release_nic_access(struct iwl_trans *trans)
+	__releases(iwl_nic_access);
 
 static inline void iwl_trans_schedule_reset(struct iwl_trans *trans,
 					    enum iwl_fw_error_type type)

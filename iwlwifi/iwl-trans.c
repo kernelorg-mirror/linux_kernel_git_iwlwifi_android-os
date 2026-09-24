@@ -684,7 +684,11 @@ bool iwl_trans_grab_nic_access(struct iwl_trans *trans)
 {
 	if (WARN_ON_ONCE(!trans->ops->grab_nic_access))
 		return false;
-	return trans->ops->grab_nic_access(trans);
+	if (!trans->ops->grab_nic_access(trans))
+		return false;
+
+	__acquire(iwl_nic_access);
+	return true;
 }
 IWL_EXPORT_SYMBOL(iwl_trans_grab_nic_access);
 
@@ -696,7 +700,9 @@ void iwl_trans_resched_with_nic_access(struct iwl_trans *trans)
 }
 
 void iwl_trans_release_nic_access(struct iwl_trans *trans)
+	__releases(iwl_nic_access)
 {
+	__release(iwl_nic_access);
 	if (WARN_ON_ONCE(!trans->ops->release_nic_access))
 		return;
 	trans->ops->release_nic_access(trans);
