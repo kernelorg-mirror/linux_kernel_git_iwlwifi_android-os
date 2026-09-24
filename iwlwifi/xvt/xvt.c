@@ -155,14 +155,16 @@ static const struct iwl_hcmd_arr iwl_xvt_cmd_groups[] = {
 	[DEBUG_GROUP] = HCMD_ARR(iwl_xvt_debug_names),
 };
 
-static void iwl_xvt_fwrt_dump_start(void *ctx)
+static void
+iwl_xvt_fwrt_dump_start(void *ctx) __acquires(&((struct iwl_xvt *)ctx)->mutex)
 {
 	struct iwl_xvt *xvt = ctx;
 
 	mutex_lock(&xvt->mutex);
 }
 
-static void iwl_xvt_fwrt_dump_end(void *ctx)
+static void
+iwl_xvt_fwrt_dump_end(void *ctx) __releases(&((struct iwl_xvt *)ctx)->mutex)
 {
 	struct iwl_xvt *xvt = ctx;
 
