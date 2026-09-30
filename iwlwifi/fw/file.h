@@ -467,6 +467,7 @@ typedef unsigned int __bitwise iwl_ucode_tlv_capa_t;
  *	capability is obsolete since raw DSM values are accepted by default.
  * @IWL_UCODE_TLV_CAPA_NAN_SYNC_SUPPORT: Supports NAN synchronization
  * @IWL_UCODE_TLV_CAPA_ASSOC_ENC_SUPPORT: firmware supports association frame encryption
+ * @IWL_UCODE_TLV_CAPA_EXT_FSEQ_IMAGE_MANDATORY: firmware requires an external FSEQ image
  *
  * @NUM_IWL_UCODE_TLV_CAPA: number of bits used
  */
@@ -577,6 +578,7 @@ enum iwl_ucode_tlv_capa {
 	IWL_UCODE_TLV_CAPA_FW_ACCEPTS_RAW_DSM_TABLE 	= (__force iwl_ucode_tlv_capa_t)(4 * 32 + 1),
 	IWL_UCODE_TLV_CAPA_NAN_SYNC_SUPPORT		= (__force iwl_ucode_tlv_capa_t)(4 * 32 + 2),
 	IWL_UCODE_TLV_CAPA_ASSOC_ENC_SUPPORT		= (__force iwl_ucode_tlv_capa_t)(4 * 32 + 4),
+	IWL_UCODE_TLV_CAPA_EXT_FSEQ_IMAGE_MANDATORY	= (__force iwl_ucode_tlv_capa_t)(4 * 32 + 5),
 	NUM_IWL_UCODE_TLV_CAPA
 /*
  * This construction make both sparse (which cannot increment the previous
@@ -1093,9 +1095,17 @@ struct iwl_fw_fseq_bin_version_v1 {
 	__le32 major, minor;
 }; /* FW_TLV_FSEQ_BIN_VERSION_S */
 
+#define IWL_PDGC_PLATFORM_CONFIG(_val)	(((_val) & 0x10000) >> 16)
+
+/**
+ * struct iwl_fw_fseq_bin_version - FSEQ binary version
+ * @cnvi_id: CNVI ID, with platform configuration in bit 16
+ * @cnvr_id: CNVR ID; currently always zero
+ * @major: major version
+ * @minor: minor version
+ */
 struct iwl_fw_fseq_bin_version {
-	/* rf_id is currently unused and always zero */
-	__le32 mac_id, rf_id, major, minor;
+	__le32 cnvi_id, cnvr_id, major, minor;
 }; /* FW_TLV_FSEQ_BIN_VERSION_S */
 
 static inline size_t _iwl_tlv_array_len(const struct iwl_ucode_tlv *tlv,
@@ -1119,6 +1129,8 @@ static inline size_t _iwl_tlv_array_len(const struct iwl_ucode_tlv *tlv,
 /* external FSEQ file */
 #define IWL_FSEQ_FILE	"intel/fseq-%04x-%04x"
 #define IWL_FSEQ_MAGIC	"INTEL-CNV-FSEQ\n\0"
+#define IWL_FSEQ_SEPARATOR "FSEQFSEQ"
+#define IWL_FSEQ_SEPARATOR_LEN (sizeof(IWL_FSEQ_SEPARATOR) - 1)
 
 struct iwl_fseq_file {
 	char magic[16];

@@ -16,6 +16,7 @@
 #include "iwl-trans.h"
 #include "iwl-op-mode.h"
 #include "iwl-agn-hw.h"
+#include "fw/regulatory.h"
 #include "fw/img.h"
 #include "iwl-dbg-tlv.h"
 #include "iwl-config.h"
@@ -1103,6 +1104,7 @@ static int iwl_parse_tlv_firmware(struct iwl_drv *drv,
 	char buildstr[25];
 	u32 build, paging_mem_size;
 	int num_of_cpus;
+	bool internal_fseq = false;
 	bool usniffer_req = false;
 	size_t aligned_tlv_len;
 
@@ -1646,6 +1648,7 @@ fw_dbg_conf:
 
 			if (tlv_len != sizeof(*fseq_ver))
 				goto invalid_tlv_len;
+			internal_fseq = true;
 			IWL_DEBUG_INFO(drv,
 				       "TLV_FW_FSEQ_VERSION: %.32s (sha1: %.20s)\n",
 				       fseq_ver->version, fseq_ver->sha1);
@@ -1662,9 +1665,11 @@ fw_dbg_conf:
 				const struct iwl_fw_fseq_bin_version *fseq;
 				u32 cnvi_id = drv->trans->info.hw_cnv_id;
 				u32 mac_id = CNVI_AUX_MISC_CHIP_PROD_TYPE(cnvi_id);
+				u32 fseq_cnvi_id;
 
 				fseq = (const void *)tlv_data;
-				if (mac_id == le32_to_cpu(fseq->mac_id)) {
+				fseq_cnvi_id = le32_to_cpu(fseq->cnvi_id);
+				if (mac_id == CNVI_AUX_MISC_CHIP_PROD_TYPE(fseq_cnvi_id)) {
 					pieces->fseq_ver.major =
 						le32_to_cpu(fseq->major);
 					pieces->fseq_ver.minor =
@@ -1848,6 +1853,20 @@ fw_dbg_conf:
 		return -EINVAL;
 	}
 
+	if (fw_has_capa(capa, IWL_UCODE_TLV_CAPA_EXT_FSEQ_IMAGE_MANDATORY)) {
+		if (!fw_has_capa(capa, IWL_UCODE_TLV_CAPA_EXT_FSEQ_IMAGE_SUPPORT)) {
+			IWL_ERR(drv,
+				"firmware advertises mandatory external FSEQ without external FSEQ support\n");
+			return -EINVAL;
+		}
+
+		if (internal_fseq) {
+			IWL_ERR(drv,
+				"firmware advertises mandatory external FSEQ with internal FSEQ\n");
+			return -EINVAL;
+		}
+	}
+
 	if (len) {
 		IWL_ERR(drv, "invalid TLV after parsing: %zd\n", len);
 		iwl_print_hex_dump(drv, IWL_DL_FW, data, len);
@@ -2003,15 +2022,154 @@ static void _iwl_op_mode_stop(struct iwl_drv *drv)
 	}
 }
 
+/**
+ * enum iwl_fseq_image_match - FSEQ image validation and match result
+ * @IWL_FSEQ_IMAGE_INVALID: image data is invalid
+ * @IWL_FSEQ_IMAGE_VALID: image data is valid but does not match
+ * @IWL_FSEQ_IMAGE_MATCH: image data is valid and matches the platform
+ */
+enum iwl_fseq_image_match {
+	IWL_FSEQ_IMAGE_INVALID,
+	IWL_FSEQ_IMAGE_VALID,
+	IWL_FSEQ_IMAGE_MATCH,
+};
+
+static enum iwl_fseq_image_match
+iwl_drv_fseq_image_matches(struct iwl_trans *trans, const u8 *data, u32 len,
+			   u32 platform_config)
+{
+	while (len >= sizeof(struct iwl_ucode_tlv)) {
+		const struct iwl_ucode_tlv *tlv;
+		u32 tlv_len, aligned_tlv_len;
+
+		len -= sizeof(*tlv);
+		tlv = (const void *)data;
+		tlv_len = le32_to_cpu(tlv->length);
+		if (len < tlv_len)
+			return IWL_FSEQ_IMAGE_INVALID;
+
+		aligned_tlv_len = ALIGN(tlv_len, 4);
+		if (len < aligned_tlv_len)
+			return IWL_FSEQ_IMAGE_INVALID;
+
+		if (le32_to_cpu(tlv->type) == IWL_UCODE_TLV_FSEQ_BIN_VERSION) {
+			const struct iwl_fw_fseq_bin_version *ver;
+			u32 fseq_cnvi_id;
+
+			if (tlv_len != sizeof(*ver))
+				return IWL_FSEQ_IMAGE_INVALID;
+
+			ver = (const void *)tlv->data;
+			fseq_cnvi_id = le32_to_cpu(ver->cnvi_id);
+			if (IWL_PDGC_PLATFORM_CONFIG(fseq_cnvi_id) ==
+			    platform_config &&
+			    CNVI_AUX_MISC_CHIP_PROD_TYPE(trans->info.hw_cnv_id) ==
+			    CNVI_AUX_MISC_CHIP_PROD_TYPE(fseq_cnvi_id))
+				return IWL_FSEQ_IMAGE_MATCH;
+			return IWL_FSEQ_IMAGE_VALID;
+		}
+
+		len -= aligned_tlv_len;
+		data += sizeof(*tlv) + aligned_tlv_len;
+	}
+
+	return len ? IWL_FSEQ_IMAGE_INVALID : IWL_FSEQ_IMAGE_VALID;
+}
+
+static ssize_t iwl_drv_get_fseq_image_size(const struct iwl_fseq_file *fseq,
+					    size_t remaining)
+{
+	size_t fseq_len = sizeof(*fseq);
+	size_t total_len;
+	size_t wifi_len;
+	size_t bt_len;
+
+	if (remaining < fseq_len)
+		return -EINVAL;
+
+	bt_len = le32_to_cpu(fseq->bt_len);
+	wifi_len = le32_to_cpu(fseq->wifi_len);
+	if (check_add_overflow(fseq_len, wifi_len, &total_len) ||
+	    check_add_overflow(total_len, bt_len, &total_len) ||
+	    total_len > remaining)
+		return -EINVAL;
+
+	return total_len;
+}
+
+static const struct iwl_fseq_file *
+iwl_drv_find_fseq_image(struct iwl_trans *trans,
+			const struct firmware *fseq_fw)
+{
+	const struct iwl_fseq_file *fseq = (const void *)fseq_fw->data;
+	size_t remaining = fseq_fw->size;
+	u32 platform_config = 0;
+
+	/* FSEQ files for non-SC2/SC2F hardware contain a single image. */
+	if (CSR_HW_REV_TYPE(trans->info.hw_rev) != IWL_CFG_MAC_TYPE_SC2 &&
+	    CSR_HW_REV_TYPE(trans->info.hw_rev) != IWL_CFG_MAC_TYPE_SC2F) {
+		if (iwl_drv_get_fseq_image_size(fseq, fseq_fw->size) < 0)
+			return NULL;
+		if (memcmp(fseq->magic, IWL_FSEQ_MAGIC, sizeof(fseq->magic)))
+			return NULL;
+
+		return fseq;
+	}
+
+	/*
+	 * SC2/SC2F FSEQ files contain images for multiple platforms.
+	 * Find the image that matches the platform configuration from BIOS.
+	 * If BIOS cannot be read, platform_config remains zero (NVL).
+	 */
+	iwl_bios_get_pdgc(trans, &platform_config);
+
+	while (remaining) {
+		enum iwl_fseq_image_match match;
+		ssize_t image_size;
+		u32 wifi_len;
+		u32 bt_len;
+
+		image_size = iwl_drv_get_fseq_image_size(fseq, remaining);
+		if (image_size < 0)
+			return NULL;
+		if (memcmp(fseq->magic, IWL_FSEQ_MAGIC, sizeof(fseq->magic)))
+			return NULL;
+
+		bt_len = le32_to_cpu(fseq->bt_len);
+		wifi_len = le32_to_cpu(fseq->wifi_len);
+		match = iwl_drv_fseq_image_matches(trans, fseq->data + bt_len,
+						   wifi_len, platform_config);
+		if (match == IWL_FSEQ_IMAGE_INVALID)
+			return NULL;
+		if (match == IWL_FSEQ_IMAGE_MATCH)
+			return fseq;
+
+		remaining -= image_size;
+		if (!remaining)
+			break;
+		if (remaining < IWL_FSEQ_SEPARATOR_LEN ||
+		    memcmp((const u8 *)fseq + image_size,
+			   IWL_FSEQ_SEPARATOR, IWL_FSEQ_SEPARATOR_LEN))
+			return NULL;
+		remaining -= IWL_FSEQ_SEPARATOR_LEN;
+		fseq = (const void *)((const u8 *)fseq + image_size +
+				      IWL_FSEQ_SEPARATOR_LEN);
+	}
+
+	return NULL;
+}
+
 static int iwl_drv_load_fseq_image(struct iwl_trans *trans, struct iwl_fw *fw,
 				   struct iwl_firmware_pieces *pieces)
 {
+	bool mandatory_fseq = fw_has_capa(&fw->ucode_capa,
+					  IWL_UCODE_TLV_CAPA_EXT_FSEQ_IMAGE_MANDATORY);
+	u32 fseq_major = pieces->fseq_ver.major;
+	u32 fseq_minor = pieces->fseq_ver.minor;
 	struct fw_img_parsing fseq_pieces = {};
 	const struct iwl_fseq_file *fseq;
 	const struct iwl_ucode_tlv *tlv;
 	const struct firmware *fseq_fw;
-	u32 fseq_major = pieces->fseq_ver.major;
-	u32 fseq_minor = pieces->fseq_ver.minor;
 	u32 tlv_len, tlv_type, len;
 	const u8 *tlv_data, *data;
 	u32 cnvi_id, cnvr_id;
@@ -2027,28 +2185,16 @@ static int iwl_drv_load_fseq_image(struct iwl_trans *trans, struct iwl_fw *fw,
 	scnprintf(filename, sizeof(filename), IWL_FSEQ_FILE,
 		  FSEQ_ID(cnvi_id), FSEQ_ID(cnvr_id));
 
-	if (firmware_request_nowarn(&fseq_fw, filename, trans->dev))
-		return 0;
+	err = mandatory_fseq ?
+		request_firmware(&fseq_fw, filename, trans->dev) :
+		firmware_request_nowarn(&fseq_fw, filename, trans->dev);
+	if (err)
+		return mandatory_fseq ? -ENOENT : 0;
 
-	if (fseq_fw->size < sizeof(*fseq)) {
-		IWL_ERR(trans, "invalid FSEQ file size\n");
+	fseq = iwl_drv_find_fseq_image(trans, fseq_fw);
+	if (!fseq) {
 		err = -EINVAL;
-		goto out;
-	}
-
-	fseq = (const void *)fseq_fw->data;
-
-	if (memcmp(fseq->magic, IWL_FSEQ_MAGIC, sizeof(fseq->magic))) {
-		IWL_ERR(trans, "invalid image magic\n");
-		err = -EINVAL;
-		goto out;
-	}
-
-	if (fseq_fw->size < sizeof(*fseq) +
-			    le32_to_cpu(fseq->bt_len) +
-			    le32_to_cpu(fseq->wifi_len)) {
-		IWL_ERR(trans, "invalid image sizes or file size\n");
-		err = -EINVAL;
+		IWL_ERR(trans, "no usable FSEQ image in %s\n", filename);
 		goto out;
 	}
 
@@ -2107,13 +2253,15 @@ static int iwl_drv_load_fseq_image(struct iwl_trans *trans, struct iwl_fw *fw,
 			} else if (tlv_len == sizeof(struct iwl_fw_fseq_bin_version)) {
 				u32 mac_id = CNVI_AUX_MISC_CHIP_PROD_TYPE(cnvi_id);
 				const struct iwl_fw_fseq_bin_version *ver;
+				u32 fseq_cnvi_id;
 
 				ver = (const void *)tlv_data;
-				if (mac_id != le32_to_cpu(ver->mac_id)) {
+				fseq_cnvi_id = le32_to_cpu(ver->cnvi_id);
+				if (mac_id != CNVI_AUX_MISC_CHIP_PROD_TYPE(fseq_cnvi_id)) {
 					IWL_ERR(trans,
 						"Invalid FSEQ MAC ID (0x%x vs 0x%x)\n",
 						mac_id,
-						le32_to_cpu(ver->mac_id));
+						CNVI_AUX_MISC_CHIP_PROD_TYPE(fseq_cnvi_id));
 					err = -EINVAL;
 					goto out;
 				}
@@ -2143,8 +2291,10 @@ static int iwl_drv_load_fseq_image(struct iwl_trans *trans, struct iwl_fw *fw,
 		goto out;
 	}
 
-	/* use external image if major version is different or minor is newer */
-	if (fseq_major == pieces->fseq_ver.major &&
+	/* always use the external image when it is mandatory, otherwise only
+	 * if major version differs or minor is newer
+	 */
+	if (!mandatory_fseq && fseq_major == pieces->fseq_ver.major &&
 	    fseq_minor <= pieces->fseq_ver.minor) {
 		err = 0;
 		goto out;
