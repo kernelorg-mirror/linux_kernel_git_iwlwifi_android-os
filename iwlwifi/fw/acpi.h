@@ -26,6 +26,7 @@
 #define ACPI_GLAI_METHOD	"GLAI"
 #define ACPI_WBEM_METHOD	"WBEM"
 #define ACPI_DSBR_METHOD	"DSBR"
+#define ACPI_PDGC_METHOD	"PDGC"
 
 #define ACPI_WIFI_DOMAIN	(0x07)
 
@@ -85,6 +86,10 @@
  */
 #define ACPI_DSBR_WIFI_DATA_SIZE	2
 #define ACPI_DSBR_WIFI_DATA_REV		1
+
+/* One element for domain type, and one for platform config */
+#define ACPI_PDGC_WIFI_DATA_SIZE	2
+#define ACPI_PDGC_WIFI_DATA_REV		0
 
 /*
  * One element for domain type,
@@ -192,6 +197,8 @@ int iwl_acpi_get_phy_filters(struct iwl_fw_runtime *fwrt);
 
 void iwl_acpi_get_guid_lock_status(struct iwl_trans *trans);
 
+int iwl_acpi_get_pdgc(struct iwl_trans *trans, u32 *value);
+
 int iwl_acpi_get_dsm(struct iwl_fw_runtime *fwrt,
 		     enum iwl_dsm_funcs func, u32 *value);
 
@@ -268,6 +275,11 @@ static inline int iwl_acpi_get_phy_filters(struct iwl_fw_runtime *fwrt)
 
 static inline void iwl_acpi_get_guid_lock_status(struct iwl_trans *trans)
 {
+}
+
+static inline int iwl_acpi_get_pdgc(struct iwl_trans *trans, u32 *value)
+{
+	return -ENOENT;
 }
 
 static inline int iwl_acpi_get_dsm(struct iwl_fw_runtime *fwrt,

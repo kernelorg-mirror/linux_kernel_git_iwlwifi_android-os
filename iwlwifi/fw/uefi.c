@@ -135,7 +135,7 @@ iwl_uefi_get_variable_guid(struct iwl_trans *trans,
 }
 
 static void *
-iwl_uefi_get_verified_variable_guid(struct iwl_fw_runtime *fwrt,
+iwl_uefi_get_verified_variable_guid(struct iwl_trans *trans,
 				    efi_guid_t *guid,
 				    efi_char16_t *uefi_var_name,
 				    char *var_name,
@@ -148,20 +148,20 @@ iwl_uefi_get_verified_variable_guid(struct iwl_fw_runtime *fwrt,
 	u32 attributes = 0;
 	void *var;
 
-	if (fwrt->trans->uefi_tables_lock_status == UEFI_CNV_GUID_UNLOCKED)
+	if (trans->uefi_tables_lock_status == UEFI_CNV_GUID_UNLOCKED)
 		return ERR_PTR(-EINVAL);
 
 #ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
-	if (fwrt->trans->dbg_cfg.FORCE_NON_X86)
+	if (trans->dbg_cfg.FORCE_NON_X86)
 		is_x86 = false;
 #endif
 
 	/* In x86 either GLUI or GLAI should exist */
 	if (is_x86 &&
-	    fwrt->trans->uefi_tables_lock_status == UEFI_CNV_GUID_UNKNOWN)
+	    trans->uefi_tables_lock_status == UEFI_CNV_GUID_UNKNOWN)
 		return ERR_PTR(-EINVAL);
 
-	var = iwl_uefi_get_variable_guid(fwrt->trans,
+	var = iwl_uefi_get_variable_guid(trans,
 					 guid,
 					 uefi_var_name, var_name,
 					 expected_size, &var_size,
@@ -169,7 +169,7 @@ iwl_uefi_get_verified_variable_guid(struct iwl_fw_runtime *fwrt,
 	if (IS_ERR(var))
 		return var;
 
-	if (fwrt->trans->uefi_tables_lock_status != UEFI_CNV_GUID_UNKNOWN)
+	if (trans->uefi_tables_lock_status != UEFI_CNV_GUID_UNKNOWN)
 		goto out;
 
 	/*
@@ -206,7 +206,8 @@ iwl_uefi_get_verified_wifi_var(struct iwl_fw_runtime *fwrt,
 			       unsigned int expected_size,
 			       unsigned long *size)
 {
-	return iwl_uefi_get_verified_variable_guid(fwrt, &IWL_EFI_WIFI_GUID,
+	return iwl_uefi_get_verified_variable_guid(fwrt->trans,
+						   &IWL_EFI_WIFI_GUID,
 						   uefi_var_name, var_name,
 						   expected_size, size);
 }
@@ -1092,7 +1093,7 @@ int iwl_uefi_get_eckv(struct iwl_fw_runtime *fwrt, u32 *extl_clk)
 	struct uefi_cnv_var_eckv *data;
 	int ret = 0;
 
-	data = iwl_uefi_get_verified_variable_guid(fwrt,
+	data = iwl_uefi_get_verified_variable_guid(fwrt->trans,
 						   &IWL_EFI_WIFI_BT_GUID,
 						   IWL_UEFI_ECKV_NAME,
 						   "ECKV", sizeof(*data), NULL);
@@ -1254,7 +1255,7 @@ int iwl_uefi_get_dsbr(struct iwl_fw_runtime *fwrt, u32 *value)
 	struct uefi_cnv_wlan_dsbr_data *data;
 	int ret = 0;
 
-	data = iwl_uefi_get_verified_variable_guid(fwrt,
+	data = iwl_uefi_get_verified_variable_guid(fwrt->trans,
 						   &IWL_EFI_WIFI_BT_GUID,
 						   IWL_UEFI_DSBR_NAME, "DSBR",
 						   sizeof(*data), NULL);
@@ -1273,6 +1274,27 @@ int iwl_uefi_get_dsbr(struct iwl_fw_runtime *fwrt, u32 *value)
 out:
 	kfree(data);
 	return ret;
+}
+
+int iwl_uefi_get_pdgc(struct iwl_trans *trans, u32 *value)
+{
+	struct uefi_cnv_common_pdgc_data *data __free(kfree);
+
+	data = iwl_uefi_get_verified_variable_guid(trans, &IWL_EFI_WIFI_BT_GUID,
+						   IWL_UEFI_PDGC_NAME, "PDGC",
+						   sizeof(*data), NULL);
+	if (IS_ERR(data))
+		return PTR_ERR(data);
+
+	if (data->revision != IWL_UEFI_PDGC_REVISION) {
+		IWL_DEBUG_RADIO(trans, "Unsupported UEFI PDGC revision:%d\n",
+				data->revision);
+		return -EINVAL;
+	}
+
+	*value = data->platform_config & IWL_PDGC_REV0_PLATFORM_CONFIG_MASK;
+	IWL_DEBUG_RADIO(trans, "Loaded PDGC config from UEFI: 0x%x\n", *value);
+	return 0;
 }
 
 int iwl_uefi_get_phy_filters(struct iwl_fw_runtime *fwrt)

@@ -42,6 +42,16 @@ IWL_BIOS_TABLE_LOADER_DATA(eckv, u32);
 IWL_BIOS_TABLE_LOADER_DATA(wbem, u32);
 IWL_BIOS_TABLE_LOADER_DATA(dsbr, u32);
 
+int iwl_bios_get_pdgc(struct iwl_trans *trans, u32 *value)
+{
+	int ret;
+
+	ret = iwl_uefi_get_pdgc(trans, value);
+	if (ret < 0)
+		ret = iwl_acpi_get_pdgc(trans, value);
+
+	return ret;
+}
 
 static const struct dmi_system_id dmi_ppag_approved_list[] = {
 	{ .ident = "HP",

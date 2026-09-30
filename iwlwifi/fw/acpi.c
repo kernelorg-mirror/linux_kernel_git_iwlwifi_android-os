@@ -1298,6 +1298,35 @@ out_free:
 	kfree(data);
 }
 
+int iwl_acpi_get_pdgc(struct iwl_trans *trans, u32 *value)
+{
+	union acpi_object *wifi_pkg, *data __free(kfree);
+	int tbl_rev;
+
+	data = iwl_acpi_get_object(trans->dev, ACPI_PDGC_METHOD);
+	if (IS_ERR(data))
+		return PTR_ERR(data);
+
+	wifi_pkg = iwl_acpi_get_wifi_pkg(trans->dev, data,
+					 ACPI_PDGC_WIFI_DATA_SIZE, &tbl_rev);
+	if (IS_ERR(wifi_pkg))
+		return PTR_ERR(wifi_pkg);
+
+	if (tbl_rev != ACPI_PDGC_WIFI_DATA_REV) {
+		IWL_DEBUG_RADIO(trans, "Unsupported ACPI PDGC revision:%d\n",
+				tbl_rev);
+		return -ENOENT;
+	}
+
+	if (wifi_pkg->package.elements[1].type != ACPI_TYPE_INTEGER)
+		return -EINVAL;
+
+	*value = wifi_pkg->package.elements[1].integer.value &
+		 IWL_PDGC_REV0_PLATFORM_CONFIG_MASK;
+	IWL_DEBUG_RADIO(trans, "Loaded PDGC config from ACPI: 0x%x\n", *value);
+	return 0;
+}
+
 int iwl_acpi_get_wbem(struct iwl_fw_runtime *fwrt, u32 *value)
 {
 	union acpi_object *wifi_pkg, *data;

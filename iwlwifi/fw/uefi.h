@@ -27,6 +27,7 @@
 #define IWL_UEFI_WBEM_NAME		L"UefiCnvWlanWBEM"
 #define IWL_UEFI_PUNCTURING_NAME	L"UefiCnvWlanPuncturing"
 #define IWL_UEFI_DSBR_NAME		L"UefiCnvCommonDSBR"
+#define IWL_UEFI_PDGC_NAME		L"UefiCnvCommonPDGC"
 #define IWL_UEFI_WPFC_NAME		L"WPFC"
 #define IWL_UEFI_UNEB_NAME		L"CnvUefiWlanUNEB"
 
@@ -44,6 +45,7 @@
 #define IWL_UEFI_PUNCTURING_REVISION	0
 #define IWL_UEFI_DSBR_REVISION		1
 #define IWL_UEFI_GLUI_REVISION		0
+#define IWL_UEFI_PDGC_REVISION		0
 
 struct pnvm_sku_package {
 	u8 rev;
@@ -311,6 +313,16 @@ struct uefi_cnv_wlan_dsbr_data {
 } __packed;
 
 /**
+ * struct uefi_cnv_common_pdgc_data - platform config as defined in UEFI
+ * @revision: the revision of the table
+ * @platform_config: platform configuration bitmap
+ */
+struct uefi_cnv_common_pdgc_data {
+	u8 revision;
+	u32 platform_config;
+} __packed;
+
+/**
  * struct uefi_cnv_wpfc_data - BIOS Wi-Fi PHY filter Configuration
  * @revision: the revision of the table
  * @chains: configuration of each of the chains (a-d)
@@ -354,6 +366,7 @@ void iwl_uefi_get_uneb_table(struct iwl_trans *trans,
 			     struct iwl_fw_runtime *fwrt);
 int iwl_uefi_get_puncturing(struct iwl_fw_runtime *fwrt);
 int iwl_uefi_get_dsbr(struct iwl_fw_runtime *fwrt, u32 *value);
+int iwl_uefi_get_pdgc(struct iwl_trans *trans, u32 *value);
 int iwl_uefi_get_phy_filters(struct iwl_fw_runtime *fwrt);
 void iwl_uefi_get_guid_lock_status(struct iwl_trans *trans);
 #else /* CONFIG_EFI */
@@ -475,6 +488,11 @@ int iwl_uefi_get_puncturing(struct iwl_fw_runtime *fwrt)
 
 static inline
 int iwl_uefi_get_dsbr(struct iwl_fw_runtime *fwrt, u32 *value)
+{
+	return -ENOENT;
+}
+
+static inline int iwl_uefi_get_pdgc(struct iwl_trans *trans, u32 *value)
 {
 	return -ENOENT;
 }

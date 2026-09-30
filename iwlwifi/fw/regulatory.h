@@ -263,10 +263,12 @@ bool iwl_puncturing_is_allowed_in_bios(u32 puncturing, u16 mcc);
 
 #define IWL_DSBR_FW_MODIFIED_URM_MASK	BIT(8)
 #define IWL_DSBR_PERMANENT_URM_MASK	BIT(9)
+#define IWL_PDGC_REV0_PLATFORM_CONFIG_MASK	BIT(0)
 
 int iwl_bios_get_dsbr(struct iwl_fw_runtime *fwrt, u32 *value);
 int iwl_bios_get_phy_filters(struct iwl_fw_runtime *fwrt);
 void iwl_bios_get_guid_lock_status(struct iwl_trans *trans);
+int iwl_bios_get_pdgc(struct iwl_trans *trans, u32 *value);
 
 static inline void iwl_bios_setup_step(struct iwl_trans *trans,
 				       struct iwl_fw_runtime *fwrt)
