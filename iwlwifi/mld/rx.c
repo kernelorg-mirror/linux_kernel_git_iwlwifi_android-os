@@ -2455,7 +2455,6 @@ static int iwl_mld_rx_mgmt_prot(struct ieee80211_link_sta *link_sta,
 	struct iwl_mld_link *link;
 	struct wireless_dev *wdev;
 	struct iwl_mld_sta *mld_sta;
-	struct iwl_mld_vif *mld_vif;
 	u8 keyidx;
 	struct ieee80211_key_conf *key;
 	const u8 *frame = (void *)hdr;
@@ -2479,7 +2478,6 @@ static int iwl_mld_rx_mgmt_prot(struct ieee80211_link_sta *link_sta,
 		return -1;
 
 	mld_sta = iwl_mld_sta_from_mac80211(link_sta->sta);
-	mld_vif = iwl_mld_vif_from_mac80211(mld_sta->vif);
 
 	/* key mismatch - will also report !MIC_OK but we shouldn't count it */
 	if (!(mpdu_status & IWL_RX_MPDU_STATUS_KEY_VALID))
@@ -2492,7 +2490,7 @@ static int iwl_mld_rx_mgmt_prot(struct ieee80211_link_sta *link_sta,
 		return 0;
 	}
 
-	link = rcu_dereference(mld_vif->link[link_sta->link_id]);
+	link = iwl_mld_link_from_mac80211(link_sta->link_conf);
 	if (WARN_ON_ONCE(!link))
 		return -1;
 

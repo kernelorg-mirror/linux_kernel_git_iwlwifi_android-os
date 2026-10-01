@@ -711,7 +711,7 @@ void iwl_mld_tlc_update_phy(struct iwl_mld *mld, struct ieee80211_vif *vif,
 			continue;
 
 		link_sta = link_sta_dereference_protected(sta, link_id);
-		if (!link_sta)
+		if (!link_sta || link_sta->link_conf != link_conf)
 			continue;
 
 		mld_link_sta = iwl_mld_link_sta_dereference_check(mld_sta,
@@ -873,7 +873,8 @@ void iwl_mld_config_tlc(struct iwl_mld *mld, struct ieee80211_vif *vif,
 		struct ieee80211_link_sta *link_sta =
 			link_sta_dereference_check(sta, link_id);
 
-		if (!link || !link_sta)
+		/* during SMD transition, the STA might be on the other links */
+		if (!link || !link_sta || link_sta->link_conf != link)
 			continue;
 
 		iwl_mld_config_tlc_link(mld, vif, link, link_sta);
@@ -927,9 +928,7 @@ iwl_mld_get_amsdu_size_of_tid(struct iwl_mld *mld,
 	if (hweight16(sta->valid_links) <= 1 &&
 	    vif->type != NL80211_IFTYPE_NAN_DATA) {
 		enum nl80211_band band;
-		struct ieee80211_bss_conf *link =
-			wiphy_dereference(mld->wiphy,
-					  vif->link_conf[link_sta->link_id]);
+		struct ieee80211_bss_conf *link = link_sta->link_conf;
 
 		if (WARN_ON(!link || !link->chanreq.oper.chan))
 			band = NL80211_BAND_2GHZ;

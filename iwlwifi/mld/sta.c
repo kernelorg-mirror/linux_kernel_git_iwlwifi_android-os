@@ -446,6 +446,20 @@ static u32 iwl_mld_get_nan_link_mask(struct iwl_mld *mld)
 	return link_mask;
 }
 
+static int iwl_mld_link_conf_to_fw_id(struct iwl_mld *mld,
+				      struct ieee80211_bss_conf *link_conf)
+{
+	if (WARN_ON(!link_conf))
+		return -EINVAL;
+
+	for (int i = 0; i < ARRAY_SIZE(mld->fw_id_to_bss_conf); i++) {
+		if (rcu_access_pointer(mld->fw_id_to_bss_conf[i]) == link_conf)
+			return i;
+	}
+
+	return -ENOENT;
+}
+
 int iwl_mld_add_modify_sta_cmd(struct iwl_mld *mld,
 			      struct ieee80211_link_sta *link_sta)
 {
@@ -470,17 +484,13 @@ int iwl_mld_add_modify_sta_cmd(struct iwl_mld *mld,
 
 		link_mask = iwl_mld_get_nan_link_mask(mld);
 	} else {
-		struct ieee80211_bss_conf *link;
-		struct iwl_mld_link *mld_link;
+		struct ieee80211_bss_conf *link = link_sta->link_conf;
+		int fw_link_id = iwl_mld_link_conf_to_fw_id(mld, link);
 
-		link = link_conf_dereference_protected(mld_sta->vif,
-						       link_sta->link_id);
-		mld_link = iwl_mld_link_from_mac80211(link);
-
-		if (WARN_ON(!link || !mld_link))
+		if (WARN_ON(fw_link_id < 0))
 			return -EINVAL;
 
-		link_mask = BIT(mld_link->fw_id);
+		link_mask = BIT(fw_link_id);
 		is_6ghz = link->chanreq.oper.chan->band == NL80211_BAND_6GHZ;
 	}
 
@@ -969,7 +979,7 @@ static void iwl_mld_count_mpdu(struct ieee80211_link_sta *link_sta, int queue,
 		return;
 
 	mld_vif = iwl_mld_vif_from_mac80211(mld_sta->vif);
-	mld_link = iwl_mld_link_dereference_check(mld_vif, link_sta->link_id);
+	mld_link = iwl_mld_link_from_mac80211(link_sta->link_conf);
 
 	if (WARN_ON_ONCE(!mld_link))
 		return;

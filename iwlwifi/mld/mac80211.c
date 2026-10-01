@@ -1876,12 +1876,11 @@ static void iwl_mld_link_set_2mhz_block(struct iwl_mld *mld,
 	unsigned int link_id;
 
 	for_each_sta_active_link(sta, link_sta, link_id) {
-		struct ieee80211_bss_conf *link_conf =
-			link_conf_dereference_protected(vif, link_id);
+		struct ieee80211_bss_conf *link_conf = link_sta->link_conf;
 		struct iwl_mld_link *mld_link =
 			iwl_mld_link_from_mac80211(link_conf);
 
-		if (WARN_ON(!link_conf || !mld_link))
+		if (WARN_ON(!mld_link))
 			continue;
 
 		if (link_sta->he_cap.has_he)
@@ -2241,15 +2240,8 @@ static void iwl_mld_sta_rc_update(struct ieee80211_hw *hw,
 
 	if (changed & (IEEE80211_RC_BW_CHANGED |
 		       IEEE80211_RC_SUPP_RATES_CHANGED |
-		       IEEE80211_RC_NSS_CHANGED)) {
-		struct ieee80211_bss_conf *link =
-			link_conf_dereference_check(vif, link_sta->link_id);
-
-		if (WARN_ON(!link))
-			return;
-
-		iwl_mld_config_tlc_link(mld, vif, link, link_sta);
-	}
+		       IEEE80211_RC_NSS_CHANGED))
+		iwl_mld_config_tlc_link(mld, vif, link_sta->link_conf, link_sta);
 }
 
 #ifdef CONFIG_PM_SLEEP
