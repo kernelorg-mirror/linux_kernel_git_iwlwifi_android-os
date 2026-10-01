@@ -756,6 +756,11 @@ struct iwl_scd_queue_cfg_cmd {
  * @IWL_SEC_KEY_FLAG_SPP_AMSDU: SPP A-MSDU should be used
  * @IWL_SEC_KEY_FLAG_CTRL_FRAME: key is used for CIP
  * @IWL_SEC_KEY_FLAG_ASSOC_ENC: use this key for (Re)Assoc Req/Resp encryption
+ * @IWL_SEC_KEY_FLAG_SMD_CONT_PN: (add only, version 2) continue the PN of the
+ *	existing key with the same key ID (SMD transition), in this case the
+ *	station mask must have both old and new station (but the old isn't
+ *	actually persisted), the key will be copied and the old one must be
+ *	removed later
  */
 enum iwl_sec_key_flags {
 	IWL_SEC_KEY_FLAG_CIPHER_MASK	= 0x07,
@@ -770,6 +775,7 @@ enum iwl_sec_key_flags {
 	IWL_SEC_KEY_FLAG_SPP_AMSDU	= 0x80,
 	IWL_SEC_KEY_FLAG_CTRL_FRAME	= 0x100,
 	IWL_SEC_KEY_FLAG_ASSOC_ENC	= 0x200,
+	IWL_SEC_KEY_FLAG_SMD_CONT_PN	= 0x800,
 };
 
 #define IWL_SEC_WEP_KEY_OFFSET	3
@@ -806,19 +812,19 @@ struct iwl_sec_key_cmd {
 			u8 tkip_mic_tx_key[8];
 			__le64 rx_seq;
 			__le64 tx_seq;
-		} __packed add; /* SEC_KEY_ADD_CMD_API_S_VER_1 */
+		} __packed add; /* SEC_KEY_ADD_CMD_API_S_VER_1, _VER_2 */
 		struct {
 			__le32 old_sta_mask;
 			__le32 new_sta_mask;
 			__le32 key_id;
 			__le32 key_flags;
-		} __packed modify; /* SEC_KEY_MODIFY_CMD_API_S_VER_1 */
+		} __packed modify; /* SEC_KEY_MODIFY_CMD_API_S_VER_1, _VER_2 */
 		struct {
 			__le32 sta_mask;
 			__le32 key_id;
 			__le32 key_flags;
-		} __packed remove; /* SEC_KEY_REMOVE_CMD_API_S_VER_1 */
-	} __packed u; /* SEC_KEY_OPERATION_API_U_VER_1 */
-} __packed; /* SEC_KEY_CMD_API_S_VER_1 */
+		} __packed remove; /* SEC_KEY_REMOVE_CMD_API_S_VER_1, _VER_2 */
+	} __packed u; /* SEC_KEY_OPERATION_API_U_VER_1, _VER_2 */
+} __packed; /* SEC_KEY_CMD_API_S_VER_1, _VER_2 */
 
 #endif /* __iwl_fw_api_datapath_h__ */
