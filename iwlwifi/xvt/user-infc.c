@@ -2038,6 +2038,9 @@ static int iwl_xvt_modify_txq(struct iwl_xvt *xvt, u32 tid,
 		.u.modify.tid = cpu_to_le32(tid),
 		.u.modify.old_sta_mask = cpu_to_le32(old_sta_mask),
 		.u.modify.new_sta_mask = cpu_to_le32(new_sta_mask),
+		/* set always, this used to be ignored union padding */
+		.u.modify.flags =
+			cpu_to_le16(IWL_SCD_QUEUE_MODIFY_FLAG_STA_MSK),
 	};
 
 	return iwl_xvt_send_cmd_pdu(xvt, new_cmd_id, 0,
