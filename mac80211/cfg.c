@@ -853,7 +853,8 @@ static int ieee80211_get_key(struct wiphy *wiphy, struct wireless_dev *wdev,
 		iv16 = TKIP_PN_TO_IV16(pn64);
 
 		if (key->flags & KEY_FLAG_UPLOADED_TO_HARDWARE &&
-		    !(key->conf.flags & IEEE80211_KEY_FLAG_GENERATE_IV)) {
+		    !(key->conf.flags & IEEE80211_KEY_FLAG_GENERATE_IV) &&
+		    sdata->local->ops->get_key_seq) {
 			drv_get_key_seq(sdata->local, key, &kseq);
 			iv32 = kseq.tkip.iv32;
 			iv16 = kseq.tkip.iv16;
@@ -886,7 +887,8 @@ static int ieee80211_get_key(struct wiphy *wiphy, struct wireless_dev *wdev,
 			     offsetof(typeof(kseq), gcmp));
 
 		if (key->flags & KEY_FLAG_UPLOADED_TO_HARDWARE &&
-		    !(key->conf.flags & IEEE80211_KEY_FLAG_GENERATE_IV)) {
+		    !(key->conf.flags & IEEE80211_KEY_FLAG_GENERATE_IV) &&
+		    sdata->local->ops->get_key_seq) {
 			drv_get_key_seq(sdata->local, key, &kseq);
 			memcpy(seq, kseq.ccmp.pn, 6);
 		} else {
