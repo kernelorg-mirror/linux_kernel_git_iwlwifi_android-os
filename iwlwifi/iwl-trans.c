@@ -481,7 +481,6 @@ int iwl_trans_poll_bits_mask(struct iwl_trans *trans, u32 addr,
 			     u32 bits, u32 mask, int timeout)
 {
 	might_sleep_if(!trans->info.atomic_nic_access);
-
 	if (WARN_ON_ONCE(!trans->ops->poll_bits_mask))
 		return -EOPNOTSUPP;
 	return trans->ops->poll_bits_mask(trans, addr, bits, mask, timeout);
