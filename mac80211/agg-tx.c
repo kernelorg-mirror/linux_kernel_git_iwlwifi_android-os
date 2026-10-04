@@ -928,7 +928,7 @@ void ieee80211_stop_tx_ba_cb(struct sta_info *sta, int tid,
 			     struct tid_ampdu_tx *tid_tx)
 {
 	struct ieee80211_sub_if_data *sdata = sta->sdata;
-	bool ndp = ndp = tid_tx->ndp;
+	bool ndp = tid_tx->ndp;
 	bool send_delba = false;
 	bool start_txq = false;
 
