@@ -2756,6 +2756,23 @@ void iwl_trans_pcie_set_bits_mask(struct iwl_trans *trans, u32 reg,
 	spin_unlock_bh(&trans_pcie->reg_lock);
 }
 
+#define IWL_POLL_INTERVAL 10	/* microseconds */
+
+static int iwl_trans_pcie_poll_bits_mask(struct iwl_trans *trans, u32 addr,
+					 u32 bits, u32 mask, int timeout)
+{
+	int t = 0;
+
+	do {
+		if ((iwl_trans_pcie_read32(trans, addr) & mask) == (bits & mask))
+			return 0;
+		udelay(IWL_POLL_INTERVAL);
+		t += IWL_POLL_INTERVAL;
+	} while (t < timeout);
+
+	return -ETIMEDOUT;
+}
+
 static const char *get_csr_string(int cmd)
 {
 #define IWL_CMD(x) case x: return #x
@@ -3748,6 +3765,7 @@ const struct iwl_trans_ops iwl_trans_pcie_ops = {
 	.read_mem = iwl_trans_pcie_read_mem,
 	.read_mem_no_grab = iwl_trans_pcie_read_mem_no_grab,
 	.set_bits_mask = iwl_trans_pcie_set_bits_mask,
+	.poll_bits_mask = iwl_trans_pcie_poll_bits_mask,
 	.read_config32 = iwl_trans_pcie_read_config32,
 	.grab_nic_access = iwl_trans_pcie_grab_nic_access,
 	.release_nic_access = iwl_trans_pcie_release_nic_access,
