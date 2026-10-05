@@ -235,9 +235,7 @@ static struct iwl_op_mode *iwl_xvt_start(struct iwl_trans *trans,
 	trans->conf.scd_set_active = true;
 	trans->conf.wide_cmd_header = true;
 
-#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
 	trans->conf.fseq_img = &fw->fseq;
-#endif
 
 	trans->conf.rx_buf_size = iwl_amsdu_size_to_rxb_size();
 

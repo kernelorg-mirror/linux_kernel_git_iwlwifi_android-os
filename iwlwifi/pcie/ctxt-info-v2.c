@@ -98,7 +98,6 @@ out:
 		*control_flags |= IWL_PRPH_SCRATCH_EARLY_DEBUG_EN | dbg_flags;
 }
 
-#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
 static void iwl_trans_pcie_free_fseq(struct iwl_trans *trans,
 				     struct iwl_prph_scratch *prph_scratch)
 {
@@ -157,7 +156,6 @@ static int iwl_trans_pcie_set_fseq(struct iwl_trans *trans,
 
 	return 0;
 }
-#endif
 
 int iwl_pcie_ctxt_info_v2_alloc(struct iwl_trans *trans,
 				const struct iwl_fw *fw,
@@ -261,9 +259,6 @@ int iwl_pcie_ctxt_info_v2_alloc(struct iwl_trans *trans,
 	iwl_pcie_ctxt_info_dbg_enable(trans, &prph_sc_ctrl->hwm_cfg,
 				      &control_flags);
 	prph_sc_ctrl->control.control_flags = cpu_to_le32(control_flags);
-#ifndef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
-	prph_sc_ctrl->control.control_flags_ext = cpu_to_le32(control_flags_ext);
-#endif
 
 	/* initialize the Step equalizer data */
 	prph_sc_ctrl->step_cfg.mbx_addr_0 =
@@ -276,7 +271,6 @@ int iwl_pcie_ctxt_info_v2_alloc(struct iwl_trans *trans,
 	if (ret)
 		goto err_free_prph_scratch;
 
-#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
 	if (trans->conf.fseq_img && trans->conf.fseq_img->num_sec) {
 		ret = iwl_trans_pcie_set_fseq(trans, trans->conf.fseq_img,
 					      prph_scratch);
@@ -287,7 +281,6 @@ int iwl_pcie_ctxt_info_v2_alloc(struct iwl_trans *trans,
 	}
 
 	prph_sc_ctrl->control.control_flags_ext = cpu_to_le32(control_flags_ext);
-#endif
 
 	/* Allocate prph information
 	 * currently we don't assign to the prph info anything, but it would get
@@ -384,9 +377,7 @@ err_free_prph_info:
 	trans_pcie->prph_info = NULL;
 
 err_free_prph_scratch:
-#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
 	iwl_trans_pcie_free_fseq(trans, prph_scratch);
-#endif
 	dma_free_coherent(trans->dev,
 			  sizeof(*prph_scratch),
 			prph_scratch,
@@ -427,10 +418,8 @@ void iwl_pcie_ctxt_info_v2_free(struct iwl_trans *trans, bool alive)
 
 	iwl_pcie_ctxt_info_free_fw_img(trans);
 
-#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
 	/* free the FSEQ image, no longer needed after alive */
 	iwl_trans_pcie_free_fseq(trans, trans_pcie->prph_scratch);
-#endif
 
 	if (alive)
 		return;

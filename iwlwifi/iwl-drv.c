@@ -20,11 +20,11 @@
 #include "iwl-dbg-tlv.h"
 #include "iwl-config.h"
 #include "iwl-modparams.h"
+#include "iwl-prph.h"
 #include "fw/api/alive.h"
 #include "fw/api/mac.h"
 #include "fw/api/mac-cfg.h"
 #ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
-#include "iwl-prph.h"
 #include "iwl-dbg-cfg.h"
 #endif
 #ifdef CPTCFG_IWLWIFI_DEVICE_TESTMODE
@@ -411,9 +411,7 @@ static void iwl_dealloc_ucode(struct iwl_drv *drv)
 
 	for (i = 0; i < IWL_UCODE_TYPE_MAX; i++)
 		iwl_free_fw_img(drv, drv->fw.img + i);
-#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
 	iwl_free_fw_img(drv, &drv->fw.fseq);
-#endif
 
 	/* clear the data for the aborted load case */
 	memset(&drv->fw, 0, sizeof(drv->fw));
@@ -725,11 +723,9 @@ struct iwl_firmware_pieces {
 	size_t dbg_trigger_tlv_len[FW_DBG_TRIGGER_MAX];
 	struct iwl_fw_dbg_mem_seg_tlv *dbg_mem_tlv;
 	size_t n_mem_tlv;
-#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
 	struct {
 		u32 major, minor;
 	} fseq_ver;
-#endif
 };
 
 static void alloc_sec_data(struct iwl_firmware_pieces *pieces,
@@ -1655,7 +1651,6 @@ fw_dbg_conf:
 				       fseq_ver->version, fseq_ver->sha1);
 			}
 			break;
-#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
 		case IWL_UCODE_TLV_FSEQ_BIN_VERSION:
 			if (tlv_len == sizeof(struct iwl_fw_fseq_bin_version_v1)) {
 				const struct iwl_fw_fseq_bin_version_v1 *fseq;
@@ -1679,7 +1674,6 @@ fw_dbg_conf:
 				goto invalid_tlv_len;
 			}
 			break;
-#endif
 		case IWL_UCODE_TLV_FW_NUM_STATIONS:
 			if (tlv_len != sizeof(u32))
 				goto invalid_tlv_len;
@@ -2033,7 +2027,7 @@ static int iwl_drv_load_fseq_image(struct iwl_trans *trans, struct iwl_fw *fw,
 	scnprintf(filename, sizeof(filename), IWL_FSEQ_FILE,
 		  FSEQ_ID(cnvi_id), FSEQ_ID(cnvr_id));
 
-	if (request_firmware(&fseq_fw, filename, trans->dev))
+	if (firmware_request_nowarn(&fseq_fw, filename, trans->dev))
 		return 0;
 
 	if (fseq_fw->size < sizeof(*fseq)) {

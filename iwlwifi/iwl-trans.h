@@ -445,12 +445,10 @@ struct iwl_trans_config {
 	u32 mbx_addr_0_step;
 	u32 mbx_addr_1_step;
 
-#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
 	/**
 	 * @fseq_img: external FSEQ image
 	 */
 	const struct fw_img *fseq_img;
-#endif
 };
 
 struct iwl_trans_dump_data {

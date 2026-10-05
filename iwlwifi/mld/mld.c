@@ -424,9 +424,7 @@ iwl_mld_configure_trans(struct iwl_op_mode *op_mode)
 				      0);
 	trans->conf.cb_data_offs = offsetof(struct ieee80211_tx_info,
 					    driver_data[2]);
-#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
 	trans->conf.fseq_img = &mld->fw->fseq;
-#endif
 	BUILD_BUG_ON(sizeof(no_reclaim_cmds) >
 		     sizeof(trans->conf.no_reclaim_cmds));
 	memcpy(trans->conf.no_reclaim_cmds, no_reclaim_cmds,

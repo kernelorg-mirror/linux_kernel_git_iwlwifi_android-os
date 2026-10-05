@@ -519,7 +519,6 @@ struct iwl_trans_pcie {
 	struct iwl_dram_regions pnvm_data;
 	struct iwl_dram_regions reduced_tables_data;
 
-#ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
 	/**
 	 * @fseq: allocated FSEQ image sections, if applicable
 	 */
@@ -528,7 +527,6 @@ struct iwl_trans_pcie {
 	 * @fseq_count: number of allocated FSEQ image sections
 	 */
 	int fseq_count;
-#endif
 
 	struct iwl_txq *txq_memory;
 
