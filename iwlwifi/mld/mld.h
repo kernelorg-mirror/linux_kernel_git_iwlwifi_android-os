@@ -103,6 +103,40 @@
 #define IWL_MLD_MAX_ADDRESSES		5
 
 /**
+ * struct iwl_mld_monitor - monitor related data
+ *
+ * @on: does a monitor vif exist (singleton hence bool)
+ * @ampdu_ref: the id of the A-MPDU for sniffer
+ * @ampdu_toggle: the state of the previous packet to track A-MPDU
+ * @p80: primary channel position relative to he whole bandwidth, in
+ *	steps of 80 MHz
+ * @phy: PHY data information
+ * @phy.data: PHY data (&struct iwl_rx_phy_air_sniffer_ntfy) received
+ * @phy.valid: PHY data is valid (was received)
+ * @phy.used: PHY data was used by an RX
+ * @cur_aid: current association id tracked by the sniffer
+ * @cur_bssid: current bssid tracked by the sniffer
+ * @ptp_time: set the Rx mactime using the device's PTP clock time
+ */
+struct iwl_mld_monitor {
+	struct_group(zeroed_on_hw_restart,
+		bool on;
+		u32 ampdu_ref;
+		bool ampdu_toggle;
+		u8 p80;
+		struct {
+			struct iwl_rx_phy_air_sniffer_ntfy data;
+			u8 valid:1, used:1;
+		} phy;
+	);
+#ifdef CPTCFG_IWLWIFI_DEBUGFS
+	__le16 cur_aid;
+	u8 cur_bssid[ETH_ALEN];
+	bool ptp_time;
+#endif
+};
+
+/**
  * struct iwl_mld - MLD op mode
  *
  * @fw_id_to_bss_conf: maps a fw id of a link to the corresponding
@@ -114,19 +148,7 @@
  * @used_phy_ids: a bitmap of the phy IDs used. If a bit is set, it means
  *	that the index of this bit is already used as a PHY id.
  * @num_igtks: the number if iGTKs that were sent to the FW.
- * @monitor: monitor related data
- * @monitor.on: does a monitor vif exist (singleton hence bool)
- * @monitor.ampdu_ref: the id of the A-MPDU for sniffer
- * @monitor.ampdu_toggle: the state of the previous packet to track A-MPDU
- * @monitor.cur_aid: current association id tracked by the sniffer
- * @monitor.cur_bssid: current bssid tracked by the sniffer
- * @monitor.ptp_time: set the Rx mactime using the device's PTP clock time
- * @monitor.p80: primary channel position relative to he whole bandwidth, in
- *	steps of 80 MHz
- * @monitor.phy: PHY data information
- * @monitor.phy.data: PHY data (&struct iwl_rx_phy_air_sniffer_ntfy) received
- * @monitor.phy.valid: PHY data is valid (was received)
- * @monitor.phy.used: PHY data was used by an RX
+ * @monitor: monitor related data (&struct iwl_mld_monitor)
  * @fw_id_to_link_sta: maps a fw id of a sta to the corresponding
  *	ieee80211_link_sta. This is not cleaned up on restart since we want to
  *	preserve the fw sta ids during a restart (for SN/PN restoring).
@@ -214,21 +236,6 @@ struct iwl_mld {
 		struct ieee80211_txq __rcu *fw_id_to_txq[IWL_MAX_TVQM_QUEUES];
 		u8 used_phy_ids: NUM_PHY_CTX;
 		u8 num_igtks;
-		struct {
-			bool on;
-			u32 ampdu_ref;
-			bool ampdu_toggle;
-			u8 p80;
-			struct {
-				struct iwl_rx_phy_air_sniffer_ntfy data;
-				u8 valid:1, used:1;
-			} phy;
-#ifdef CPTCFG_IWLWIFI_DEBUGFS
-			__le16 cur_aid;
-			u8 cur_bssid[ETH_ALEN];
-			bool ptp_time;
-#endif
-		} monitor;
 #ifdef CONFIG_PM_SLEEP
 		bool netdetect;
 #endif /* CONFIG_PM_SLEEP */
@@ -236,6 +243,7 @@ struct iwl_mld {
 		bool bt_is_active;
 		struct ieee80211_vif *nan_device_vif;
 	);
+	struct iwl_mld_monitor monitor;
 	struct ieee80211_link_sta __rcu *fw_id_to_link_sta[IWL_STATION_COUNT_MAX];
 	/* And here fields that survive a fw restart */
 	struct device *dev;
@@ -360,6 +368,7 @@ iwl_cleanup_mld(struct iwl_mld *mld)
 {
 	CLEANUP_STRUCT(mld);
 	CLEANUP_STRUCT(&mld->scan);
+	CLEANUP_STRUCT(&mld->monitor);
 
 	iwl_mld_cleanup_rfi(mld);
 

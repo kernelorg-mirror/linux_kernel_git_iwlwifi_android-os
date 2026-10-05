@@ -1284,6 +1284,52 @@ static void iwl_mld_link_set_2mhz_block(struct iwl_mld *mld,
 		iwl_mld_check_he_obss_narrow_bw_ru(mld, link_conf);
 }
 
+#ifdef CPTCFG_IWLWIFI_DEBUGFS
+static void iwl_mld_reconfig_sniffer(struct iwl_mld *mld)
+{
+	struct iwl_he_monitor_cmd he_mon_cmd = {};
+	int ret;
+
+	if (!mld->monitor.cur_aid &&
+	    is_zero_ether_addr(mld->monitor.cur_bssid))
+		return;
+
+	he_mon_cmd.aid = mld->monitor.cur_aid;
+	memcpy(he_mon_cmd.bssid, mld->monitor.cur_bssid, ETH_ALEN);
+
+	ret = iwl_mld_send_cmd_pdu(mld,
+				   WIDE_ID(DATA_PATH_GROUP,
+					   HE_AIR_SNIFFER_CONFIG_CMD),
+				   &he_mon_cmd);
+	if (ret)
+		IWL_ERR(mld, "failed to reconfigure sniffer (%d)\n", ret);
+}
+#else
+static void iwl_mld_reconfig_sniffer(struct iwl_mld *mld)
+{
+}
+#endif
+
+static int iwl_mld_setup_monitor_link(struct iwl_mld *mld,
+				     struct ieee80211_vif *vif,
+				     struct ieee80211_bss_conf *link)
+{
+	int ret;
+
+	ret = iwl_mld_add_mon_sta(mld, vif, link);
+	if (ret)
+		return ret;
+
+	mld->monitor.p80 =
+		iwl_mld_chandef_get_primary_80(&vif->bss_conf.chanreq.oper);
+
+	/* the FW needs the monitor link to be activated for this */
+	if (mld->fw_status.in_hw_restart)
+		iwl_mld_reconfig_sniffer(mld);
+
+	return 0;
+}
+
 static
 int iwl_mld_assign_vif_chanctx(struct ieee80211_hw *hw,
 			       struct ieee80211_vif *vif,
@@ -1384,12 +1430,9 @@ int iwl_mld_assign_vif_chanctx(struct ieee80211_hw *hw,
 	}
 
 	if (vif->type == NL80211_IFTYPE_MONITOR) {
-		ret = iwl_mld_add_mon_sta(mld, vif, link);
+		ret = iwl_mld_setup_monitor_link(mld, vif, link);
 		if (ret)
 			goto deactivate_link;
-
-		mld->monitor.p80 =
-			iwl_mld_chandef_get_primary_80(&vif->bss_conf.chanreq.oper);
 	}
 
 #ifdef CPTCFG_IWL_VENDOR_CMDS
