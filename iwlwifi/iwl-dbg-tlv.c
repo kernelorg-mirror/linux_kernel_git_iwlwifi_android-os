@@ -1272,7 +1272,7 @@ static bool iwl_dbg_tlv_check_fw_pkt(struct iwl_fw_runtime *fwrt,
 }
 
 static int
-iwl_dbg_tlv_tp_trigger(struct iwl_fw_runtime *fwrt, bool sync,
+iwl_dbg_tlv_tp_trigger(struct iwl_fw_runtime *fwrt, bool sync_dump,
 		       struct list_head *active_trig_list,
 		       union iwl_dbg_tlv_tp_data *tp_data,
 		       bool (*data_check)(struct iwl_fw_runtime *fwrt,
@@ -1293,7 +1293,8 @@ iwl_dbg_tlv_tp_trigger(struct iwl_fw_runtime *fwrt, bool sync,
 
 
 		if (!num_data) {
-			ret = iwl_fw_dbg_ini_collect(fwrt, &dump_data, sync);
+			ret = iwl_fw_dbg_ini_collect(fwrt, &dump_data,
+						     sync_dump);
 			if (ret)
 				return ret;
 		}
@@ -1302,7 +1303,8 @@ iwl_dbg_tlv_tp_trigger(struct iwl_fw_runtime *fwrt, bool sync,
 			if (!data_check ||
 			    data_check(fwrt, &dump_data, tp_data,
 				       le32_to_cpu(dump_data.trig->data[i]))) {
-				ret = iwl_fw_dbg_ini_collect(fwrt, &dump_data, sync);
+				ret = iwl_fw_dbg_ini_collect(fwrt, &dump_data,
+							     sync_dump);
 				if (ret)
 					return ret;
 
@@ -1427,7 +1429,7 @@ void iwl_dbg_tlv_init_cfg(struct iwl_fw_runtime *fwrt)
 void _iwl_dbg_tlv_time_point(struct iwl_fw_runtime *fwrt,
 			     enum iwl_fw_ini_time_point tp_id,
 			     union iwl_dbg_tlv_tp_data *tp_data,
-			     bool sync)
+			     bool sync_dump)
 {
 	struct list_head *hcmd_list, *trig_list, *conf_list;
 
@@ -1444,13 +1446,15 @@ void _iwl_dbg_tlv_time_point(struct iwl_fw_runtime *fwrt,
 	case IWL_FW_INI_TIME_POINT_EARLY:
 		iwl_dbg_tlv_init_cfg(fwrt);
 		iwl_dbg_tlv_update_drams(fwrt);
-		iwl_dbg_tlv_tp_trigger(fwrt, sync, trig_list, tp_data, NULL);
+		iwl_dbg_tlv_tp_trigger(fwrt, sync_dump, trig_list, tp_data,
+				       NULL);
 		iwl_dbg_tlv_apply_config(fwrt, conf_list);
 		break;
 	case IWL_FW_INI_TIME_POINT_AFTER_ALIVE:
 		iwl_dbg_tlv_apply_buffers(fwrt);
 		iwl_dbg_tlv_send_hcmds(fwrt, hcmd_list);
-		iwl_dbg_tlv_tp_trigger(fwrt, sync, trig_list, tp_data, NULL);
+		iwl_dbg_tlv_tp_trigger(fwrt, sync_dump, trig_list, tp_data,
+				       NULL);
 		iwl_dbg_tlv_apply_config(fwrt, conf_list);
 		break;
 	case IWL_FW_INI_TIME_POINT_PERIODIC:
@@ -1461,13 +1465,14 @@ void _iwl_dbg_tlv_time_point(struct iwl_fw_runtime *fwrt,
 	case IWL_FW_INI_TIME_POINT_MISSED_BEACONS:
 	case IWL_FW_INI_TIME_POINT_FW_DHC_NOTIFICATION:
 		iwl_dbg_tlv_send_hcmds(fwrt, hcmd_list);
-		iwl_dbg_tlv_tp_trigger(fwrt, sync, trig_list, tp_data,
+		iwl_dbg_tlv_tp_trigger(fwrt, sync_dump, trig_list, tp_data,
 				       iwl_dbg_tlv_check_fw_pkt);
 		iwl_dbg_tlv_apply_config(fwrt, conf_list);
 		break;
 	default:
 		iwl_dbg_tlv_send_hcmds(fwrt, hcmd_list);
-		iwl_dbg_tlv_tp_trigger(fwrt, sync, trig_list, tp_data, NULL);
+		iwl_dbg_tlv_tp_trigger(fwrt, sync_dump, trig_list, tp_data,
+				       NULL);
 		iwl_dbg_tlv_apply_config(fwrt, conf_list);
 		break;
 	}
