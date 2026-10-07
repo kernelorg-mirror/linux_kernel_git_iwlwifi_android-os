@@ -610,6 +610,37 @@ static int ieee80211_set_tx(struct ieee80211_sub_if_data *sdata,
 	return ret;
 }
 
+/* normally this is in cfg80211 - copied */
+static const u8 *
+get_key_mac_addr(struct wireless_dev *wdev, u32 cipher, bool pairwise,
+		 const u8 *mac_addr) {
+	struct ieee80211_sub_if_data *sdata = IEEE80211_WDEV_TO_SUB_IF(wdev);
+
+	if (pairwise || mac_addr)
+		return mac_addr;
+
+	if (wdev->iftype != NL80211_IFTYPE_STATION && wdev->iftype != NL80211_IFTYPE_P2P_CLIENT)
+		return NULL;
+
+	/*
+	 * For client side, historically the RX B/I/GTKs were set for
+	 * the AP without a MAC address parameter, just for the current
+	 * AP. With WIPHY_FLAG_CLIENT_AP_STA_GTK this has changed, and
+	 * B/I/GTK is set for RX just like other types of interfaces,
+	 * with the AP (MLD) address (for MLO the link ID was already
+	 * required.)
+	 *
+	 * For WEP, however, the address is still (required to be) NULL
+	 * since WEP keys are used for both TX and RX.
+	 */
+
+	if (!wdev->connected)
+		return NULL;
+	if (cipher == WLAN_CIPHER_SUITE_WEP40 || cipher == WLAN_CIPHER_SUITE_WEP104 || sdata->u.mgd.wep_used)
+		return NULL;
+	return wdev->u.client.connected_addr;
+}
+
 static int ieee80211_add_key(struct wiphy *wiphy, struct wireless_dev *wdev,
 			     int link_id, u8 key_idx,
 			     bool pairwise,
@@ -623,6 +654,8 @@ static int ieee80211_add_key(struct wiphy *wiphy, struct wireless_dev *wdev,
 	struct sta_info *sta = NULL;
 	struct ieee80211_key *key;
 	int err;
+
+	mac_addr = get_key_mac_addr(wdev, params->cipher, pairwise, mac_addr);
 
 	lockdep_assert_wiphy(local->hw.wiphy);
 
@@ -742,6 +775,8 @@ static int ieee80211_add_key(struct wiphy *wiphy, struct wireless_dev *wdev,
 	if (err == -EALREADY)
 		err = 0;
 
+	if (!err && sdata->vif.type == NL80211_IFTYPE_STATION && (params->cipher == WLAN_CIPHER_SUITE_WEP40 || params->cipher == WLAN_CIPHER_SUITE_WEP104))
+		sdata->u.mgd.wep_used = true;
 	return err;
 }
 
@@ -761,6 +796,7 @@ ieee80211_lookup_key(struct ieee80211_sub_if_data *sdata, int link_id,
 			return NULL;
 	}
 
+	mac_addr = get_key_mac_addr(&sdata->wdev, 0, pairwise, mac_addr);
 	if (mac_addr) {
 		struct sta_info *sta;
 		struct link_sta_info *link_sta;
