@@ -173,11 +173,13 @@ static void iwl_mld_ptp_work(struct work_struct *wk)
 	struct ptp_data *data = &mld->ptp_data;
 	u32 gp2;
 
-	spin_lock_bh(&data->lock);
-	if (!iwl_mld_get_systime(mld, &gp2))
-		iwl_mld_ptp_update_new_read(mld, gp2);
-	else
+	if (iwl_mld_get_systime(mld, &gp2)) {
 		IWL_DEBUG_PTP(mld, "PTP work: failed to read GP2\n");
+		return;
+	}
+
+	spin_lock_bh(&data->lock);
+	iwl_mld_ptp_update_new_read(mld, gp2);
 	spin_unlock_bh(&data->lock);
 }
 
