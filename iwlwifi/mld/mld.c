@@ -758,14 +758,9 @@ iwl_mld_nic_error(struct iwl_op_mode *op_mode,
 		  enum iwl_fw_error_type type)
 {
 	struct iwl_mld *mld = IWL_OP_MODE_GET_MLD(op_mode);
-	bool trans_dead = iwl_trans_is_dead(mld->trans);
 
 	if (type == IWL_ERR_TYPE_CMD_QUEUE_FULL)
 		IWL_ERR(mld, "Command queue full!\n");
-	else if (!trans_dead && !mld->fw_status.do_not_dump_once)
-		iwl_fwrt_dump_error_logs(&mld->fwrt);
-
-	mld->fw_status.do_not_dump_once = false;
 
 	/* It is necessary to abort any os scan here because mac80211 requires
 	 * having the scan cleared before restarting.
@@ -796,6 +791,17 @@ iwl_mld_nic_error(struct iwl_op_mode *op_mode,
 	iwl_mld_cancel_async_notifications(mld);
 }
 
+static void iwl_mld_dump_error_logs(struct iwl_mld *mld,
+				    enum iwl_fw_error_type type)
+{
+	if (type != IWL_ERR_TYPE_CMD_QUEUE_FULL &&
+	    !iwl_trans_is_dead(mld->trans) &&
+	    !mld->fw_status.do_not_dump_once)
+		iwl_fwrt_dump_error_logs(&mld->fwrt);
+
+	mld->fw_status.do_not_dump_once = false;
+}
+
 static void iwl_mld_dump_error(struct iwl_op_mode *op_mode,
 			       struct iwl_fw_error_dump_mode *mode)
 {
@@ -804,11 +810,14 @@ static void iwl_mld_dump_error(struct iwl_op_mode *op_mode,
 	/* if we come in from opmode we have the mutex held */
 	if (mode->context == IWL_ERR_CONTEXT_FROM_OPMODE) {
 		lockdep_assert_wiphy(mld->wiphy);
+		iwl_mld_dump_error_logs(mld, mode->type);
 		iwl_fw_error_collect(&mld->fwrt);
 	} else {
 		wiphy_lock(mld->wiphy);
-		if (mode->context != IWL_ERR_CONTEXT_ABORT)
+		if (mode->context != IWL_ERR_CONTEXT_ABORT) {
+			iwl_mld_dump_error_logs(mld, mode->type);
 			iwl_fw_error_collect(&mld->fwrt);
+		}
 		wiphy_unlock(mld->wiphy);
 	}
 }
