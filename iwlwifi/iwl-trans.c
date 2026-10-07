@@ -441,6 +441,8 @@ IWL_EXPORT_SYMBOL(iwl_trans_op_mode_leave);
 
 void iwl_trans_write32(struct iwl_trans *trans, u32 ofs, u32 val)
 {
+	might_sleep_if(!trans->info.atomic_nic_access);
+
 	if (WARN_ON_ONCE(!trans->ops->write32))
 		return;
 	trans->ops->write32(trans, ofs, val);
@@ -449,6 +451,8 @@ IWL_EXPORT_SYMBOL(iwl_trans_write32);
 
 u32 iwl_trans_read32(struct iwl_trans *trans, u32 ofs)
 {
+	might_sleep_if(!trans->info.atomic_nic_access);
+
 	if (WARN_ON_ONCE(!trans->ops->read32))
 		return 0;
 	return trans->ops->read32(trans, ofs);
@@ -457,6 +461,8 @@ IWL_EXPORT_SYMBOL(iwl_trans_read32);
 
 u32 iwl_trans_read_prph_no_grab(struct iwl_trans *trans, u32 ofs)
 {
+	might_sleep_if(!trans->info.atomic_nic_access);
+
 	if (WARN_ON_ONCE(!trans->ops->read_prph))
 		return 0;
 	return trans->ops->read_prph(trans, ofs);
@@ -464,6 +470,8 @@ u32 iwl_trans_read_prph_no_grab(struct iwl_trans *trans, u32 ofs)
 
 void iwl_trans_write_prph_no_grab(struct iwl_trans *trans, u32 ofs, u32 val)
 {
+	might_sleep_if(!trans->info.atomic_nic_access);
+
 	if (WARN_ON_ONCE(!trans->ops->write_prph))
 		return;
 	trans->ops->write_prph(trans, ofs, val);
@@ -472,6 +480,8 @@ void iwl_trans_write_prph_no_grab(struct iwl_trans *trans, u32 ofs, u32 val)
 int iwl_trans_poll_bits_mask(struct iwl_trans *trans, u32 addr,
 			     u32 bits, u32 mask, int timeout)
 {
+	might_sleep_if(!trans->info.atomic_nic_access);
+
 	if (WARN_ON_ONCE(!trans->ops->poll_bits_mask))
 		return -EOPNOTSUPP;
 	return trans->ops->poll_bits_mask(trans, addr, bits, mask, timeout);
@@ -568,6 +578,8 @@ IWL_EXPORT_SYMBOL(iwl_trans_force_nmi);
 int iwl_trans_read_mem(struct iwl_trans *trans, u32 addr,
 		       void *buf, int dwords)
 {
+	might_sleep_if(!trans->info.atomic_nic_access);
+
 	if (WARN_ON_ONCE(!trans->ops->read_mem))
 		return -EOPNOTSUPP;
 	return trans->ops->read_mem(trans, addr, buf, dwords);
@@ -577,6 +589,8 @@ IWL_EXPORT_SYMBOL(iwl_trans_read_mem);
 int iwl_trans_read_mem_no_grab(struct iwl_trans *trans, u32 addr,
 			       void *buf, u32 dwords)
 {
+	might_sleep_if(!trans->info.atomic_nic_access);
+
 	if (WARN_ON_ONCE(!trans->ops->read_mem_no_grab))
 		return -EOPNOTSUPP;
 	return trans->ops->read_mem_no_grab(trans, addr, buf, dwords);
@@ -587,6 +601,8 @@ int iwl_trans_write_mem(struct iwl_trans *trans, u32 addr,
 {
 	int offs, ret = 0;
 	const u32 *vals = buf;
+
+	might_sleep_if(!trans->info.atomic_nic_access);
 
 	if (iwl_trans_grab_nic_access(trans)) {
 		iwl_trans_write32(trans, HBUS_TARG_MEM_WADDR, addr);
@@ -666,6 +682,8 @@ int iwl_trans_write_imr_mem(struct iwl_trans *trans, u32 dst_addr,
 void iwl_trans_set_bits_mask(struct iwl_trans *trans, u32 reg,
 			     u32 mask, u32 value)
 {
+	might_sleep_if(!trans->info.atomic_nic_access);
+
 	if (WARN_ON_ONCE(!trans->ops->set_bits_mask))
 		return;
 	trans->ops->set_bits_mask(trans, reg, mask, value);
@@ -682,6 +700,8 @@ int iwl_trans_read_config32(struct iwl_trans *trans, u32 ofs,
 
 bool iwl_trans_grab_nic_access(struct iwl_trans *trans)
 {
+	might_sleep_if(!trans->info.atomic_nic_access);
+
 	if (WARN_ON_ONCE(!trans->ops->grab_nic_access))
 		return false;
 	if (!trans->ops->grab_nic_access(trans))
@@ -702,7 +722,10 @@ void iwl_trans_resched_with_nic_access(struct iwl_trans *trans)
 void iwl_trans_release_nic_access(struct iwl_trans *trans)
 	__releases(iwl_nic_access)
 {
+	might_sleep_if(!trans->info.atomic_nic_access);
+
 	__release(iwl_nic_access);
+
 	if (WARN_ON_ONCE(!trans->ops->release_nic_access))
 		return;
 	trans->ops->release_nic_access(trans);

@@ -731,6 +731,8 @@ struct iwl_cmd_meta {
  * @pcie_link_speed: current PCIe link speed (%PCI_EXP_LNKSTA_CLS_*),
  *	only valid for discrete (not integrated) NICs
  * @num_rxqs: number of RX queues allocated by the transport
+ * @atomic_nic_access: register and device memory access doesn't sleep, so
+ *	it may be done from atomic context
  */
 struct iwl_trans_info {
 	const char *name;
@@ -743,6 +745,7 @@ struct iwl_trans_info {
 	u32 hw_id;
 	u8 pcie_link_speed;
 	u8 num_rxqs;
+	bool atomic_nic_access;
 };
 
 struct iwl_trans_ops;

@@ -4249,6 +4249,7 @@ int _iwl_pci_probe(struct pci_dev *pdev, const struct pci_device_id *ent,
 	struct iwl_trans_info info = {
 		.hw_id = (pdev->device << 16) + pdev->subsystem_device,
 		.hw_rev = hw_rev,
+		.atomic_nic_access = true,
 	};
 	struct iwl_trans *iwl_trans;
 	struct iwl_trans_pcie *trans_pcie;
