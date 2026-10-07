@@ -347,8 +347,9 @@ static int iwl_dbg_tlv_config_set(struct iwl_trans *trans,
 	tp = le32_to_cpu(conf_set->time_point);
 	type = le32_to_cpu(conf_set->set_type);
 
-	if (tp <= IWL_FW_INI_TIME_POINT_INVALID ||
-	    tp >= IWL_FW_INI_TIME_POINT_NUM) {
+	if (tp != IWL_FW_INI_TIME_POINT_EARLY &&
+	    tp != IWL_FW_INI_TIME_POINT_FW_ASSERT &&
+	    tp != IWL_FW_INI_TIME_POINT_FW_HW_ERROR) {
 		IWL_DEBUG_FW(trans,
 			     "WRT: Invalid time point %u for config set TLV\n", tp);
 		return -EINVAL;
@@ -1456,7 +1457,6 @@ void _iwl_dbg_tlv_time_point(struct iwl_fw_runtime *fwrt,
 		iwl_dbg_tlv_send_hcmds(fwrt, hcmd_list);
 		iwl_dbg_tlv_tp_trigger(fwrt, sync_dump, trig_list, tp_data,
 				       NULL);
-		iwl_dbg_tlv_apply_config(fwrt, conf_list);
 		break;
 	case IWL_FW_INI_TIME_POINT_PERIODIC:
 		iwl_dbg_tlv_set_periodic_trigs(fwrt);
@@ -1468,13 +1468,19 @@ void _iwl_dbg_tlv_time_point(struct iwl_fw_runtime *fwrt,
 		iwl_dbg_tlv_send_hcmds(fwrt, hcmd_list);
 		iwl_dbg_tlv_tp_trigger(fwrt, sync_dump, trig_list, tp_data,
 				       iwl_dbg_tlv_check_fw_pkt);
+		break;
+	case IWL_FW_INI_TIME_POINT_FW_ASSERT:
+	case IWL_FW_INI_TIME_POINT_FW_HW_ERROR:
+		iwl_dbg_tlv_send_hcmds(fwrt, hcmd_list);
+		iwl_dbg_tlv_tp_trigger(fwrt, sync_dump, trig_list, tp_data,
+				       NULL);
+		/* the FW is halted, so its registers may be written */
 		iwl_dbg_tlv_apply_config(fwrt, conf_list);
 		break;
 	default:
 		iwl_dbg_tlv_send_hcmds(fwrt, hcmd_list);
 		iwl_dbg_tlv_tp_trigger(fwrt, sync_dump, trig_list, tp_data,
 				       NULL);
-		iwl_dbg_tlv_apply_config(fwrt, conf_list);
 		break;
 	}
 }
