@@ -147,6 +147,9 @@ _iwl_trans_pcie_fw_reset_handshake(struct iwl_trans *trans,
 	}
 
 	trans_pcie->fw_reset_state = FW_RESET_IDLE;
+	if (trans->mac_cfg->device_family >= IWL_DEVICE_FAMILY_AX210)
+		iwl_trans_set_bits_prph(trans, IMR_UREG_CHICK,
+					IMR_UREG_CHICK_HALT_UMAC_PERMANENTLY_MSK);
 }
 
 void iwl_trans_pcie_fw_reset_handshake(struct iwl_trans *trans)
