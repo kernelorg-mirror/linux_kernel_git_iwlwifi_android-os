@@ -911,6 +911,7 @@ static void iwl_dbg_tlv_send_hcmds(struct iwl_fw_runtime *fwrt,
 		u16 hcmd_len = le32_to_cpu(node->tlv.length) - sizeof(*hcmd);
 		struct iwl_host_cmd cmd = {
 			.id = WIDE_ID(hcmd_data->group, hcmd_data->id),
+			.flags = CMD_ASYNC,
 			.len = { hcmd_len, },
 			.data = { hcmd_data->data, },
 		};
