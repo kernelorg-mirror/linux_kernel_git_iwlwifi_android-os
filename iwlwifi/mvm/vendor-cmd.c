@@ -676,7 +676,7 @@ static int iwl_mvm_vendor_set_nic_txpower_limit(struct wiphy *wiphy,
 		.per_band.dev_52_low = cpu_to_le16(IWL_DEV_MAX_TX_POWER),
 		.per_band.dev_52_high = cpu_to_le16(IWL_DEV_MAX_TX_POWER),
 	};
-	struct iwl_tx_power_driver_limits driver_limits_cmd = {
+	struct iwl_tx_power_driver_limits_v1 driver_limits_cmd = {
 		.valid_bitmap = IWL_TX_POWER_DRIVER_LIMIT_DEVICE_POWER,
 	};
 	struct nlattr **tb;

@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0 OR BSD-3-Clause */
 /*
- * Copyright (C) 2012-2014, 2019-2025 Intel Corporation
+ * Copyright (C) 2012-2014, 2019-2026 Intel Corporation
  * Copyright (C) 2013-2015 Intel Mobile Communications GmbH
  * Copyright (C) 2016-2017 Intel Deutschland GmbH
  */
@@ -52,7 +52,8 @@ enum iwl_phy_ops_subcmd_ids {
 	AP_TX_POWER_CONSTRAINTS_CMD = 0x0C,
 
 	/**
-	 * @DRIVER_LIMITS_CMD: &struct iwl_tx_power_driver_limits
+	 * @DRIVER_LIMITS_CMD: &struct iwl_tx_power_driver_limits_v1
+	 * &struct iwl_tx_power_driver_limits
 	 */
 	DRIVER_LIMITS_CMD = 0x0D,
 

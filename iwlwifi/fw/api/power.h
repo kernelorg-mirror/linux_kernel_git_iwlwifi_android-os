@@ -866,7 +866,7 @@ struct iwl_txpower_constraints_cmd {
 
 /**
  * enum iwl_tx_power_valid_bitmap - TX power validity flags
- * validity of fields of &struct iwl_tx_power_driver_limits
+ * validity of fields of &struct iwl_tx_power_driver_limits_v1
  * @IWL_TX_POWER_DRIVER_LIMIT_DEVICE_POWER: &dev_24, &dev_52_low and
  *	&dev_52_high are valid.
  * @IWL_TX_POWER_DRIVER_LIMIT_VLP_BACKOFF: &tpc_vlp_backoff_level is valid.
@@ -877,7 +877,7 @@ enum iwl_tx_power_valid_bitmap {
 };
 
 /**
- * struct iwl_tx_power_driver_limits - tx power limitations
+ * struct iwl_tx_power_driver_limits_v1 - tx power limitations
  * DRIVER_LIMITS_CMD
  * @dev_24: device TX power restriction in 1/8 dBms
  * @dev_52_low: device TX power restriction upper band - low
@@ -887,12 +887,27 @@ enum iwl_tx_power_valid_bitmap {
  * @valid_bitmap: tells which value should be applied. See
  *	&enum iwl_tx_power_valid_bitmap
  */
-struct iwl_tx_power_driver_limits {
+struct iwl_tx_power_driver_limits_v1 {
 	__le16 dev_24;
 	__le16 dev_52_low;
 	__le16 dev_52_high;
 	u8 tpc_vlp_backoff_level;
 	u8 valid_bitmap;
 } __packed; /* DRIVER_LIMITS_API_S_VER_1 */
+
+/**
+ * struct iwl_tx_power_driver_limits - tx power limitations
+ * DRIVER_LIMITS_CMD
+ * @dev_24: device TX power restriction in 1/8 dBms
+ * @dev_52_low: device TX power restriction upper band - low
+ * @dev_52_high: device TX power restriction upper band - high
+ * @reserved: must be set to 0
+ */
+struct iwl_tx_power_driver_limits {
+	__le16 dev_24;
+	__le16 dev_52_low;
+	__le16 dev_52_high;
+	__le16 reserved;
+} __packed; /* DRIVER_LIMITS_API_S_VER_2 */
 
 #endif /* __iwl_fw_api_power_h__ */
