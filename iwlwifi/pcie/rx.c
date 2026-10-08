@@ -1297,6 +1297,118 @@ static void iwl_pcie_rx_reuse_rbd(struct iwl_trans *trans,
 	}
 }
 
+/*
+ * iwl_pcie_rx_recycle_rbd - give an RB descriptor back to the free/used lists
+ *
+ * Re-maps the page for the device if we still own it, otherwise hands the
+ * (now page-less) RBD over to the allocator.
+ */
+static void iwl_pcie_rx_recycle_rbd(struct iwl_trans *trans,
+				    struct iwl_rxq *rxq,
+				    struct iwl_rx_mem_buffer *rxb,
+				    bool emergency, bool page_stolen)
+{
+	struct iwl_trans_pcie *trans_pcie = IWL_TRANS_GET_PCIE_TRANS(trans);
+
+	/* page was stolen from us -- free our reference */
+	if (page_stolen) {
+		__free_pages(rxb->page, trans_pcie->rx_page_order);
+		rxb->page = NULL;
+	}
+
+	/*
+	 * Reuse the page if possible. For notification packets and
+	 * SKBs that fail to Rx correctly, add them back into the
+	 * rx_free list for reuse later.
+	 */
+	if (rxb->page) {
+		rxb->page_dma =
+			dma_map_page(trans->dev, rxb->page, rxb->offset,
+				     trans_pcie->rx_buf_bytes,
+				     DMA_FROM_DEVICE);
+		if (dma_mapping_error(trans->dev, rxb->page_dma)) {
+			/*
+			 * free the page(s) as well to not break
+			 * the invariant that the items on the used
+			 * list have no page(s)
+			 */
+			__free_pages(rxb->page, trans_pcie->rx_page_order);
+			rxb->page = NULL;
+			iwl_pcie_rx_reuse_rbd(trans, rxb, rxq, emergency);
+		} else {
+			list_add_tail(&rxb->list, &rxq->rx_free);
+			rxq->free_count++;
+		}
+	} else {
+		iwl_pcie_rx_reuse_rbd(trans, rxb, rxq, emergency);
+	}
+}
+
+/*
+ * iwl_pcie_rx_handle_pkt - hand a single RX packet to the op mode
+ *
+ * Returns true if the page was stolen.
+ */
+static bool iwl_pcie_rx_handle_pkt(struct iwl_trans *trans,
+				   struct iwl_rxq *rxq,
+				   struct iwl_rx_cmd_buffer *rxcb,
+				   struct iwl_rx_packet *pkt, int len)
+{
+	struct iwl_trans_pcie *trans_pcie = IWL_TRANS_GET_PCIE_TRANS(trans);
+	struct iwl_txq *txq = trans_pcie->txqs.txq[trans->conf.cmd_queue];
+	bool reclaim;
+
+	maybe_trace_iwlwifi_dev_rx(trans, pkt, len);
+
+	/* Reclaim a command buffer only if this packet is a response
+	 *   to a (driver-originated) command.
+	 * If the packet (e.g. Rx frame) originated from uCode,
+	 *   there is no command buffer to reclaim.
+	 * Ucode should set SEQ_RX_FRAME bit if ucode-originated,
+	 *   but apparently a few don't get set; catch them here.
+	 */
+	reclaim = !(pkt->hdr.sequence & SEQ_RX_FRAME);
+	if (reclaim && !pkt->hdr.group_id) {
+		for (int i = 0; i < trans->conf.n_no_reclaim_cmds; i++) {
+			if (trans->conf.no_reclaim_cmds[i] == pkt->hdr.cmd) {
+				reclaim = false;
+				break;
+			}
+		}
+	}
+
+	if (rxq->id == IWL_DEFAULT_RX_QUEUE)
+		iwl_op_mode_rx(trans->op_mode, &rxq->napi, rxcb);
+	else
+		iwl_op_mode_rx_rss(trans->op_mode, &rxq->napi, rxcb, rxq->id);
+
+	/*
+	 * After here, we should always check rxcb->_page_stolen,
+	 * if it is true then one of the handlers took the page.
+	 */
+
+	if (reclaim && txq) {
+		u16 sequence = le16_to_cpu(pkt->hdr.sequence);
+		int index = SEQ_TO_INDEX(sequence);
+		int cmd_index = iwl_txq_get_cmd_index(txq, index);
+
+		kfree_sensitive(txq->entries[cmd_index].free_buf);
+		txq->entries[cmd_index].free_buf = NULL;
+
+		/* Invoke any callbacks, transfer the buffer to caller,
+		 * and fire off the (possibly) blocking
+		 * iwl_trans_send_cmd()
+		 * as we reclaim the driver command queue
+		 */
+		if (!rxcb->_page_stolen)
+			iwl_pcie_hcmd_complete(trans, rxcb);
+		else
+			IWL_WARN(trans, "Claim null rxb?\n");
+	}
+
+	return rxcb->_page_stolen;
+}
+
 static void iwl_pcie_rx_handle_rb(struct iwl_trans *trans,
 				  struct iwl_rxq *rxq,
 				  struct iwl_rx_mem_buffer *rxb,
@@ -1304,7 +1416,6 @@ static void iwl_pcie_rx_handle_rb(struct iwl_trans *trans,
 				  int idx)
 {
 	struct iwl_trans_pcie *trans_pcie = IWL_TRANS_GET_PCIE_TRANS(trans);
-	struct iwl_txq *txq = trans_pcie->txqs.txq[trans->conf.cmd_queue];
 	bool page_stolen = false;
 	int max_len = trans_pcie->rx_buf_bytes;
 	u32 offset = 0;
@@ -1316,7 +1427,6 @@ static void iwl_pcie_rx_handle_rb(struct iwl_trans *trans,
 
 	while (offset + sizeof(u32) + sizeof(struct iwl_cmd_header) < max_len) {
 		struct iwl_rx_packet *pkt;
-		bool reclaim;
 		int len;
 		struct iwl_rx_cmd_buffer rxcb = {
 			._offset = rxb->offset + offset,
@@ -1359,91 +1469,14 @@ static void iwl_pcie_rx_handle_rb(struct iwl_trans *trans,
 		if (len < sizeof(*pkt) || offset > max_len)
 			break;
 
-		maybe_trace_iwlwifi_dev_rx(trans, pkt, len);
+		page_stolen |= iwl_pcie_rx_handle_pkt(trans, rxq, &rxcb,
+						      pkt, len);
 
-		/* Reclaim a command buffer only if this packet is a response
-		 *   to a (driver-originated) command.
-		 * If the packet (e.g. Rx frame) originated from uCode,
-		 *   there is no command buffer to reclaim.
-		 * Ucode should set SEQ_RX_FRAME bit if ucode-originated,
-		 *   but apparently a few don't get set; catch them here. */
-		reclaim = !(pkt->hdr.sequence & SEQ_RX_FRAME);
-		if (reclaim && !pkt->hdr.group_id) {
-			int i;
-
-			for (i = 0; i < trans->conf.n_no_reclaim_cmds; i++) {
-				if (trans->conf.no_reclaim_cmds[i] ==
-							pkt->hdr.cmd) {
-					reclaim = false;
-					break;
-				}
-			}
-		}
-
-		if (rxq->id == IWL_DEFAULT_RX_QUEUE)
-			iwl_op_mode_rx(trans->op_mode, &rxq->napi,
-				       &rxcb);
-		else
-			iwl_op_mode_rx_rss(trans->op_mode, &rxq->napi,
-					   &rxcb, rxq->id);
-
-		/*
-		 * After here, we should always check rxcb._page_stolen,
-		 * if it is true then one of the handlers took the page.
-		 */
-
-		if (reclaim && txq) {
-			u16 sequence = le16_to_cpu(pkt->hdr.sequence);
-			int index = SEQ_TO_INDEX(sequence);
-			int cmd_index = iwl_txq_get_cmd_index(txq, index);
-
-			kfree_sensitive(txq->entries[cmd_index].free_buf);
-			txq->entries[cmd_index].free_buf = NULL;
-
-			/* Invoke any callbacks, transfer the buffer to caller,
-			 * and fire off the (possibly) blocking
-			 * iwl_trans_send_cmd()
-			 * as we reclaim the driver command queue */
-			if (!rxcb._page_stolen)
-				iwl_pcie_hcmd_complete(trans, &rxcb);
-			else
-				IWL_WARN(trans, "Claim null rxb?\n");
-		}
-
-		page_stolen |= rxcb._page_stolen;
 		if (trans->mac_cfg->device_family >= IWL_DEVICE_FAMILY_AX210)
 			break;
 	}
 
-	/* page was stolen from us -- free our reference */
-	if (page_stolen) {
-		__free_pages(rxb->page, trans_pcie->rx_page_order);
-		rxb->page = NULL;
-	}
-
-	/* Reuse the page if possible. For notification packets and
-	 * SKBs that fail to Rx correctly, add them back into the
-	 * rx_free list for reuse later. */
-	if (rxb->page != NULL) {
-		rxb->page_dma =
-			dma_map_page(trans->dev, rxb->page, rxb->offset,
-				     trans_pcie->rx_buf_bytes,
-				     DMA_FROM_DEVICE);
-		if (dma_mapping_error(trans->dev, rxb->page_dma)) {
-			/*
-			 * free the page(s) as well to not break
-			 * the invariant that the items on the used
-			 * list have no page(s)
-			 */
-			__free_pages(rxb->page, trans_pcie->rx_page_order);
-			rxb->page = NULL;
-			iwl_pcie_rx_reuse_rbd(trans, rxb, rxq, emergency);
-		} else {
-			list_add_tail(&rxb->list, &rxq->rx_free);
-			rxq->free_count++;
-		}
-	} else
-		iwl_pcie_rx_reuse_rbd(trans, rxb, rxq, emergency);
+	iwl_pcie_rx_recycle_rbd(trans, rxq, rxb, emergency, page_stolen);
 }
 
 static struct iwl_rx_mem_buffer *iwl_pcie_get_rxb(struct iwl_trans *trans,
