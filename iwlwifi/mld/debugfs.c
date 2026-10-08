@@ -558,12 +558,12 @@ static ssize_t iwl_dbgfs_inject_packet_write(struct iwl_mld *mld,
 	if (iwl_mld_dbgfs_fw_cmd_disabled(mld))
 		return -EIO;
 
-	rxb._page = alloc_pages(GFP_KERNEL, 0);
-	if (!rxb._page)
+	rxb._frags[0].page = alloc_pages(GFP_KERNEL, 0);
+	if (!rxb._frags[0].page)
 		return -ENOMEM;
 	pkt = rxb_addr(&rxb);
 
-	ret = hex2bin(page_address(rxb._page), buf, n_bytes);
+	ret = hex2bin(page_address(rxb._frags[0].page), buf, n_bytes);
 	if (ret)
 		goto out;
 

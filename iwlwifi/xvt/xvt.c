@@ -544,6 +544,12 @@ static void iwl_xvt_rx_dispatch(struct iwl_op_mode *op_mode,
 	iwl_dbg_tlv_time_point(&xvt->fwrt,
 			       IWL_FW_INI_TIME_POINT_FW_RSP_OR_NOTIF, &tp_data);
 
+	if (unlikely(rxb_is_split(rxb))) {
+		IWL_ERR(xvt, "dropping split RX command 0x%04x\n",
+			WIDE_ID(pkt->hdr.group_id, pkt->hdr.cmd));
+		return;
+	}
+
 	spin_lock(&xvt->notif_lock);
 	iwl_notification_wait_notify(&xvt->notif_wait, pkt);
 	IWL_DEBUG_INFO(xvt, "rx dispatch got notification\n");

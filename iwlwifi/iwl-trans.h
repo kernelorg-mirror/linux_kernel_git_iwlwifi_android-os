@@ -9,6 +9,7 @@
 
 #include <linux/ieee80211.h>
 #include <linux/mm.h> /* for page_address */
+#include <linux/skbuff.h>
 #include <linux/lockdep.h>
 #include <linux/kernel.h>
 
@@ -240,34 +241,104 @@ static inline void iwl_free_resp(struct iwl_host_cmd *cmd)
 	free_pages(cmd->_rx_page_addr, cmd->_rx_page_order);
 }
 
+/* Fits max MPDU size across 2k RBs (AMSDUs are not split when sniffing) */
+#define IWL_RX_MAX_SPLIT_RBS	6
+static_assert(IWL_RX_MAX_SPLIT_RBS <= MAX_SKB_FRAGS);
+
+/**
+ * struct iwl_rx_cmd_buffer - an RX packet handed over to the op mode
+ * @_pages_stolen: the op mode took ownership of @_page and the @_frags pages
+ * @_rx_page_order: page order of the pages referenced in @_frags
+ * @truesize: true size of each buffer fragment
+ * @_frags: List of fragments, page is NULL if there are no further fragments.
+ *	Only has more than one fragment for MPDUs when an SKB will be built
+ *	using iwl_rxb_add_frags.
+ */
 struct iwl_rx_cmd_buffer {
-	struct page *_page;
-	int _offset;
-	bool _page_stolen;
+	bool _pages_stolen;
 	u32 _rx_page_order;
 	unsigned int truesize;
+
+	struct {
+		struct page *page;
+		u32 offset;
+	} _frags[IWL_RX_MAX_SPLIT_RBS];
 };
 
 static inline void *rxb_addr(struct iwl_rx_cmd_buffer *r)
 {
-	return (void *)((unsigned long)page_address(r->_page) + r->_offset);
+	return (void *)((unsigned long)page_address(r->_frags[0].page) +
+						    r->_frags[0].offset);
 }
 
 static inline int rxb_offset(struct iwl_rx_cmd_buffer *r)
 {
-	return r->_offset;
+	return r->_frags[0].offset;
 }
 
 static inline struct page *rxb_steal_page(struct iwl_rx_cmd_buffer *r)
 {
-	r->_page_stolen = true;
-	get_page(r->_page);
-	return r->_page;
+	r->_pages_stolen = true;
+
+	get_page(r->_frags[0].page);
+
+	return r->_frags[0].page;
+}
+
+static inline bool rxb_is_split(struct iwl_rx_cmd_buffer *r)
+{
+	return !!r->_frags[1].page;
+}
+
+/**
+ * iwl_rxb_add_frags - add received data to an SKB as paged fragments
+ * @rxb: the RX buffer
+ * @skb: the SKB to add the data to
+ * @offset: offset within @rxb's first page of the first byte to add
+ * @len: number of bytes to add
+ */
+static inline void iwl_rxb_add_frags(struct iwl_rx_cmd_buffer *rxb,
+				     struct sk_buff *skb,
+				     unsigned int offset, unsigned int len)
+{
+	rxb->_pages_stolen = true;
+
+	for (unsigned int i = 0; len && i < ARRAY_SIZE(rxb->_frags); i++) {
+		/*
+		 * Only AX210 HW will put multiple commands into one buffer
+		 * and only then is _frags[0].offset % rxb->truesize != 0
+		 */
+		unsigned int fraglen =
+			min(len, rxb->truesize - offset -
+				 rxb->_frags[i].offset % rxb->truesize);
+		struct page *page = rxb->_frags[i].page;
+		u32 frag_offset = rxb->_frags[i].offset + offset;
+
+		if (WARN_ON_ONCE(!page))
+			break;
+
+		if (i > 0 && page == rxb->_frags[i - 1].page &&
+		    frag_offset == rxb->_frags[i - 1].offset + rxb->truesize) {
+			skb_coalesce_rx_frag(skb, skb_shinfo(skb)->nr_frags - 1,
+					     fraglen, rxb->truesize);
+		} else {
+			get_page(page);
+
+			skb_add_rx_frag(skb, skb_shinfo(skb)->nr_frags,
+					page, frag_offset, fraglen,
+					rxb->truesize);
+		}
+		len -= fraglen;
+		offset = 0;
+	}
 }
 
 static inline void iwl_free_rxb(struct iwl_rx_cmd_buffer *r)
 {
-	__free_pages(r->_page, r->_rx_page_order);
+	unsigned int i;
+
+	for (i = 0; i < ARRAY_SIZE(r->_frags) && r->_frags[i].page; i++)
+		__free_pages(r->_frags[i].page, r->_rx_page_order);
 }
 
 #define MAX_NO_RECLAIM_CMDS	6

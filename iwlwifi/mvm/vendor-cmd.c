@@ -2116,7 +2116,7 @@ static void iwl_mvm_csi_steal(struct iwl_mvm *mvm, unsigned int idx,
 
 	mvm->csi_data_entries[idx].page = rxb_steal_page(rxb);
 	mvm->csi_data_entries[idx].page_order = rxb->_rx_page_order;
-	mvm->csi_data_entries[idx].offset = rxb->_offset;
+	mvm->csi_data_entries[idx].offset = rxb_offset(rxb);
 }
 
 void iwl_mvm_rx_csi_header(struct iwl_mvm *mvm, struct iwl_rx_cmd_buffer *rxb)

@@ -1326,7 +1326,7 @@ static ssize_t iwl_dbgfs_inject_packet_write(struct iwl_mvm *mvm,
 	struct iwl_rx_cmd_buffer rxb = {
 		._rx_page_order = 0,
 		.truesize = 0, /* not used */
-		._offset = 0,
+		._frags[0].offset = 0,
 	};
 	struct iwl_rx_packet *pkt;
 	int bin_len = count / 2;
@@ -1339,12 +1339,12 @@ static ssize_t iwl_dbgfs_inject_packet_write(struct iwl_mvm *mvm,
 	if (!mvm->trans->mac_cfg->mq_rx_supported)
 		return -EOPNOTSUPP;
 
-	rxb._page = alloc_pages(GFP_ATOMIC, 0);
-	if (!rxb._page)
+	rxb._frags[0].page = alloc_pages(GFP_ATOMIC, 0);
+	if (!rxb._frags[0].page)
 		return -ENOMEM;
 	pkt = rxb_addr(&rxb);
 
-	ret = hex2bin(page_address(rxb._page), buf, bin_len);
+	ret = hex2bin(page_address(rxb._frags[0].page), buf, bin_len);
 	if (ret)
 		goto out;
 

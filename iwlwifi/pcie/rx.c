@@ -1306,12 +1306,12 @@ static void iwl_pcie_rx_reuse_rbd(struct iwl_trans *trans,
 static void iwl_pcie_rx_recycle_rbd(struct iwl_trans *trans,
 				    struct iwl_rxq *rxq,
 				    struct iwl_rx_mem_buffer *rxb,
-				    bool emergency, bool page_stolen)
+				    bool emergency, bool pages_stolen)
 {
 	struct iwl_trans_pcie *trans_pcie = IWL_TRANS_GET_PCIE_TRANS(trans);
 
 	/* page was stolen from us -- free our reference */
-	if (page_stolen) {
+	if (pages_stolen) {
 		__free_pages(rxb->page, trans_pcie->rx_page_order);
 		rxb->page = NULL;
 	}
@@ -1347,7 +1347,7 @@ static void iwl_pcie_rx_recycle_rbd(struct iwl_trans *trans,
 /*
  * iwl_pcie_rx_handle_pkt - hand a single RX packet to the op mode
  *
- * Returns true if the page was stolen.
+ * Returns true if the pages were stolen.
  */
 static bool iwl_pcie_rx_handle_pkt(struct iwl_trans *trans,
 				   struct iwl_rxq *rxq,
@@ -1383,7 +1383,7 @@ static bool iwl_pcie_rx_handle_pkt(struct iwl_trans *trans,
 		iwl_op_mode_rx_rss(trans->op_mode, &rxq->napi, rxcb, rxq->id);
 
 	/*
-	 * After here, we should always check rxcb->_page_stolen,
+	 * After here, we should always check rxcb->_pages_stolen,
 	 * if it is true then one of the handlers took the page.
 	 */
 
@@ -1400,13 +1400,13 @@ static bool iwl_pcie_rx_handle_pkt(struct iwl_trans *trans,
 		 * iwl_trans_send_cmd()
 		 * as we reclaim the driver command queue
 		 */
-		if (!rxcb->_page_stolen)
+		if (!rxcb->_pages_stolen)
 			iwl_pcie_hcmd_complete(trans, rxcb);
 		else
 			IWL_WARN(trans, "Claim null rxb?\n");
 	}
 
-	return rxcb->_page_stolen;
+	return rxcb->_pages_stolen;
 }
 
 static void iwl_pcie_rx_handle_rb(struct iwl_trans *trans,
@@ -1416,7 +1416,7 @@ static void iwl_pcie_rx_handle_rb(struct iwl_trans *trans,
 				  int idx)
 {
 	struct iwl_trans_pcie *trans_pcie = IWL_TRANS_GET_PCIE_TRANS(trans);
-	bool page_stolen = false;
+	bool pages_stolen = false;
 	int max_len = trans_pcie->rx_buf_bytes;
 	u32 offset = 0;
 
@@ -1429,11 +1429,11 @@ static void iwl_pcie_rx_handle_rb(struct iwl_trans *trans,
 		struct iwl_rx_packet *pkt;
 		int len;
 		struct iwl_rx_cmd_buffer rxcb = {
-			._offset = rxb->offset + offset,
 			._rx_page_order = trans_pcie->rx_page_order,
-			._page = rxb->page,
-			._page_stolen = false,
 			.truesize = max_len,
+			._frags[0].offset = rxb->offset + offset,
+			._frags[0].page = rxb->page,
+			._pages_stolen = false,
 		};
 
 		pkt = rxb_addr(&rxcb);
@@ -1469,14 +1469,14 @@ static void iwl_pcie_rx_handle_rb(struct iwl_trans *trans,
 		if (len < sizeof(*pkt) || offset > max_len)
 			break;
 
-		page_stolen |= iwl_pcie_rx_handle_pkt(trans, rxq, &rxcb,
-						      pkt, len);
+		pages_stolen |= iwl_pcie_rx_handle_pkt(trans, rxq, &rxcb,
+						       pkt, len);
 
 		if (trans->mac_cfg->device_family >= IWL_DEVICE_FAMILY_AX210)
 			break;
 	}
 
-	iwl_pcie_rx_recycle_rbd(trans, rxq, rxb, emergency, page_stolen);
+	iwl_pcie_rx_recycle_rbd(trans, rxq, rxb, emergency, pages_stolen);
 }
 
 static struct iwl_rx_mem_buffer *iwl_pcie_get_rxb(struct iwl_trans *trans,

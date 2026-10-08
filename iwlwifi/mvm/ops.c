@@ -1898,8 +1898,8 @@ static void iwl_mvm_rx_common(struct iwl_mvm *mvm,
 		if (!entry)
 			return;
 
-		entry->rxb._page = rxb_steal_page(rxb);
-		entry->rxb._offset = rxb->_offset;
+		entry->rxb._frags[0].page = rxb_steal_page(rxb);
+		entry->rxb._frags[0].offset = rxb->_frags[0].offset;
 		entry->rxb._rx_page_order = rxb->_rx_page_order;
 		entry->fn = rx_h->fn;
 		entry->context = rx_h->context;
@@ -1922,6 +1922,11 @@ static void iwl_mvm_rx(struct iwl_op_mode *op_mode,
 	struct iwl_rx_packet *pkt = rxb_addr(rxb);
 	struct iwl_mvm *mvm = IWL_OP_MODE_GET_MVM(op_mode);
 	u16 cmd = WIDE_ID(pkt->hdr.group_id, pkt->hdr.cmd);
+
+	if (unlikely(rxb_is_split(rxb))) {
+		IWL_ERR(mvm, "dropping split RX command 0x%04x\n", cmd);
+		return;
+	}
 
 #ifdef CPTCFG_IWLWIFI_DEVICE_TESTMODE
 	/*
@@ -1948,6 +1953,11 @@ void iwl_mvm_rx_mq(struct iwl_op_mode *op_mode,
 	struct iwl_rx_packet *pkt = rxb_addr(rxb);
 	struct iwl_mvm *mvm = IWL_OP_MODE_GET_MVM(op_mode);
 	u16 cmd = WIDE_ID(pkt->hdr.group_id, pkt->hdr.cmd);
+
+	if (unlikely(rxb_is_split(rxb))) {
+		IWL_ERR(mvm, "dropping split RX command 0x%04x\n", cmd);
+		return;
+	}
 
 #ifdef CPTCFG_IWLWIFI_DEVICE_TESTMODE
 	/*
@@ -2300,6 +2310,11 @@ static void iwl_mvm_rx_mq_rss(struct iwl_op_mode *op_mode,
 
 	if (unlikely(queue >= mvm->trans->info.num_rxqs))
 		return;
+
+	if (unlikely(rxb_is_split(rxb))) {
+		IWL_ERR(mvm, "dropping split RX command 0x%04x\n", cmd);
+		return;
+	}
 
 	if (unlikely(cmd == WIDE_ID(LEGACY_GROUP, FRAME_RELEASE)))
 		iwl_mvm_rx_frame_release(mvm, napi, rxb, queue);

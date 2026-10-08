@@ -572,8 +572,8 @@ static void iwl_mld_rx_notif(struct iwl_mld *mld,
 			return;
 
 		/* Set the async handler entry */
-		entry->rxb._page = rxb_steal_page(rxb);
-		entry->rxb._offset = rxb->_offset;
+		entry->rxb._frags[0].page = rxb_steal_page(rxb);
+		entry->rxb._frags[0].offset = rxb->_frags[0].offset;
 		entry->rxb._rx_page_order = rxb->_rx_page_order;
 
 		entry->rx_h = rx_h;
@@ -601,6 +601,11 @@ void iwl_mld_rx(struct iwl_op_mode *op_mode, struct napi_struct *napi,
 	struct iwl_rx_packet *pkt = rxb_addr(rxb);
 	struct iwl_mld *mld = IWL_OP_MODE_GET_MLD(op_mode);
 	u16 cmd_id = WIDE_ID(pkt->hdr.group_id, pkt->hdr.cmd);
+
+	if (unlikely(rxb_is_split(rxb))) {
+		IWL_ERR(mld, "dropping split RX command 0x%04x\n", cmd_id);
+		return;
+	}
 
 	if (likely(cmd_id == WIDE_ID(LEGACY_GROUP, REPLY_RX_MPDU_CMD)))
 		iwl_mld_rx_mpdu(mld, napi, rxb, 0);
@@ -631,6 +636,11 @@ void iwl_mld_rx_rss(struct iwl_op_mode *op_mode, struct napi_struct *napi,
 
 	if (unlikely(queue >= mld->trans->info.num_rxqs))
 		return;
+
+	if (unlikely(rxb_is_split(rxb))) {
+		IWL_ERR(mld, "dropping split RX command 0x%04x\n", cmd_id);
+		return;
+	}
 
 	if (likely(cmd_id == WIDE_ID(LEGACY_GROUP, REPLY_RX_MPDU_CMD)))
 		iwl_mld_rx_mpdu(mld, napi, rxb, queue);

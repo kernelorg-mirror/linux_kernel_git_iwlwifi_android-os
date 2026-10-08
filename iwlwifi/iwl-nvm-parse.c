@@ -497,6 +497,7 @@ static void iwl_init_vht_hw_capab(struct iwl_trans *trans,
 	 * split up A-MSDUs and the real limit that was set applies.
 	 * Note that EHT doesn't honour this (HE copies the VHT value),
 	 * but EHT is also entirely disabled for fips_enabled.
+	 * Note that the fips limit can be removed if split RB is enabled.
 	 */
 	switch (iwlwifi_mod_params.amsdu_size) {
 	case IWL_AMSDU_DEF:
