@@ -479,9 +479,8 @@ iwl_op_mode_mld_start(struct iwl_trans *trans, const struct iwl_rf_cfg *cfg,
 
 	iwl_mld_tx_gp2_init(mld);
 
-	/* needed for regulatory init */
-	rtnl_lock();
 	/* Needed for sending commands */
+	rtnl_lock();
 	wiphy_lock(mld->wiphy);
 
 	for (int i = 0; i < NUM_FW_LOAD_RETRIES; i++) {
