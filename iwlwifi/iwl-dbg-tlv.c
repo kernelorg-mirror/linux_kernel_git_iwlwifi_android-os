@@ -243,7 +243,8 @@ static int iwl_dbg_tlv_alloc_region(struct iwl_trans *trans,
 
 #ifdef CPTCFG_IWLWIFI_DONT_DUMP_FIFOS
 	if (type == IWL_FW_INI_REGION_DEVICE_MEMORY &&
-	    reg->sub_type == IWL_FW_INI_REGION_DEVICE_MEMORY_SUBTYPE_HW_SMEM) {
+	    reg->sub_type == IWL_FW_INI_REGION_DEVICE_MEMORY_SUBTYPE_HW_SMEM &&
+	    !trans->dbg_cfg.FORCE_FIFO_DUMP) {
 		IWL_DEBUG_FW(trans, "WRT: skipping HW-SMEM region\n");
 		return 0;
 	}
@@ -281,7 +282,8 @@ static int iwl_dbg_tlv_alloc_region(struct iwl_trans *trans,
 		return -ENOMEM;
 
 #ifdef CPTCFG_IWLWIFI_DONT_DUMP_FIFOS
-	if (type == IWL_FW_INI_REGION_TXF || type == IWL_FW_INI_REGION_RXF) {
+	if ((type == IWL_FW_INI_REGION_TXF || type == IWL_FW_INI_REGION_RXF) &&
+	    !trans->dbg_cfg.FORCE_FIFO_DUMP) {
 		struct iwl_fw_ini_region_tlv *reg = (void *)(*active_reg)->data;
 
 		reg->fifos.hdr_only = cpu_to_le32(1);

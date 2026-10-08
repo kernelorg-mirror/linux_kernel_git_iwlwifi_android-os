@@ -320,6 +320,9 @@ struct iwl_dbg_cfg {
 #endif /* CPTCFG_IWLWIFI_DISALLOW_OLDER_FW */
 	IWL_DBG_CFG_DEF(int, disable_top_reset, -1)
 	IWL_DBG_CFG_NODEF(bool, disable_product_reset)
+#ifdef CPTCFG_IWLWIFI_DONT_DUMP_FIFOS
+	IWL_DBG_CFG_NODEF(bool, FORCE_FIFO_DUMP)
+#endif
 #undef IWL_DBG_CFG
 #undef IWL_DBG_CFG_STR
 #undef IWL_DBG_CFG_NODEF
