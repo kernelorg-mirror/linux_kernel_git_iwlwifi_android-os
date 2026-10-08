@@ -1129,10 +1129,13 @@ int iwl_tm_gnl_exit(void)
 void iwl_tm_gnl_send_rx(struct iwl_trans *trans, struct iwl_rx_cmd_buffer *rxb)
 {
 	struct iwl_rx_packet *pkt = rxb_addr(rxb);
-	int length = iwl_rx_packet_len(pkt);
+	unsigned int length = iwl_rx_packet_len(pkt);
 
 	/* the length doesn't include len_n_flags field, so add it manually */
 	length += sizeof(__le32);
+
+	/* Limit to first fragment in case it is a split RB */
+	length = min(length, rxb->truesize - (rxb_offset(rxb) % rxb->truesize));
 
 	iwl_tm_gnl_send_msg(trans, IWL_TM_USER_CMD_NOTIF_UCODE_RX_PKT, true,
 			    (void *)pkt, length, GFP_ATOMIC);

@@ -602,13 +602,10 @@ void iwl_mld_rx(struct iwl_op_mode *op_mode, struct napi_struct *napi,
 	struct iwl_mld *mld = IWL_OP_MODE_GET_MLD(op_mode);
 	u16 cmd_id = WIDE_ID(pkt->hdr.group_id, pkt->hdr.cmd);
 
-	if (unlikely(rxb_is_split(rxb))) {
-		IWL_ERR(mld, "dropping split RX command 0x%04x\n", cmd_id);
-		return;
-	}
-
 	if (likely(cmd_id == WIDE_ID(LEGACY_GROUP, REPLY_RX_MPDU_CMD)))
 		iwl_mld_rx_mpdu(mld, napi, rxb, 0);
+	else if (unlikely(rxb_is_split(rxb)))
+		IWL_ERR(mld, "dropping split notification 0x%04x\n", cmd_id);
 	else if (cmd_id == WIDE_ID(LEGACY_GROUP, FRAME_RELEASE))
 		iwl_mld_handle_frame_release_notif(mld, napi, pkt, 0);
 	else if (cmd_id == WIDE_ID(LEGACY_GROUP, BAR_FRAME_RELEASE))
@@ -637,13 +634,10 @@ void iwl_mld_rx_rss(struct iwl_op_mode *op_mode, struct napi_struct *napi,
 	if (unlikely(queue >= mld->trans->info.num_rxqs))
 		return;
 
-	if (unlikely(rxb_is_split(rxb))) {
-		IWL_ERR(mld, "dropping split RX command 0x%04x\n", cmd_id);
-		return;
-	}
-
 	if (likely(cmd_id == WIDE_ID(LEGACY_GROUP, REPLY_RX_MPDU_CMD)))
 		iwl_mld_rx_mpdu(mld, napi, rxb, queue);
+	else if (unlikely(rxb_is_split(rxb)))
+		IWL_ERR(mld, "dropping split notification 0x%04x\n", cmd_id);
 	else if (unlikely(cmd_id == WIDE_ID(DATA_PATH_GROUP,
 					    RX_QUEUES_NOTIFICATION)))
 		iwl_mld_handle_rx_queues_sync_notif(mld, napi, pkt, queue);

@@ -2221,7 +2221,8 @@ static int iwl_mld_build_rx_skb(struct iwl_mld *mld, struct sk_buff *skb,
 	 * If the latter changes (there are efforts in the standards group
 	 * to do so) we should revisit this and ieee80211_data_to_8023().
 	 */
-	headlen = (len <= skb_tailroom(skb)) ? len : hdrlen + crypt_len + 8;
+	headlen = (!rxb_is_split(rxb) && len <= skb_tailroom(skb)) ?
+			len : hdrlen + crypt_len + 8;
 
 	/* The firmware may align the packet to DWORD.
 	 * The padding is inserted after the IV.
@@ -2262,10 +2263,9 @@ static int iwl_mld_build_rx_skb(struct iwl_mld *mld, struct sk_buff *skb,
 
 	if (fraglen) {
 		int offset = (u8 *)hdr + headlen + pad_len -
-			     (u8 *)rxb_addr(rxb) + rxb_offset(rxb);
+			     (u8 *)rxb_addr(rxb);
 
-		skb_add_rx_frag(skb, 0, rxb_steal_page(rxb), offset,
-				fraglen, rxb->truesize);
+		iwl_rxb_add_frags(rxb, skb, offset, fraglen);
 	}
 
 	return 0;
