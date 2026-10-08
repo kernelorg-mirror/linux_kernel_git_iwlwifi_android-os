@@ -1930,13 +1930,6 @@ static int iwl_mvm_configure_rxq(struct iwl_mvm *mvm)
 		.dataflags[0] = IWL_HCMD_DFL_NOCOPY,
 	};
 
-	/*
-	 * The default queue is configured via context info, so if we
-	 * have a single queue, there's nothing to do here.
-	 */
-	if (mvm->trans->info.num_rxqs == 1)
-		return 0;
-
 	if (mvm->trans->mac_cfg->device_family < IWL_DEVICE_FAMILY_22000)
 		return 0;
 
@@ -1948,6 +1941,11 @@ static int iwl_mvm_configure_rxq(struct iwl_mvm *mvm)
 		return -ENOMEM;
 
 	cmd->num_queues = num_queues;
+	cmd->en_split_rb = mvm->trans->info.rx_split_rb &&
+			   iwl_fw_lookup_cmd_ver(mvm->fw,
+						 WIDE_ID(DATA_PATH_GROUP,
+							 RFH_QUEUE_CONFIG_CMD),
+						 1) >= 3;
 
 	for (i = 0; i < num_queues; i++) {
 		struct iwl_trans_rxq_dma_data data;

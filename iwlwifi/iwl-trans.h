@@ -808,6 +808,7 @@ struct iwl_cmd_meta {
  * @num_rxqs: number of RX queues allocated by the transport
  * @atomic_nic_access: register and device memory access doesn't sleep, so
  *	it may be done from atomic context
+ * @rx_split_rb: the device may be able to create split RBs
  */
 struct iwl_trans_info {
 	const char *name;
@@ -821,6 +822,7 @@ struct iwl_trans_info {
 	u8 pcie_link_speed;
 	u8 num_rxqs;
 	bool atomic_nic_access;
+	bool rx_split_rb;
 };
 
 struct iwl_trans_ops;

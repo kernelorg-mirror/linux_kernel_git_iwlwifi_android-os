@@ -1035,14 +1035,20 @@ struct iwl_rfh_queue_data {
 /**
  * struct iwl_rfh_queue_config - RX queue configuration
  * @num_queues: number of queues configured
+ * @rx_queue_no_rss_mode: split the RX queues without using RSS
+ * @en_split_rb: enable "split RB" mode, i.e. let the device spread a packet
+ *	that doesn't fit into a single RB over multiple RBs instead of
+ *	dropping it (only in command version 3 and higher)
  * @reserved: alignment
  * @data: DMA addresses per-queue
  */
 struct iwl_rfh_queue_config {
 	u8 num_queues;
-	u8 reserved[3];
+	u8 rx_queue_no_rss_mode;
+	u8 en_split_rb;
+	u8 reserved;
 	struct iwl_rfh_queue_data data[];
-} __packed; /* RFH_QUEUE_CONFIG_API_S_VER_1 */
+} __packed; /* RFH_QUEUE_CONFIG_API_S_VER_1 - 3 */
 
 /**
  * struct iwl_beacon_filter_notif_v1 - beacon filter notification

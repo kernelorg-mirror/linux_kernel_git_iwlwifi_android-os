@@ -3853,6 +3853,9 @@ iwl_trans_pcie_alloc(struct pci_dev *pdev,
 
 	info->max_skb_frags = IWL_TRANS_PCIE_MAX_FRAGS(trans_pcie);
 
+	info->rx_split_rb =
+		trans->mac_cfg->device_family >= IWL_DEVICE_FAMILY_AX210;
+
 	trans_pcie->txqs.tso_hdr_page = alloc_percpu(struct iwl_tso_hdr_page);
 	if (!trans_pcie->txqs.tso_hdr_page) {
 		ret = -ENOMEM;
