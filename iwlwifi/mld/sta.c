@@ -423,9 +423,11 @@ static int iwl_mld_send_sta_cmd(struct iwl_mld *mld,
 		return -EINVAL;
 	}
 
-	/* cip_defer overlaps trig_rnd_alloc of older versions */
-	if (cmd_ver < 4)
+	/* cip_defer and epp_robust overlap trig_rnd_alloc of older versions */
+	if (cmd_ver < 4) {
 		cmd->cip_defer = 0;
+		cmd->epp_robust = 0;
+	}
 
 	ret = iwl_mld_send_cmd_pdu(mld, cmd_id, cmd);
 	if (ret)
@@ -526,6 +528,7 @@ int iwl_mld_add_modify_sta_cmd(struct iwl_mld *mld,
 	 */
 	cmd.cip_defer = sta->epp_peer &&
 		mld_sta->sta_state < IEEE80211_STA_ASSOC;
+	cmd.epp_robust = sta->epp_robust_mgmt;
 #ifdef CPTCFG_IWLWIFI_SUPPORT_DEBUG_OVERRIDES
 	cmd.use_icf = mld->trans->dbg_cfg.MLD_ICF_USE_TRIGGER;
 #endif

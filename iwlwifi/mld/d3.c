@@ -1861,6 +1861,9 @@ iwl_mld_set_wowlan_config_cmd(struct iwl_mld *mld,
 	if (ap_sta->mfp)
 		wowlan_config_cmd->flags |= IS_11W_ASSOC;
 
+	if (ap_sta->epp_robust_mgmt)
+		wowlan_config_cmd->flags |= EPP_ROBUST_CONNECTION;
+
 	if (iwl_mld_beacon_protection_enabled(mld, link))
 		wowlan_config_cmd->flags |= HAS_BEACON_PROTECTION;
 

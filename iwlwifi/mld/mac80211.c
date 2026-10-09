@@ -456,6 +456,12 @@ static void iwl_mac_hw_set_wiphy(struct iwl_mld *mld)
 		wiphy_ext_feature_set(wiphy,
 				      NL80211_EXT_FEATURE_ASSOC_FRAME_ENCRYPTION);
 
+	if (iwl_fw_lookup_cmd_ver(mld->fw,
+				  WIDE_ID(MAC_CONF_GROUP, STA_CONFIG_CMD),
+				  0) >= 4)
+		wiphy_ext_feature_set(wiphy,
+				      NL80211_EXT_FEATURE_EPP_ROBUST_MGMT);
+
 	if (iwlmld_mod_params.power_scheme != IWL_POWER_SCHEME_CAM)
 		wiphy->flags |= WIPHY_FLAG_PS_ON_BY_DEFAULT;
 	else
