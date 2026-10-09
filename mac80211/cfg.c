@@ -997,31 +997,40 @@ void sta_set_rate_info_tx(struct sta_info *sta,
 		rinfo->flags |= RATE_INFO_FLAGS_SHORT_GI;
 }
 
+static int __ieee80211_dump_station(struct ieee80211_sub_if_data *sdata,
+				    int idx, u8 *mac,
+				    struct station_info *sinfo, bool locked)
+{
+	struct sta_info *sta;
+	int ret;
+
+	sta = sta_info_get_by_idx(sdata, idx);
+	if (!sta)
+		return -ENOENT;
+
+	memcpy(mac, sta->sta.addr, ETH_ALEN);
+	ret = __sta_set_sinfo(sta, sinfo, true, locked);
+	if (ret)
+		return ret;
+
+	/*
+	 * Add accumulated removed link data to sinfo data for
+	 * consistency for MLO
+	 */
+	if (sinfo->valid_links)
+		sta_set_accumulated_removed_links_sinfo(sta, sinfo);
+
+	return 0;
+}
+
 static int ieee80211_dump_station(struct wiphy *wiphy, struct wireless_dev *wdev,
 				  int idx, u8 *mac, struct station_info *sinfo)
 {
 	struct ieee80211_sub_if_data *sdata = IEEE80211_WDEV_TO_SUB_IF(wdev);
-	struct ieee80211_local *local = sdata->local;
-	struct sta_info *sta;
-	int ret = -ENOENT;
 
-	lockdep_assert_wiphy(local->hw.wiphy);
+	lockdep_assert_wiphy(sdata->local->hw.wiphy);
 
-	sta = sta_info_get_by_idx(sdata, idx);
-	if (sta) {
-		ret = 0;
-		memcpy(mac, sta->sta.addr, ETH_ALEN);
-		sta_set_sinfo(sta, sinfo, true);
-
-		/* Add accumulated removed link data to sinfo data for
-		 * consistency for MLO
-		 */
-		if (sinfo->valid_links)
-			sta_set_accumulated_removed_links_sinfo(sta, sinfo);
-
-	}
-
-	return ret;
+	return __ieee80211_dump_station(sdata, idx, mac, sinfo, true);
 }
 
 static int ieee80211_dump_survey(struct wiphy *wiphy, struct net_device *dev,
@@ -1032,30 +1041,40 @@ static int ieee80211_dump_survey(struct wiphy *wiphy, struct net_device *dev,
 	return drv_get_survey(local, idx, survey);
 }
 
+static int __ieee80211_get_station(struct ieee80211_sub_if_data *sdata,
+				   const u8 *mac, struct station_info *sinfo,
+				   bool locked)
+{
+	struct sta_info *sta;
+	int ret;
+
+	sta = sta_info_get_bss(sdata, mac);
+	if (!sta)
+		return -ENOENT;
+
+	ret = __sta_set_sinfo(sta, sinfo, true, locked);
+	if (ret)
+		return ret;
+
+	/*
+	 * Add accumulated removed link data to sinfo data for
+	 * consistency for MLO
+	 */
+	if (sinfo->valid_links)
+		sta_set_accumulated_removed_links_sinfo(sta, sinfo);
+
+	return 0;
+}
+
 static int ieee80211_get_station(struct wiphy *wiphy,
 				 struct wireless_dev *wdev,
 				 const u8 *mac, struct station_info *sinfo)
 {
 	struct ieee80211_sub_if_data *sdata = IEEE80211_WDEV_TO_SUB_IF(wdev);
-	struct ieee80211_local *local = sdata->local;
-	struct sta_info *sta;
-	int ret = -ENOENT;
 
-	lockdep_assert_wiphy(local->hw.wiphy);
+	lockdep_assert_wiphy(sdata->local->hw.wiphy);
 
-	sta = sta_info_get_bss(sdata, mac);
-	if (sta) {
-		ret = 0;
-		sta_set_sinfo(sta, sinfo, true);
-
-		/* Add accumulated removed link data to sinfo data for
-		 * consistency for MLO
-		 */
-		if (sinfo->valid_links)
-			sta_set_accumulated_removed_links_sinfo(sta, sinfo);
-	}
-
-	return ret;
+	return __ieee80211_get_station(sdata, mac, sinfo, true);
 }
 
 static int ieee80211_set_monitor_channel(struct wiphy *wiphy,
