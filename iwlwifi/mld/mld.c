@@ -415,6 +415,13 @@ iwl_mld_configure_trans(struct iwl_op_mode *op_mode)
 		trans->conf.ext_32khz_clock_valid = !!eckv_value;
 
 	trans->conf.rx_buf_size = iwl_amsdu_size_to_rxb_size();
+
+	if (trans->info.rx_split_rb &&
+	    iwl_fw_lookup_cmd_ver(mld->fw, WIDE_ID(DATA_PATH_GROUP,
+						   RFH_QUEUE_CONFIG_CMD),
+				  1) >= 3)
+		trans->conf.rx_buf_size = IWL_AMSDU_2K;
+
 	trans->conf.command_groups = iwl_mld_groups;
 	trans->conf.command_groups_size = ARRAY_SIZE(iwl_mld_groups);
 	trans->conf.fw_reset_handshake = true;

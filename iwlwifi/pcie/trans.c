@@ -1976,6 +1976,13 @@ void iwl_trans_pcie_op_mode_enter(struct iwl_trans *trans)
 	/* free all first - we might be reconfigured for a different size */
 	iwl_pcie_free_rbs_pool(trans);
 
+	/* a sub-page sized RB would have to be bounced */
+	if (trans->conf.rx_buf_size == IWL_AMSDU_2K &&
+	    trans_pcie->pci_dev->untrusted) {
+		IWL_DEBUG_INFO(trans, "untrusted device, using 4k RBs\n");
+		trans->conf.rx_buf_size = IWL_AMSDU_4K;
+	}
+
 	trans_pcie->rx_page_order =
 		iwl_trans_get_rb_size_order(trans->conf.rx_buf_size);
 	trans_pcie->rx_buf_bytes =

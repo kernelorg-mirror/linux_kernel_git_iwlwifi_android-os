@@ -1497,6 +1497,12 @@ iwl_op_mode_mvm_start(struct iwl_trans *trans, const struct iwl_rf_cfg *cfg,
 
 	trans->conf.rx_buf_size = iwl_amsdu_size_to_rxb_size();
 
+	if (trans->info.rx_split_rb &&
+	    iwl_fw_lookup_cmd_ver(mvm->fw, WIDE_ID(DATA_PATH_GROUP,
+						   RFH_QUEUE_CONFIG_CMD),
+				  1) >= 3)
+		trans->conf.rx_buf_size = IWL_AMSDU_2K;
+
 	trans->conf.wide_cmd_header = true;
 
 	trans->conf.command_groups = iwl_mvm_groups;
