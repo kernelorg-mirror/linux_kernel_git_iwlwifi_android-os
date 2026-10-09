@@ -1888,8 +1888,6 @@ static void iwl_mld_decode_uhr_phy_data(struct iwl_mld_rx_phy_data *phy_data,
 	if (has_user_info) {
 		uhr->user[0].known |=
 			cpu_to_le32(IEEE80211_RADIOTAP_UHR_USER_KNOWN_MCS |
-				    IEEE80211_RADIOTAP_UHR_USER_KNOWN_NSS |
-				    IEEE80211_RADIOTAP_UHR_USER_KNOWN_BF |
 				    IEEE80211_RADIOTAP_UHR_USER_KNOWN_2X_LDPC |
 				    IEEE80211_RADIOTAP_UHR_USER_KNOWN_CODING);
 
@@ -1901,19 +1899,34 @@ static void iwl_mld_decode_uhr_phy_data(struct iwl_mld_rx_phy_data *phy_data,
 			le32_encode_bits(u32_get_bits(rate_n_flags,
 						      RATE_MCS_CODE_MSK),
 					 IEEE80211_RADIOTAP_UHR_USER_INFO_MCS);
-		uhr->user[0].info |=
-			le32_encode_bits(u32_get_bits(rate_n_flags,
-						      RATE_MCS_NSS_MSK),
-					 IEEE80211_RADIOTAP_UHR_USER_INFO_NSS);
+
+		if (le32_get_bits(phy_data->ntfy->sigs.uhr.b2,
+				  OFDM_RX_FRAME_UHR_IS_MU_MIMO_USER_FIELD)) {
+			uhr->user[0].known |=
+				cpu_to_le32(IEEE80211_RADIOTAP_UHR_USER_KNOWN_SPATIAL_CONFIG);
+
+			uhr->user[0].info |=
+				LE32_DEC_ENC(phy_data->ntfy->sigs.uhr.b2,
+					     OFDM_RX_FRAME_UHR_SPATIAL_CONFIG,
+					     IEEE80211_RADIOTAP_UHR_USER_INFO_SPATIAL_CONFIG);
+		} else {
+			uhr->user[0].known |=
+				cpu_to_le32(IEEE80211_RADIOTAP_UHR_USER_KNOWN_NSS |
+					    IEEE80211_RADIOTAP_UHR_USER_KNOWN_BF);
+
+			uhr->user[0].info |=
+				le32_encode_bits(u32_get_bits(rate_n_flags,
+							      RATE_MCS_NSS_MSK),
+						 IEEE80211_RADIOTAP_UHR_USER_INFO_NSS);
+			if (rate_n_flags & RATE_MCS_BF_MSK)
+				uhr->user[0].info |=
+					cpu_to_le32(IEEE80211_RADIOTAP_UHR_USER_INFO_BF);
+		}
 
 		uhr->user[0].info |=
 			LE32_DEC_ENC(phy_data->ntfy->sigs.uhr.b2,
 				     OFDM_RX_FRAME_UHR_2XLDPC,
 				     IEEE80211_RADIOTAP_UHR_USER_INFO_2X_LDPC);
-
-		if (rate_n_flags & RATE_MCS_BF_MSK)
-			uhr->user[0].info |=
-				cpu_to_le32(IEEE80211_RADIOTAP_UHR_USER_INFO_BF);
 
 		if (rate_n_flags & RATE_MCS_LDPC_MSK)
 			uhr->user[0].info |=
