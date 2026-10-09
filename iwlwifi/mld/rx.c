@@ -1425,13 +1425,34 @@ static void iwl_mld_decode_uhr_usig_non_tb(struct iwl_mld_rx_phy_data *phy_data,
 {
 	__le32 usig_a1 = phy_data->ntfy->sigs.uhr.usig_a1;
 	__le32 usig_a2 = phy_data->ntfy->sigs.uhr.usig_a2_uhr;
+	u8 ppdu_type = le32_get_bits(usig_a2, OFDM_RX_FRAME_UHR_PPDU_TYPE);
+	bool usig1_validate_ok;
 
-	IWL_MLD_ENC_USIG_VALUE_MASK(usig, usig_a1,
-				    OFDM_RX_FRAME_EHT_USIG1_DISREGARD,
-				    IEEE80211_RADIOTAP_UHR_USIG1_MU_B20_B24_DISREGARD);
-	IWL_MLD_ENC_USIG_VALUE_MASK(usig, usig_a1,
-				    OFDM_RX_FRAME_EHT_USIG1_VALIDATE,
-				    IEEE80211_RADIOTAP_UHR_USIG1_MU_B25_VALIDATE);
+	/* Use BSS 2 color if it is valid, otherwise copy the validate bit */
+	if (!le32_get_bits(usig_a1, OFDM_RX_FRAME_ENHANCED_WIFI_UL_FLAG) &&
+	    !le32_get_bits(usig_a2, OFDM_RX_FRAME_UHR_COBF_CSR_DISABLE) &&
+	    (ppdu_type == 1 || ppdu_type == 2)) {
+		IWL_MLD_ENC_USIG_VALUE_MASK(
+			usig, phy_data->ntfy->sigs.uhr.usig_a1_uhr,
+			OFDM_RX_FRAME_UHR_BSS_COLOR2,
+			IEEE80211_RADIOTAP_UHR_USIG1_MU_BSS_COLOR_2);
+
+		usig1_validate_ok = true;
+	} else {
+		IWL_MLD_ENC_USIG_VALUE_MASK(usig, usig_a1,
+					    OFDM_RX_FRAME_EHT_USIG1_DISREGARD,
+					    IEEE80211_RADIOTAP_UHR_USIG1_MU_B20_B24_DISREGARD);
+
+		IWL_MLD_ENC_USIG_VALUE_MASK(
+			usig, usig_a1,
+			OFDM_RX_FRAME_EHT_USIG1_VALIDATE,
+			IEEE80211_RADIOTAP_UHR_USIG1_MU_B25_VALIDATE);
+
+		usig1_validate_ok =
+			le32_get_bits(usig_a1,
+				      OFDM_RX_FRAME_EHT_USIG1_VALIDATE);
+	}
+
 	IWL_MLD_ENC_USIG_VALUE_MASK(usig, usig_a2,
 				    OFDM_RX_FRAME_UHR_PPDU_TYPE,
 				    IEEE80211_RADIOTAP_UHR_USIG2_MU_B0_B1_PPDU_TYPE);
@@ -1451,7 +1472,7 @@ static void iwl_mld_decode_uhr_usig_non_tb(struct iwl_mld_rx_phy_data *phy_data,
 				    OFDM_RX_FRAME_UHR_SIG_SYM_NUM,
 				    IEEE80211_RADIOTAP_UHR_USIG2_MU_B11_B15_UHR_SIG_SYMBOLS);
 
-	if (le32_get_bits(usig_a1, OFDM_RX_FRAME_EHT_USIG1_VALIDATE) &&
+	if (usig1_validate_ok &&
 	    le32_get_bits(usig_a2, OFDM_RX_FRAME_UHR_USIG2_VALIDATE_B8))
 		usig->common |= cpu_to_le32(IEEE80211_RADIOTAP_EHT_USIG_COMMON_VALIDATE_BITS_OK);
 
