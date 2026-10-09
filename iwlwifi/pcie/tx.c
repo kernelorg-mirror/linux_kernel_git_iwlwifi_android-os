@@ -1637,8 +1637,12 @@ void iwl_pcie_hcmd_complete(struct iwl_trans *trans,
 	else
 		iwl_txq_gen1_tfd_unmap(trans, meta, txq, index);
 
-	/* Input error checking is done when commands are added to queue. */
-	if (meta->flags & CMD_WANT_SKB) {
+	/*
+	 * Input error checking is done when commands are added to queue.
+	 *
+	 * Ignore split RBs here, iwl_trans_send_cmd will error out.
+	 */
+	if ((meta->flags & CMD_WANT_SKB) && !rxb_is_split(rxb)) {
 		struct page *p = rxb_steal_page(rxb);
 
 		meta->source->resp_pkt = pkt;

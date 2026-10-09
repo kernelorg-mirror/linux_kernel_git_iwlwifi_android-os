@@ -1119,6 +1119,7 @@ static int _iwl_pcie_rx_init(struct iwl_trans *trans)
 		rxq->read = 0;
 		rxq->write = 0;
 		rxq->write_actual = 0;
+		rxq->incomplete_split_rb = false;
 		memset(rxq->rb_stts, 0,
 		       (trans->mac_cfg->device_family >=
 			IWL_DEVICE_FAMILY_AX210) ?
@@ -1352,13 +1353,14 @@ static void iwl_pcie_rx_recycle_rbd(struct iwl_trans *trans,
 static bool iwl_pcie_rx_handle_pkt(struct iwl_trans *trans,
 				   struct iwl_rxq *rxq,
 				   struct iwl_rx_cmd_buffer *rxcb,
-				   struct iwl_rx_packet *pkt, int len)
+				   struct iwl_rx_packet *pkt, int len,
+				   size_t first_frag_len)
 {
 	struct iwl_trans_pcie *trans_pcie = IWL_TRANS_GET_PCIE_TRANS(trans);
 	struct iwl_txq *txq = trans_pcie->txqs.txq[trans->conf.cmd_queue];
 	bool reclaim;
 
-	maybe_trace_iwlwifi_dev_rx(trans, pkt, len);
+	maybe_trace_iwlwifi_dev_rx(trans, pkt, len, first_frag_len);
 
 	/* Reclaim a command buffer only if this packet is a response
 	 *   to a (driver-originated) command.
@@ -1409,32 +1411,94 @@ static bool iwl_pcie_rx_handle_pkt(struct iwl_trans *trans,
 	return rxcb->_pages_stolen;
 }
 
-static void iwl_pcie_rx_handle_rb(struct iwl_trans *trans,
-				  struct iwl_rxq *rxq,
-				  struct iwl_rx_mem_buffer *rxb,
-				  bool emergency,
-				  int idx)
+static struct iwl_rx_mem_buffer *iwl_pcie_get_rxb(struct iwl_trans *trans,
+						  struct iwl_rxq *rxq, u32 i)
 {
 	struct iwl_trans_pcie *trans_pcie = IWL_TRANS_GET_PCIE_TRANS(trans);
+	struct iwl_rx_mem_buffer *rxb;
+	u16 vid;
+
+	BUILD_BUG_ON(sizeof(struct iwl_rx_completion_desc) != 32);
+	BUILD_BUG_ON(sizeof(struct iwl_rx_completion_desc_bz) != 4);
+
+	if (!trans->mac_cfg->mq_rx_supported) {
+		rxb = rxq->queue[i];
+		rxq->queue[i] = NULL;
+		return rxb;
+	}
+
+	if (trans->mac_cfg->device_family >= IWL_DEVICE_FAMILY_BZ) {
+		struct iwl_rx_completion_desc_bz *cd = rxq->used_bd;
+
+		vid = le16_to_cpu(cd[i].rbid);
+	} else if (trans->mac_cfg->device_family >= IWL_DEVICE_FAMILY_AX210) {
+		struct iwl_rx_completion_desc *cd = rxq->used_bd;
+
+		vid = le16_to_cpu(cd[i].rbid);
+	} else {
+		__le32 *cd = rxq->used_bd;
+
+		vid = le32_to_cpu(cd[i]) & 0x0FFF; /* 12-bit VID */
+	}
+
+	if (!vid || vid > RX_POOL_SIZE(trans_pcie->num_rx_bufs))
+		goto out_err;
+
+	rxb = trans_pcie->global_table[vid - 1];
+	if (rxb->invalid)
+		goto out_err;
+
+	IWL_DEBUG_RX(trans, "Got virtual RB ID %u\n", (u32)rxb->vid);
+
+	rxb->invalid = true;
+
+	return rxb;
+
+out_err:
+	WARN(1, "Invalid rxb from HW %u\n", (u32)vid);
+	iwl_trans_force_nmi(trans);
+	return NULL;
+}
+
+static void iwl_pcie_rx_handle_rbs(struct iwl_trans *trans, struct iwl_rxq *rxq,
+				   u32 idx, unsigned int n, bool emergency)
+{
+	struct iwl_trans_pcie *trans_pcie = IWL_TRANS_GET_PCIE_TRANS(trans);
+	struct iwl_rx_mem_buffer *rxbs[IWL_RX_MAX_SPLIT_RBS] = {};
+	u32 max_len = trans_pcie->rx_buf_bytes;
+	struct iwl_rx_cmd_buffer rxcb = {
+		._rx_page_order = trans_pcie->rx_page_order,
+		.truesize = max_len,
+	};
 	bool pages_stolen = false;
-	int max_len = trans_pcie->rx_buf_bytes;
+	bool error = false;
 	u32 offset = 0;
 
-	if (WARN_ON(!rxb))
-		return;
+	for (int i = 0; i < n; i++) {
+		rxbs[i] = iwl_pcie_get_rxb(trans, rxq,
+					   (idx + i) & (rxq->queue_size - 1));
+		if (!rxbs[i]) {
+			error = true;
+			continue;
+		}
 
-	dma_unmap_page(trans->dev, rxb->page_dma, max_len, DMA_FROM_DEVICE);
+		dma_unmap_page(trans->dev, rxbs[i]->page_dma, max_len,
+			       DMA_FROM_DEVICE);
+
+		rxcb._frags[i].page = rxbs[i]->page;
+		rxcb._frags[i].offset = rxbs[i]->offset;
+	}
+	if (error)
+		goto out_recycle;
 
 	while (offset + sizeof(u32) + sizeof(struct iwl_cmd_header) < max_len) {
 		struct iwl_rx_packet *pkt;
-		int len;
-		struct iwl_rx_cmd_buffer rxcb = {
-			._rx_page_order = trans_pcie->rx_page_order,
-			.truesize = max_len,
-			._frags[0].offset = rxb->offset + offset,
-			._frags[0].page = rxb->page,
-			._pages_stolen = false,
-		};
+		u32 first_frag_len;
+		u32 len;
+
+		/* Reset/update for next command on <= AX210 (n == 1) */
+		rxcb._pages_stolen = false;
+		rxcb._frags[0].offset = rxbs[0]->offset + offset;
 
 		pkt = rxb_addr(&rxcb);
 
@@ -1462,73 +1526,67 @@ static void iwl_pcie_rx_handle_rb(struct iwl_trans *trans,
 
 		len = iwl_rx_packet_len(pkt);
 		len += sizeof(u32); /* account for status word */
+		first_frag_len = min(len, max_len - offset);
 
+		/* Verify offset (pre-AX210, n == 1) and length for newer HW */
 		offset += ALIGN(len, FH_RSCSR_FRAME_ALIGN);
-
-		/* check that what the device tells us made sense */
-		if (len < sizeof(*pkt) || offset > max_len)
+		if (len < sizeof(*pkt) || offset > n * max_len)
 			break;
 
 		pages_stolen |= iwl_pcie_rx_handle_pkt(trans, rxq, &rxcb,
-						       pkt, len);
+						       pkt, len,
+						       first_frag_len);
 
 		if (trans->mac_cfg->device_family >= IWL_DEVICE_FAMILY_AX210)
 			break;
 	}
 
-	iwl_pcie_rx_recycle_rbd(trans, rxq, rxb, emergency, pages_stolen);
+out_recycle:
+	/* the op mode took either all of the pages or none */
+	for (int i = 0; i < n; i++) {
+		if (rxbs[i])
+			iwl_pcie_rx_recycle_rbd(trans, rxq, rxbs[i], emergency,
+						pages_stolen);
+	}
 }
 
-static struct iwl_rx_mem_buffer *iwl_pcie_get_rxb(struct iwl_trans *trans,
-						  struct iwl_rxq *rxq, int i,
-						  bool *join)
+static bool iwl_pcie_rx_is_fragmented(struct iwl_trans *trans,
+				      struct iwl_rxq *rxq, u32 i)
 {
-	struct iwl_trans_pcie *trans_pcie = IWL_TRANS_GET_PCIE_TRANS(trans);
-	struct iwl_rx_mem_buffer *rxb;
-	u16 vid;
-
-	BUILD_BUG_ON(sizeof(struct iwl_rx_completion_desc) != 32);
-	BUILD_BUG_ON(sizeof(struct iwl_rx_completion_desc_bz) != 4);
-
-	if (!trans->mac_cfg->mq_rx_supported) {
-		rxb = rxq->queue[i];
-		rxq->queue[i] = NULL;
-		return rxb;
-	}
-
 	if (trans->mac_cfg->device_family >= IWL_DEVICE_FAMILY_BZ) {
 		struct iwl_rx_completion_desc_bz *cd = rxq->used_bd;
 
-		vid = le16_to_cpu(cd[i].rbid);
-		*join = cd[i].flags & IWL_RX_CD_FLAGS_FRAGMENTED;
+		return cd[i].flags & IWL_RX_CD_FLAGS_FRAGMENTED;
 	} else if (trans->mac_cfg->device_family >= IWL_DEVICE_FAMILY_AX210) {
 		struct iwl_rx_completion_desc *cd = rxq->used_bd;
 
-		vid = le16_to_cpu(cd[i].rbid);
-		*join = cd[i].flags & IWL_RX_CD_FLAGS_FRAGMENTED;
-	} else {
-		__le32 *cd = rxq->used_bd;
-
-		vid = le32_to_cpu(cd[i]) & 0x0FFF; /* 12-bit VID */
+		return cd[i].flags & IWL_RX_CD_FLAGS_FRAGMENTED;
 	}
 
-	if (!vid || vid > RX_POOL_SIZE(trans_pcie->num_rx_bufs))
-		goto out_err;
+	return false;
+}
 
-	rxb = trans_pcie->global_table[vid - 1];
-	if (rxb->invalid)
-		goto out_err;
+static int iwl_pcie_rx_count_rbs(struct iwl_trans *trans,
+				 struct iwl_rxq *rxq, u32 i, u32 r,
+				 bool *incomplete)
+{
+	int n = 1;
 
-	IWL_DEBUG_RX(trans, "Got virtual RB ID %u\n", (u32)rxb->vid);
+	while (iwl_pcie_rx_is_fragmented(trans, rxq, i)) {
+		/* the split RB is too long and cannot be processed */
+		if (n == IWL_RX_MAX_SPLIT_RBS) {
+			*incomplete = true;
+			return n;
+		}
 
-	rxb->invalid = true;
+		i = (i + 1) & (rxq->queue_size - 1);
+		n++;
 
-	return rxb;
+		if (i == r)
+			return 0;
+	}
 
-out_err:
-	WARN(1, "Invalid rxb from HW %u\n", (u32)vid);
-	iwl_trans_force_nmi(trans);
-	return NULL;
+	return n;
 }
 
 /*
@@ -1567,12 +1625,12 @@ restart:
 
 	while (i != r && ++handled < budget) {
 		struct iwl_rb_allocator *rba = &trans_pcie->rba;
-		struct iwl_rx_mem_buffer *rxb;
 		/* number of RBDs still waiting for page allocation */
 		u32 rb_pending_alloc =
 			atomic_read(&trans_pcie->rba.req_pending) *
 			RX_CLAIM_REQ_ALLOC;
-		bool join = false;
+		bool incomplete = false;
+		int n;
 
 		if (unlikely(rb_pending_alloc >= rxq->queue_size / 2 &&
 			     !emergency)) {
@@ -1585,31 +1643,33 @@ restart:
 
 		IWL_DEBUG_RX(trans, "Q %d: HW = %d, SW = %d\n", rxq->id, r, i);
 
-		rxb = iwl_pcie_get_rxb(trans, rxq, i, &join);
-		if (!rxb)
+		n = iwl_pcie_rx_count_rbs(trans, rxq, i, r, &incomplete);
+
+		/* incomplete split RB, just leave the RBs unread */
+		if (!n)
 			goto out;
 
-		if (unlikely(join || rxq->next_rb_is_fragment)) {
-			rxq->next_rb_is_fragment = join;
-			/*
-			 * We can only get a multi-RB in the following cases:
-			 *  - firmware issue, sending a too big notification
-			 *  - sniffer mode with a large A-MSDU
-			 *  - large MTU frames (>2k)
-			 * since the multi-RB functionality is limited to newer
-			 * hardware that cannot put multiple entries into a
-			 * single RB.
-			 *
-			 * Right now, the higher layers aren't set up to deal
-			 * with that, so discard all of these.
-			 */
-			list_add_tail(&rxb->list, &rxq->rx_free);
-			rxq->free_count++;
+		if (!incomplete && !rxq->incomplete_split_rb) {
+			iwl_pcie_rx_handle_rbs(trans, rxq, i, n, emergency);
 		} else {
-			iwl_pcie_rx_handle_rb(trans, rxq, rxb, emergency, i);
+			IWL_FW_CHECK(trans, !rxq->incomplete_split_rb,
+				     "got too large split RB!\n");
+
+			/* Not unmapped, put back into the rx_free list */
+			for (int j = 0; j < n; j++) {
+				struct iwl_rx_mem_buffer *rxb =
+					iwl_pcie_get_rxb(trans, rxq,
+							 (j + i) & (rxq->queue_size - 1));
+
+				if (rxb) {
+					list_add_tail(&rxb->list, &rxq->rx_free);
+					rxq->free_count++;
+				}
+			}
 		}
 
-		i = (i + 1) & (rxq->queue_size - 1);
+		rxq->incomplete_split_rb = incomplete;
+		i = (i + n) & (rxq->queue_size - 1);
 
 		/*
 		 * If we have RX_CLAIM_REQ_ALLOC released rx buffers -
@@ -1621,12 +1681,9 @@ restart:
 		if (rxq->used_count >= RX_CLAIM_REQ_ALLOC)
 			iwl_pcie_rx_allocator_get(trans, rxq);
 
-		if (rxq->used_count % RX_CLAIM_REQ_ALLOC == 0 && !emergency) {
-			/* Add the remaining empty RBDs for allocator use */
-			iwl_pcie_rx_move_to_allocator(rxq, rba);
-		} else if (emergency) {
-			count++;
-			if (count == 8) {
+		if (emergency) {
+			count += n;
+			if (count >= 8) {
 				count = 0;
 				if (rb_pending_alloc < rxq->queue_size / 3) {
 					IWL_DEBUG_TPT(trans,

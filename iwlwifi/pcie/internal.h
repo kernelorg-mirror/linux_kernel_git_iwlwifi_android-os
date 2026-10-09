@@ -145,9 +145,8 @@ struct iwl_rx_completion_desc_bz {
  * @rb_stts: driver's pointer to receive buffer status
  * @rb_stts_dma: bus address of receive buffer status
  * @lock: per-queue lock
+ * @incomplete_split_rb: next RB is a continuation of an invalid split RB
  * @queue: actual rx queue. Not used for multi-rx queue.
- * @next_rb_is_fragment: indicates that the previous RB that we handled set
- *	the fragmented flag, so the next one is still another fragment
  * @napi: NAPI struct for this queue
  * @queue_size: size of this queue
  *
@@ -167,7 +166,7 @@ struct iwl_rxq {
 	u32 queue_size;
 	struct list_head rx_free;
 	struct list_head rx_used;
-	bool need_update, next_rb_is_fragment;
+	bool need_update, incomplete_split_rb;
 	void *rb_stts;
 	dma_addr_t rb_stts_dma;
 	spinlock_t lock;

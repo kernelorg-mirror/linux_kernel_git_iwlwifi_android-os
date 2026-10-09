@@ -3,7 +3,7 @@
  *
  * Copyright(c) 2009 - 2014 Intel Corporation. All rights reserved.
  * Copyright(C) 2016        Intel Deutschland GmbH
- * Copyright(c) 2018, 2023, 2025 Intel Corporation
+ * Copyright(c) 2018, 2023, 2025 - 2026 Intel Corporation
  *****************************************************************************/
 
 #ifndef __IWLWIFI_DEVICE_TRACE
@@ -104,15 +104,17 @@ DECLARE_TRACEPOINT(iwlwifi_dev_rx);
 DECLARE_TRACEPOINT(iwlwifi_dev_rx_data);
 #endif
 
-void __trace_iwlwifi_dev_rx(struct iwl_trans *trans, void *pkt, size_t len);
+void __trace_iwlwifi_dev_rx(struct iwl_trans *trans, void *pkt, size_t len,
+			    size_t first_frag_len);
 
 static inline void maybe_trace_iwlwifi_dev_rx(struct iwl_trans *trans,
-					      void *pkt, size_t len)
+					      void *pkt, size_t len,
+					      size_t first_frag_len)
 {
 #ifdef CPTCFG_IWLWIFI_DEVICE_TRACING
 	if (tracepoint_enabled(iwlwifi_dev_rx) ||
 	    tracepoint_enabled(iwlwifi_dev_rx_data))
-		__trace_iwlwifi_dev_rx(trans, pkt, len);
+		__trace_iwlwifi_dev_rx(trans, pkt, len, first_frag_len);
 #endif
 }
 #endif /* __IWLWIFI_DEVICE_TRACE */
