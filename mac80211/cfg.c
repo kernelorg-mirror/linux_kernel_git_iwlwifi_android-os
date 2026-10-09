@@ -1453,17 +1453,23 @@ ieee80211_assign_beacon(struct ieee80211_sub_if_data *sdata,
 {
 	struct cfg80211_mbssid_elems *mbssid = params->mbssid_ies;
 	struct cfg80211_rnr_elems *rnr = mbssid ? params->rnr_ies : NULL;
-	struct beacon_data *new, *old;
+	struct beacon_data *new = NULL, *old;
 	int new_head_len, new_tail_len;
 	int err;
 	u64 _changed = BSS_CHANGED_BEACON;
 	struct ieee80211_bss_conf *link_conf = link->conf;
 
-	old = sdata_dereference(link->u.ap.beacon, sdata);
+	/* grab old and make lockless updates return -EAGAIN */
+	spin_lock(&link->ap_tmpl_lock);
+	old = ap_tmpl_dereference(link, link->u.ap.beacon);
+	link->u.ap.bss_update_in_progress = true;
+	spin_unlock(&link->ap_tmpl_lock);
 
 	/* Need to have a beacon head if we don't have one yet */
-	if (!params->head && !old)
-		return -EINVAL;
+	if (!params->head && !old) {
+		err = -EINVAL;
+		goto error;
+	}
 
 	/* new or old head? */
 	if (params->head)
@@ -1485,8 +1491,10 @@ ieee80211_assign_beacon(struct ieee80211_sub_if_data *sdata,
 	}
 
 	new = ieee80211_alloc_beacon(mbssid, rnr, new_head_len, new_tail_len);
-	if (!new)
-		return -ENOMEM;
+	if (!new) {
+		err = -ENOMEM;
+		goto error;
+	}
 
 	if (new->mbssid_ies)
 		link_conf->bssid_indicator =
@@ -1517,10 +1525,8 @@ ieee80211_assign_beacon(struct ieee80211_sub_if_data *sdata,
 
 	err = ieee80211_set_probe_resp(sdata, params->probe_resp,
 				       params->probe_resp_len, csa, cca, link);
-	if (err < 0) {
-		kfree(new);
-		return err;
-	}
+	if (err < 0)
+		goto error;
 	if (err == 0)
 		_changed |= BSS_CHANGED_AP_PROBE_RESP;
 
@@ -1533,21 +1539,31 @@ ieee80211_assign_beacon(struct ieee80211_sub_if_data *sdata,
 							 params->civicloc_len,
 							 link_conf);
 
-		if (err < 0) {
-			kfree(new);
-			return err;
-		}
+		if (err < 0)
+			goto error;
 
 		_changed |= BSS_CHANGED_FTM_RESPONDER;
 	}
 
-	ap_tmpl_replace(link, link->u.ap.beacon, new);
+	spin_lock(&link->ap_tmpl_lock);
+	rcu_assign_pointer(link->u.ap.beacon, new);
+	link->u.ap.bss_update_in_progress = false;
+	spin_unlock(&link->ap_tmpl_lock);
 	sdata->u.ap.active = true;
+
+	if (old)
+		kfree_rcu(old, rcu_head);
 
 	ieee80211_update_ap_bandwidth(link, params);
 
 	*changed |= _changed;
 	return 0;
+error:
+	spin_lock(&link->ap_tmpl_lock);
+	link->u.ap.bss_update_in_progress = false;
+	spin_unlock(&link->ap_tmpl_lock);
+	kfree(new);
+	return err;
 }
 
 static u8 ieee80211_num_beaconing_links(struct ieee80211_sub_if_data *sdata)
