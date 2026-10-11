@@ -1501,13 +1501,16 @@ void iwl_mvm_rx_beacon_notif(struct iwl_mvm *mvm,
 	lockdep_assert_held(&mvm->mutex);
 
 	if (!iwl_mvm_is_short_beacon_notif_supported(mvm)) {
-		struct iwl_extended_beacon_notif_v5 *beacon = (void *)pkt->data;
-		struct iwl_tx_resp *beacon_notify_hdr =
-			&beacon->beacon_notify_hdr;
+		struct iwl_tx_resp *beacon_notify_hdr = (void *)pkt->data;
+		const struct iwl_extended_beacon_notif_v5_data *beacon;
+		size_t hdr_len = iwl_mvm_has_new_tx_api(mvm) ?
+			sizeof(struct iwl_tx_resp) :
+			struct_size_t(struct iwl_tx_resp_v3, status, 1);
 
-		if (unlikely(pkt_len < sizeof(*beacon)))
+		if (unlikely(pkt_len < hdr_len + sizeof(*beacon)))
 			return;
 
+		beacon = (const void *)(pkt->data + hdr_len);
 		beacon_gp2 = le32_to_cpu(beacon->gp2);
 
 		mvm->ibss_manager = beacon->ibss_mgr_status != 0;

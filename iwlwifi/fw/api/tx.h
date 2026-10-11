@@ -845,14 +845,17 @@ struct iwl_beacon_notif {
 } __packed;
 
 /**
- * struct iwl_extended_beacon_notif_v5 - notifies about beacon transmission
- * @beacon_notify_hdr: tx response command associated with the beacon
+ * struct iwl_extended_beacon_notif_v5_data - beacon transmission data
  * @tsf: last beacon tsf
  * @ibss_mgr_status: whether IBSS is manager
  * @gp2: last beacon time in gp2
+ *
+ * BEACON_NTFY_API_S_VER_5 starts with the TX response of the beacon and
+ * this follows it. The TX response is &struct iwl_tx_resp with the new TX
+ * API, otherwise it is &struct iwl_tx_resp_v3 with a single
+ * &struct agg_tx_status.
  */
-struct iwl_extended_beacon_notif_v5 {
-	struct iwl_tx_resp beacon_notify_hdr;
+struct iwl_extended_beacon_notif_v5_data {
 	__le64 tsf;
 	__le32 ibss_mgr_status;
 	__le32 gp2;
