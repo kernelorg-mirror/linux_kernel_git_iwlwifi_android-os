@@ -947,24 +947,25 @@ static int iwl_mld_tx_mpdu(struct iwl_mld *mld, struct sk_buff *skb,
 	struct iwl_device_tx_cmd *dev_tx_cmd;
 	int queue = iwl_mld_get_tx_queue_id(mld, txq, skb);
 	u8 tid = IWL_MAX_TID_COUNT;
+	int ret;
 
 	if (WARN_ONCE(queue == IWL_MLD_INVALID_QUEUE, "Invalid TX Queue id") ||
 	    queue == IWL_MLD_INVALID_DROP_TX)
-		return -1;
+		return -EINVAL;
 
 	if (unlikely(ieee80211_is_any_nullfunc(hdr->frame_control)))
-		return -1;
+		return -EINVAL;
 
 	if (unlikely(ieee80211_is_probe_resp(hdr->frame_control))) {
 		if (IWL_MLD_NON_TRANSMITTING_AP)
-			return -1;
+			return -EINVAL;
 
 		iwl_mld_probe_resp_set_noa(mld, skb);
 	}
 
 	dev_tx_cmd = iwl_trans_alloc_tx_cmd(mld->trans);
 	if (unlikely(!dev_tx_cmd))
-		return -1;
+		return -ENOMEM;
 
 	iwl_mld_fill_tx_cmd(mld, skb, dev_tx_cmd, sta);
 
@@ -984,7 +985,8 @@ static int iwl_mld_tx_mpdu(struct iwl_mld *mld, struct sk_buff *skb,
 
 	info->driver_data[1] = dev_tx_cmd;
 
-	if (iwl_trans_tx(mld->trans, skb, dev_tx_cmd, queue))
+	ret = iwl_trans_tx(mld->trans, skb, dev_tx_cmd, queue);
+	if (ret)
 		goto err;
 
 	/* Update low-latency counter when a packet is queued instead
@@ -998,7 +1000,7 @@ static int iwl_mld_tx_mpdu(struct iwl_mld *mld, struct sk_buff *skb,
 err:
 	iwl_trans_free_tx_cmd(mld->trans, dev_tx_cmd);
 	IWL_DEBUG_TX(mld, "TX from Q:%d dropped\n", queue);
-	return -1;
+	return ret;
 }
 
 #ifdef CONFIG_INET
@@ -1098,7 +1100,7 @@ static int iwl_mld_tx_tso(struct iwl_mld *mld, struct sk_buff *skb,
 	int ret;
 
 	if (WARN_ON(!txq || !txq->sta))
-		return -1;
+		return -EINVAL;
 
 	payload_len = skb_tail_pointer(skb) - skb_transport_header(skb) -
 		tcp_hdrlen(skb) + skb->data_len;
@@ -1107,7 +1109,7 @@ static int iwl_mld_tx_tso(struct iwl_mld *mld, struct sk_buff *skb,
 		return iwl_mld_tx_mpdu(mld, skb, txq);
 
 	if (!info->control.vif)
-		return -1;
+		return -EINVAL;
 
 	__skb_queue_head_init(&mpdus_skbs);
 
@@ -1152,7 +1154,7 @@ static int iwl_mld_tx_tso(struct iwl_mld *mld, struct sk_buff *skb,
 	/* Impossible to get TSO without CONFIG_INET */
 	WARN_ON(1);
 
-	return -1;
+	return -EINVAL;
 }
 #endif /* CONFIG_INET */
 
