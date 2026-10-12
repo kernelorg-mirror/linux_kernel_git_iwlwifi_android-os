@@ -1774,7 +1774,8 @@ static void iwl_mld_decode_uhr_non_tb(struct iwl_mld_rx_phy_data *phy_data,
 						   OFDM_RX_FRAME_UHR_STA_RU),
 				     true);
 
-	if (!phy_data->with_data)
+	if (!le32_get_bits(phy_data->ntfy->sigs.uhr.b2,
+			   OFDM_RX_FRAME_UHR_USER_FIELD_CRC_OK))
 		return;
 
 	uhr->user[0].known |= cpu_to_le32(IEEE80211_RADIOTAP_UHR_USER_KNOWN_STA_ID);
@@ -1861,6 +1862,7 @@ static void iwl_mld_decode_uhr_phy_data(struct iwl_mld_rx_phy_data *phy_data,
 	u32 rate_n_flags = phy_data->rate_n_flags;
 	u32 he_type = rate_n_flags & RATE_MCS_HE_TYPE_MSK;
 	struct ieee80211_radiotap_uhr *uhr;
+	bool has_user_info;
 	size_t uhr_len;
 
 	if (he_type == RATE_MCS_HE_TYPE_UHR_ELR) {
@@ -1868,8 +1870,13 @@ static void iwl_mld_decode_uhr_phy_data(struct iwl_mld_rx_phy_data *phy_data,
 		return;
 	}
 
-	/* space for one user_info if we captured data */
-	uhr_len = struct_size(uhr, user, (phy_data->with_data ? 1 : 0));
+	/* space for one user_info if valid or data was captured */
+	has_user_info =
+		(he_type != RATE_MCS_HE_TYPE_TRIG) &&
+		le32_get_bits(phy_data->ntfy->sigs.uhr.b2,
+			      OFDM_RX_FRAME_UHR_USER_FIELD_CRC_OK);
+	uhr_len = struct_size(uhr, user,
+			      (phy_data->with_data || has_user_info ? 1 : 0));
 
 	uhr = iwl_mld_radiotap_put_tlv(skb, IEEE80211_RADIOTAP_UHR, uhr_len);
 
@@ -1878,14 +1885,17 @@ static void iwl_mld_decode_uhr_phy_data(struct iwl_mld_rx_phy_data *phy_data,
 						      RATE_MCS_HE_GI_LTF_MSK),
 					 IEEE80211_RADIOTAP_UHR_DATA0_GI_LTF_SIZE);
 
-	if (phy_data->with_data) {
+	if (has_user_info) {
 		uhr->user[0].known |=
 			cpu_to_le32(IEEE80211_RADIOTAP_UHR_USER_KNOWN_MCS |
 				    IEEE80211_RADIOTAP_UHR_USER_KNOWN_NSS |
 				    IEEE80211_RADIOTAP_UHR_USER_KNOWN_BF |
 				    IEEE80211_RADIOTAP_UHR_USER_KNOWN_2X_LDPC |
-				    IEEE80211_RADIOTAP_UHR_USER_KNOWN_CODING |
-				    IEEE80211_RADIOTAP_UHR_USER_KNOWN_USER_CAPTURED);
+				    IEEE80211_RADIOTAP_UHR_USER_KNOWN_CODING);
+
+		if (phy_data->with_data)
+			uhr->user[0].known |=
+				cpu_to_le32(IEEE80211_RADIOTAP_UHR_USER_KNOWN_USER_CAPTURED);
 
 		uhr->user[0].info |=
 			le32_encode_bits(u32_get_bits(rate_n_flags,
@@ -1896,13 +1906,37 @@ static void iwl_mld_decode_uhr_phy_data(struct iwl_mld_rx_phy_data *phy_data,
 						      RATE_MCS_NSS_MSK),
 					 IEEE80211_RADIOTAP_UHR_USER_INFO_NSS);
 
-		if (phy_data->phy_info & IWL_RX_MPDU_PHY_2X_LDPC)
-			uhr->user[0].info |=
-				cpu_to_le32(IEEE80211_RADIOTAP_UHR_USER_INFO_2X_LDPC);
+		uhr->user[0].info |=
+			LE32_DEC_ENC(phy_data->ntfy->sigs.uhr.b2,
+				     OFDM_RX_FRAME_UHR_2XLDPC,
+				     IEEE80211_RADIOTAP_UHR_USER_INFO_2X_LDPC);
 
 		if (rate_n_flags & RATE_MCS_BF_MSK)
 			uhr->user[0].info |=
 				cpu_to_le32(IEEE80211_RADIOTAP_UHR_USER_INFO_BF);
+
+		if (rate_n_flags & RATE_MCS_LDPC_MSK)
+			uhr->user[0].info |=
+				cpu_to_le32(IEEE80211_RADIOTAP_UHR_USER_INFO_CODING);
+	} else if (phy_data->with_data) {
+		/*
+		 * This will be a TB based frame, which we are sniffing based
+		 * on the trigger information.
+		 */
+		uhr->user[0].known |=
+			cpu_to_le32(IEEE80211_RADIOTAP_UHR_USER_KNOWN_MCS |
+				    IEEE80211_RADIOTAP_UHR_USER_KNOWN_2X_LDPC |
+				    IEEE80211_RADIOTAP_UHR_USER_KNOWN_CODING |
+				    IEEE80211_RADIOTAP_UHR_USER_KNOWN_USER_CAPTURED);
+
+		uhr->user[0].info |=
+			le32_encode_bits(u32_get_bits(rate_n_flags,
+						      RATE_MCS_CODE_MSK),
+					 IEEE80211_RADIOTAP_UHR_USER_INFO_MCS);
+
+		if (phy_data->phy_info & IWL_RX_MPDU_PHY_2X_LDPC)
+			uhr->user[0].info |=
+				cpu_to_le32(IEEE80211_RADIOTAP_UHR_USER_INFO_2X_LDPC);
 
 		if (rate_n_flags & RATE_MCS_LDPC_MSK)
 			uhr->user[0].info |=
