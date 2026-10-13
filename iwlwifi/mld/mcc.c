@@ -221,10 +221,7 @@ static int iwl_mld_apply_last_mcc(struct iwl_mld *mld,
 		return -EIO;
 
 	/* update cfg80211 if the regdomain was changed */
-	if (changed)
-		ret = regulatory_set_wiphy_regd_sync(mld->wiphy, regd);
-	else
-		ret = 0;
+	ret = regulatory_set_wiphy_regd_sync(mld->wiphy, regd);
 
 	kfree(regd);
 	return ret;
