@@ -206,6 +206,7 @@ struct iwl_prph_scratch_step_cfg {
  * @rbd_cfg: default RX queue configuration
  * @reduce_power_cfg: UEFI power reduction table
  * @step_cfg: step configuration
+ * @reserved: reserved
  */
 struct iwl_prph_scratch_ctrl_cfg {
 	struct iwl_prph_scratch_version version;
@@ -215,6 +216,7 @@ struct iwl_prph_scratch_ctrl_cfg {
 	struct iwl_prph_scratch_rbd_cfg rbd_cfg;
 	struct iwl_prph_scratch_uefi_cfg reduce_power_cfg;
 	struct iwl_prph_scratch_step_cfg step_cfg;
+	u8 reserved[12];
 } __packed; /* PERIPH_SCRATCH_CTRL_CFG_S */
 
 /**
@@ -308,15 +310,11 @@ struct iwl_context_info_dram_fseq {
  * struct iwl_prph_scratch - peripheral scratch mapping
  * @ctrl_cfg: control and configuration of prph scratch
  * @dram: firmware images addresses in DRAM
- * @fseq_override: FSEQ override parameters
- * @step_analog_params: STEP analog calibration values
  * @reserved: reserved
  */
 struct iwl_prph_scratch {
 	struct iwl_prph_scratch_ctrl_cfg ctrl_cfg;
-	__le32 fseq_override;
-	__le32 step_analog_params;
-	__le32 reserved[8];
+	__le32 reserved[7];
 	struct iwl_context_info_dram_fseq dram;
 } __packed; /* PERIPH_SCRATCH_S */
 
