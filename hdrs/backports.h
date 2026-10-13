@@ -348,3 +348,25 @@ static inline void aes_cmac_zeroize_ctx(struct aes_cmac_ctx *ctx)
 }
 
 #define ASSOC_REQ_PROTECTED_TWT	BIT(10)
+
+/*
+ * queue_rcu_work() isn't in the GKI symbol list, so provide a simplified
+ * version. Unlike the real one, this doesn't track the pending state across
+ * the grace period, so it must not be called again for the same rcu_work
+ * until it has been queued to the workqueue (mac80211 queues it only once).
+ */
+static inline void iwl7000_rcu_work_rcufn(struct rcu_head *rcu)
+{
+	struct rcu_work *rwork = container_of(rcu, struct rcu_work, rcu);
+
+	queue_work(rwork->wq, &rwork->work);
+}
+
+static inline bool iwl7000_queue_rcu_work(struct workqueue_struct *wq,
+					  struct rcu_work *rwork)
+{
+	rwork->wq = wq;
+	call_rcu(&rwork->rcu, iwl7000_rcu_work_rcufn);
+	return true;
+}
+#define queue_rcu_work iwl7000_queue_rcu_work
