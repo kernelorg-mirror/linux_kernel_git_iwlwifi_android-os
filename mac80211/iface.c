@@ -1736,7 +1736,8 @@ static void ieee80211_iface_process_skb(struct ieee80211_local *local,
 			}
 		}
 	} else if (ieee80211_is_action(mgmt->frame_control) &&
-		   mgmt->u.action.category == WLAN_CATEGORY_HT) {
+		   (mgmt->u.action.category == WLAN_CATEGORY_HT ||
+		    mgmt->u.action.category == WLAN_CATEGORY_PROTECTED_HT)) {
 		switch (mgmt->u.action.action_code) {
 		case WLAN_HT_ACTION_NOTIFY_CHANWIDTH: {
 			u8 chanwidth = mgmt->u.action.ht_notify_cw.chanwidth;
@@ -1765,7 +1766,8 @@ static void ieee80211_iface_process_skb(struct ieee80211_local *local,
 			break;
 		}
 	} else if (ieee80211_is_action(mgmt->frame_control) &&
-		   mgmt->u.action.category == WLAN_CATEGORY_VHT) {
+		   (mgmt->u.action.category == WLAN_CATEGORY_VHT ||
+		    mgmt->u.action.category == WLAN_CATEGORY_PROTECTED_VHT)) {
 		switch (mgmt->u.action.action_code) {
 		case WLAN_VHT_ACTION_OPMODE_NOTIF: {
 			struct ieee80211_rx_status *status;

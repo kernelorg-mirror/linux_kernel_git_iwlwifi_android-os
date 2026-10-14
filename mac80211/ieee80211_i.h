@@ -499,6 +499,7 @@ struct ieee80211_mgd_assoc_data {
 	bool spp_amsdu;
 	bool cip;
 	bool protected_twt;
+	bool epp_robust_mgmt;
 
 	s8 assoc_link_id;
 

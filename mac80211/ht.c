@@ -503,6 +503,13 @@ int ieee80211_send_smps_action(struct ieee80211_sub_if_data *sdata,
 	struct ieee80211_mgmt *action_frame;
 	struct ieee80211_tx_info *info;
 	u8 status_link_id = link_id < 0 ? 0 : link_id;
+	bool robust;
+
+	scoped_guard(rcu) {
+		struct sta_info *sta = sta_info_get(sdata, da);
+
+		robust = sta && sta->sta.epp_robust_mgmt;
+	}
 
 	skb = dev_alloc_skb(IEEE80211_MIN_ACTION_SIZE(ht_smps) +
 			    local->hw.extra_tx_headroom);
@@ -516,7 +523,8 @@ int ieee80211_send_smps_action(struct ieee80211_sub_if_data *sdata,
 	memcpy(action_frame->bssid, bssid, ETH_ALEN);
 	action_frame->frame_control = cpu_to_le16(IEEE80211_FTYPE_MGMT |
 						  IEEE80211_STYPE_ACTION);
-	action_frame->u.action.category = WLAN_CATEGORY_HT;
+	action_frame->u.action.category = robust ? WLAN_CATEGORY_PROTECTED_HT :
+						   WLAN_CATEGORY_HT;
 	action_frame->u.action.action_code = WLAN_HT_ACTION_SMPS;
 	switch (smps) {
 	case IEEE80211_SMPS_AUTOMATIC:

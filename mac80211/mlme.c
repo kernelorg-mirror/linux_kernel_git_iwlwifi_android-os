@@ -7115,6 +7115,8 @@ static bool ieee80211_assoc_success(struct ieee80211_sub_if_data *sdata,
 		sta->sta.mfp = false;
 	}
 
+	sta->sta.epp_robust_mgmt = assoc_data->epp_robust_mgmt && sta->sta.mfp;
+
 	ieee80211_sta_set_max_amsdu_subframes(sta, elems->ext_capab,
 					      elems->ext_capab_len);
 
@@ -10892,6 +10894,7 @@ int ieee80211_mgd_assoc(struct ieee80211_sub_if_data *sdata,
 	assoc_data->spp_amsdu = req->flags & ASSOC_REQ_SPP_AMSDU;
 	assoc_data->cip = false;/* CIP not supported by cfg80211 */
 	assoc_data->protected_twt = req->flags & ASSOC_REQ_PROTECTED_TWT;
+	assoc_data->epp_robust_mgmt = req->flags & ASSOC_REQ_EPP_ROBUST_MGMT;
 
 	if (ifmgd->auth_data && !ifmgd->auth_data->done) {
 		err = -EBUSY;

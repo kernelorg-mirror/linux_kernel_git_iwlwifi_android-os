@@ -3577,6 +3577,20 @@ ieee80211_process_rx_twt_action(struct ieee80211_rx_data *rx)
 	return false;
 }
 
+/*
+ * Return true if a unicast action frame category doesn't match the
+ * negotiated EPP robust management
+ */
+static inline bool
+ieee80211_robust_epp_mismatch(struct ieee80211_rx_data *rx,
+			      const struct ieee80211_mgmt *mgmt,
+			      u8 protected_category)
+{
+	return !is_multicast_ether_addr(mgmt->da) &&
+	       rx->sta->sta.epp_robust_mgmt !=
+	       (mgmt->u.action.category == protected_category);
+}
+
 static ieee80211_rx_result debug_noinline
 ieee80211_rx_h_action(struct ieee80211_rx_data *rx)
 {
@@ -3596,6 +3610,7 @@ ieee80211_rx_h_action(struct ieee80211_rx_data *rx)
 
 	switch (mgmt->u.action.category) {
 	case WLAN_CATEGORY_HT:
+	case WLAN_CATEGORY_PROTECTED_HT:
 		/* reject HT action frames from stations not supporting HT
 		 * or not HE Capable
 		 */
@@ -3613,6 +3628,10 @@ ieee80211_rx_h_action(struct ieee80211_rx_data *rx)
 		/* verify action & smps_control/chanwidth are present */
 		if (len < IEEE80211_MIN_ACTION_SIZE(ht_smps))
 			goto invalid;
+
+		if (ieee80211_robust_epp_mismatch(rx, mgmt,
+						  WLAN_CATEGORY_PROTECTED_HT))
+			return RX_DROP_U_EPP_ROBUST_MISMATCH;
 
 		switch (mgmt->u.action.action_code) {
 		case WLAN_HT_ACTION_SMPS: {
@@ -3693,6 +3712,7 @@ ieee80211_rx_h_action(struct ieee80211_rx_data *rx)
 			goto invalid;
 		goto queue;
 	case WLAN_CATEGORY_VHT:
+	case WLAN_CATEGORY_PROTECTED_VHT:
 		if (sdata->vif.type != NL80211_IFTYPE_STATION &&
 		    sdata->vif.type != NL80211_IFTYPE_MESH_POINT &&
 		    sdata->vif.type != NL80211_IFTYPE_AP_VLAN &&
@@ -3705,21 +3725,23 @@ ieee80211_rx_h_action(struct ieee80211_rx_data *rx)
 			goto invalid;
 
 		switch (mgmt->u.action.action_code) {
-		case WLAN_VHT_ACTION_OPMODE_NOTIF: {
+		case WLAN_VHT_ACTION_OPMODE_NOTIF:
 			/* verify opmode is present */
 			if (len < IEEE80211_MIN_ACTION_SIZE(vht_opmode_notif))
 				goto invalid;
-			goto queue;
-		}
-		case WLAN_VHT_ACTION_GROUPID_MGMT: {
+			break;
+		case WLAN_VHT_ACTION_GROUPID_MGMT:
 			if (len < IEEE80211_MIN_ACTION_SIZE(vht_group_notif))
 				goto invalid;
-			goto queue;
-		}
-		default:
 			break;
+		default:
+			return RX_CONTINUE;
 		}
-		break;
+
+		if (ieee80211_robust_epp_mismatch(rx, mgmt,
+						  WLAN_CATEGORY_PROTECTED_VHT))
+			return RX_DROP_U_EPP_ROBUST_MISMATCH;
+		goto queue;
 	case WLAN_CATEGORY_BACK:
 		if (sdata->vif.type != NL80211_IFTYPE_STATION &&
 		    sdata->vif.type != NL80211_IFTYPE_MESH_POINT &&

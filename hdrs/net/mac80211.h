@@ -2739,6 +2739,8 @@ struct ieee80211_link_sta {
  * @epp_peer: indicates that the peer is an EPP peer.
  * @cip: indicates whether the STA uses control frame protection or not.
  * @twt_protected: does this STA support protected TWT frames
+ * @epp_robust_mgmt: use the robust (protected) HT/VHT action frames
+ *	with this STA; only set if @mfp is also set
  * @nmi: For NDI stations, pointer to the NMI station of the peer.
  * @nan_sched: NAN peer schedule for this station. Valid only for NMI stations.
  * @ext_mld_capa_ops: the MLD's extended MLD capabilities and operations
@@ -2762,6 +2764,7 @@ struct ieee80211_sta {
 
 	bool cip;
 	bool twt_protected;
+	bool epp_robust_mgmt;
 
 	struct ieee80211_sta_aggregates *cur;
 
