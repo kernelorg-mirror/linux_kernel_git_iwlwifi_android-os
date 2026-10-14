@@ -4520,10 +4520,7 @@ static bool ieee80211_accept_frame(struct ieee80211_rx_data *rx)
 	struct ieee80211_hdr *hdr = (void *)skb->data;
 	struct ieee80211_rx_status *status = IEEE80211_SKB_RXCB(skb);
 	u8 *bssid = ieee80211_get_bssid(hdr, skb->len, sdata->vif.type);
-	bool nan_beacon = ieee80211_is_nan_beacon((struct ieee80211_mgmt *)hdr,
-						  skb->len);
 	bool multicast;
-
 	static const u8 nan_network_id[ETH_ALEN] __aligned(2) = {
 		0x51, 0x6F, 0x9A, 0x01, 0x00, 0x00
 	};
@@ -4532,9 +4529,6 @@ static bool ieee80211_accept_frame(struct ieee80211_rx_data *rx)
 		return sdata->vif.type == NL80211_IFTYPE_STATION && bssid;
 
 	multicast = is_multicast_ether_addr(hdr->addr1);
-	/* Only a NAN interface may handle NAN beacons */
-	if (nan_beacon && sdata->vif.type != NL80211_IFTYPE_NAN)
-		return false;
 
 	switch (sdata->vif.type) {
 	case NL80211_IFTYPE_STATION:

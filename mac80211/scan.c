@@ -361,16 +361,16 @@ void ieee80211_scan_rx(struct ieee80211_local *local, struct sk_buff *skb)
 		if (!ieee80211_is_s1g_beacon(mgmt->frame_control) &&
 		    !is_broadcast_ether_addr(mgmt->da))
 			return;
-
-		/* NAN beacons are not a BSS, don't add to the BSS table */
-		if (ieee80211_is_nan_beacon(mgmt, skb->len))
-			return;
 	}
 
 	/* Do not update the BSS table in case of only monitor interfaces */
 	if (local->open_count == local->monitors)
 		return;
 
+	/* NAN beacons are not a BSS, don't add to the BSS table */
+	if (ieee80211_is_nan_beacon(mgmt, skb->len)) {
+		return;
+	}
 	bss = ieee80211_bss_info_update(local, rx_status,
 					mgmt, skb->len,
 					channel);
