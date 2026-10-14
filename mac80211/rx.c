@@ -4213,7 +4213,7 @@ static void ieee80211_rx_handlers(struct ieee80211_rx_data *rx,
 		 * and link_sta accordingly.
 		 */
 		rx->skb = skb;
-		if (ieee80211_vif_is_mld(&rx->sdata->vif) &&
+		if (ieee80211_vif_is_mld(&rx->sdata->vif) && rx->link_id >= 0 &&
 		    unlikely(rx->link_id != status->link_id)) {
 			if (rx->sta) {
 				rx->link_sta =
