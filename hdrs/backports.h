@@ -347,6 +347,10 @@ static inline void aes_cmac_zeroize_ctx(struct aes_cmac_ctx *ctx)
 		memzero_explicit(ctx, sizeof(*ctx));
 }
 
+#define NL80211_EXT_FEATURE_EPP_ROBUST_MGMT	-1
+#define NL80211_STA_FLAG_EPP_ROBUST_MGMT	10
+#define ASSOC_REQ_EPP_ROBUST_MGMT		BIT(11)
+
 #define ASSOC_REQ_PROTECTED_TWT	BIT(10)
 
 /*
