@@ -1220,6 +1220,70 @@ static bool iwl_mld_can_activate_link(struct iwl_mld *mld,
 	return link_sta && link_sta->in_fw;
 }
 
+static void iwl_mld_check_he_obss_narrow_bw_ru_iter(struct wiphy *wiphy,
+						    struct cfg80211_bss *bss,
+						    void *_data)
+{
+	bool *tolerated = _data;
+	const struct cfg80211_bss_ies *ies;
+	const struct element *elem;
+
+	rcu_read_lock();
+	ies = rcu_dereference(bss->ies);
+	elem = cfg80211_find_elem(WLAN_EID_EXT_CAPABILITY, ies->data,
+				  ies->len);
+
+	if (!elem || elem->datalen < 11 ||
+	    !(elem->data[10] &
+	      WLAN_EXT_CAPA10_OBSS_NARROW_BW_RU_TOLERANCE_SUPPORT)) {
+		*tolerated = false;
+	}
+	rcu_read_unlock();
+}
+
+static void
+iwl_mld_check_he_obss_narrow_bw_ru(struct iwl_mld *mld,
+				   struct ieee80211_bss_conf *link_conf)
+{
+	struct iwl_mld_link *mld_link =
+		iwl_mld_link_from_mac80211(link_conf);
+	bool tolerated = true;
+
+	if (WARN_ON(!mld_link))
+		return;
+
+	if (WARN_ON_ONCE(!link_conf->chanreq.oper.chan))
+		return;
+
+	if (!(link_conf->chanreq.oper.chan->flags & IEEE80211_CHAN_RADAR))
+		tolerated = true;
+	else
+		cfg80211_bss_iter(mld->wiphy, &link_conf->chanreq.oper,
+				  iwl_mld_check_he_obss_narrow_bw_ru_iter,
+				  &tolerated);
+
+	if (mld_link->he_ru_2mhz_block == !tolerated)
+		return;
+
+	/* If there is at least one AP on radar channel that cannot
+	 * tolerate 26-tone RU UL OFDMA transmissions using HE TB PPDU.
+	 */
+	mld_link->he_ru_2mhz_block = !tolerated;
+
+	iwl_mld_change_link_in_fw(mld, link_conf,
+				  LINK_CONTEXT_MODIFY_HE_PARAMS);
+}
+
+static void iwl_mld_link_set_2mhz_block(struct iwl_mld *mld,
+					struct ieee80211_vif *vif)
+{
+	struct ieee80211_bss_conf *link_conf;
+	unsigned int link_id;
+
+	for_each_vif_active_link(vif, link_conf, link_id)
+		iwl_mld_check_he_obss_narrow_bw_ru(mld, link_conf);
+}
+
 static
 int iwl_mld_assign_vif_chanctx(struct ieee80211_hw *hw,
 			       struct ieee80211_vif *vif,
@@ -1314,8 +1378,10 @@ int iwl_mld_assign_vif_chanctx(struct ieee80211_hw *hw,
 			goto err;
 	}
 
-	if (vif->type == NL80211_IFTYPE_STATION)
+	if (vif->type == NL80211_IFTYPE_STATION) {
 		iwl_mld_send_ap_tx_power_constraint_cmd(mld, vif, link);
+		iwl_mld_check_he_obss_narrow_bw_ru(mld, link);
+	}
 
 	if (vif->type == NL80211_IFTYPE_MONITOR) {
 		ret = iwl_mld_add_mon_sta(mld, vif, link);
@@ -1572,6 +1638,9 @@ void iwl_mld_mac80211_vif_cfg_changed(struct ieee80211_hw *hw,
 		return;
 
 	if (changes & BSS_CHANGED_ASSOC) {
+		if (vif->cfg.assoc)
+			iwl_mld_link_set_2mhz_block(mld, vif);
+
 		ret = iwl_mld_mac_fw_action(mld, vif, FW_CTXT_ACTION_MODIFY);
 		if (ret)
 			IWL_ERR(mld, "failed to update context\n");
@@ -1823,72 +1892,6 @@ int iwl_mld_tdls_sta_count(struct iwl_mld *mld)
 	return count;
 }
 
-static void iwl_mld_check_he_obss_narrow_bw_ru_iter(struct wiphy *wiphy,
-						    struct cfg80211_bss *bss,
-						    void *_data)
-{
-	bool *tolerated = _data;
-	const struct cfg80211_bss_ies *ies;
-	const struct element *elem;
-
-	rcu_read_lock();
-	ies = rcu_dereference(bss->ies);
-	elem = cfg80211_find_elem(WLAN_EID_EXT_CAPABILITY, ies->data,
-				  ies->len);
-
-	if (!elem || elem->datalen < 11 ||
-	    !(elem->data[10] &
-	      WLAN_EXT_CAPA10_OBSS_NARROW_BW_RU_TOLERANCE_SUPPORT)) {
-		*tolerated = false;
-	}
-	rcu_read_unlock();
-}
-
-static void
-iwl_mld_check_he_obss_narrow_bw_ru(struct iwl_mld *mld,
-				   struct iwl_mld_link *mld_link,
-				   struct ieee80211_bss_conf *link_conf)
-{
-	bool tolerated = true;
-
-	if (WARN_ON_ONCE(!link_conf->chanreq.oper.chan))
-		return;
-
-	if (!(link_conf->chanreq.oper.chan->flags & IEEE80211_CHAN_RADAR)) {
-		mld_link->he_ru_2mhz_block = false;
-		return;
-	}
-
-	cfg80211_bss_iter(mld->wiphy, &link_conf->chanreq.oper,
-			  iwl_mld_check_he_obss_narrow_bw_ru_iter, &tolerated);
-
-	/* If there is at least one AP on radar channel that cannot
-	 * tolerate 26-tone RU UL OFDMA transmissions using HE TB PPDU.
-	 */
-	mld_link->he_ru_2mhz_block = !tolerated;
-}
-
-static void iwl_mld_link_set_2mhz_block(struct iwl_mld *mld,
-					struct ieee80211_vif *vif,
-					struct ieee80211_sta *sta)
-{
-	struct ieee80211_link_sta *link_sta;
-	unsigned int link_id;
-
-	for_each_sta_active_link(sta, link_sta, link_id) {
-		struct ieee80211_bss_conf *link_conf = link_sta->link_conf;
-		struct iwl_mld_link *mld_link =
-			iwl_mld_link_from_mac80211(link_conf);
-
-		if (WARN_ON(!mld_link))
-			continue;
-
-		if (link_sta->he_cap.has_he)
-			iwl_mld_check_he_obss_narrow_bw_ru(mld, mld_link,
-							   link_conf);
-	}
-}
-
 static int iwl_mld_move_sta_state_up(struct iwl_mld *mld,
 				     struct ieee80211_vif *vif,
 				     struct ieee80211_sta *sta,
@@ -1950,9 +1953,6 @@ static int iwl_mld_move_sta_state_up(struct iwl_mld *mld,
 	} else if (old_state == IEEE80211_STA_AUTH &&
 		   new_state == IEEE80211_STA_ASSOC) {
 		ret = iwl_mld_update_all_link_stations(mld, sta);
-
-		if (vif->type == NL80211_IFTYPE_STATION)
-			iwl_mld_link_set_2mhz_block(mld, vif, sta);
 
 		if (sta->tdls) {
 			/*
