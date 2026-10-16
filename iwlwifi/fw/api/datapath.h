@@ -595,19 +595,36 @@ struct iwl_rx_baid_cfg_cmd_modify_v2 {
 } __packed; /* RX_BAID_ALLOCATION_MODIFY_CMD_API_S_VER_2 */
 
 /**
+ * enum iwl_rx_baid_modify_flags - BAID modification flags
+ * @IWL_RX_BAID_MODIFY_RESET_SN: reset SN/NSSN to zero on this BA session,
+ *	after flushing as with %IWL_RX_BAID_MODIFY_FLUSH_REORDER, and send
+ *	another %BAR_FRAME_RELEASE notification with NSSN 0 so the (empty)
+ *	reorder buffers restart at zero as well
+ * @IWL_RX_BAID_MODIFY_FLUSH_REORDER: flush reorder buffer (fill all holes)
+ *	and send %BAR_FRAME_RELEASE notification with the new NSSN to the host
+ * @IWL_RX_BAID_MODIFY_BA_WIN_SIZE: update BA window size, only together
+ *	with %IWL_RX_BAID_MODIFY_RESET_SN or %IWL_RX_BAID_MODIFY_FLUSH_REORDER
+ */
+enum iwl_rx_baid_modify_flags {
+	IWL_RX_BAID_MODIFY_RESET_SN		= BIT(0),
+	IWL_RX_BAID_MODIFY_FLUSH_REORDER	= BIT(1),
+	IWL_RX_BAID_MODIFY_BA_WIN_SIZE		= BIT(2),
+};
+
+/**
  * struct iwl_rx_baid_cfg_cmd_modify - BAID modification data
  * @old_sta_id_mask: old station ID mask
  * @new_sta_id_mask: new station ID mask
  * @tid: TID of the BAID
- * @reserved: reserved
+ * @flags: flags, see &enum iwl_rx_baid_modify_flags
  * @win_size: RX BA session window size to apply to the modified BAID,
- *	0 means keep the current one
+ *	when %IWL_RX_BAID_MODIFY_BA_WIN_SIZE is set
  */
 struct iwl_rx_baid_cfg_cmd_modify {
 	__le32 old_sta_id_mask;
 	__le32 new_sta_id_mask;
 	u8 tid;
-	u8 reserved;
+	u8 flags;
 	__le16 win_size;
 } __packed; /* RX_BAID_ALLOCATION_MODIFY_CMD_API_S_VER_3 */
 
