@@ -659,4 +659,12 @@ iwl_mld_cipher_to_location_cipher(u32 cipher)
 	}
 }
 
+static inline bool iwl_mld_queue_cmd_has_flags(struct iwl_mld *mld)
+{
+	return iwl_fw_lookup_cmd_ver(mld->fw,
+				     WIDE_ID(DATA_PATH_GROUP,
+					     SCD_QUEUE_CONFIG_CMD),
+				     0) >= 4;
+}
+
 #endif /* __iwl_mld_h__ */

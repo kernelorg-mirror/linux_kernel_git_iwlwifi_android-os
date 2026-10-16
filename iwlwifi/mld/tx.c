@@ -1568,9 +1568,7 @@ int iwl_mld_update_sta_txqs(struct iwl_mld *mld,
 
 	lockdep_assert_wiphy(mld->wiphy);
 
-	if (iwl_fw_lookup_cmd_ver(mld->fw,
-				  WIDE_ID(DATA_PATH_GROUP, SCD_QUEUE_CONFIG_CMD),
-				  0) >= 4)
+	if (iwl_mld_queue_cmd_has_flags(mld))
 		cmd.u.modify.flags =
 			cpu_to_le16(IWL_SCD_QUEUE_MODIFY_FLAG_STA_MSK);
 
