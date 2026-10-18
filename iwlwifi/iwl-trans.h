@@ -416,6 +416,9 @@ struct iwl_dump_sanitize_ops {
  * @mbx_addr_0_step: step address data 0
  * @mbx_addr_1_step: step address data 1
  * @ext_32khz_clock_valid: if true, the external 32 KHz clock can be used
+ * @fragmented_pnvm: the firmware supports a fragmented PNVM image, i.e.
+ *	the PNVM and reduced power tables can be split into several DRAM
+ *	sections
  */
 struct iwl_trans_config {
 	u8 cmd_queue;
@@ -436,7 +439,8 @@ struct iwl_trans_config {
 
 	u8 dsbr_urm_fw_dependent:1,
 	   dsbr_urm_permanent:1,
-	   ext_32khz_clock_valid:1;
+	   ext_32khz_clock_valid:1,
+	   fragmented_pnvm:1;
 
 	u32 mbx_addr_0_step;
 	u32 mbx_addr_1_step;
@@ -1217,18 +1221,14 @@ void iwl_trans_sync_nmi(struct iwl_trans *trans);
 void iwl_trans_force_nmi(struct iwl_trans *trans);
 
 int iwl_trans_load_pnvm(struct iwl_trans *trans,
-			const struct iwl_pnvm_image *pnvm_data,
-			const struct iwl_ucode_capabilities *capa);
+			const struct iwl_pnvm_image *pnvm_data);
 
-void iwl_trans_set_pnvm(struct iwl_trans *trans,
-			const struct iwl_ucode_capabilities *capa);
+void iwl_trans_set_pnvm(struct iwl_trans *trans);
 
 int iwl_trans_load_reduce_power(struct iwl_trans *trans,
-				const struct iwl_pnvm_image *payloads,
-				const struct iwl_ucode_capabilities *capa);
+				const struct iwl_pnvm_image *payloads);
 
-void iwl_trans_set_reduce_power(struct iwl_trans *trans,
-				const struct iwl_ucode_capabilities *capa);
+void iwl_trans_set_reduce_power(struct iwl_trans *trans);
 
 static inline bool iwl_trans_dbg_ini_valid(struct iwl_trans *trans)
 {
@@ -1454,15 +1454,11 @@ struct iwl_trans_ops {
 			    struct iwl_trans_rxq_dma_data *data);
 
 	int (*load_pnvm)(struct iwl_trans *trans,
-			 const struct iwl_pnvm_image *pnvm_data,
-			 const struct iwl_ucode_capabilities *capa);
-	void (*set_pnvm)(struct iwl_trans *trans,
-			 const struct iwl_ucode_capabilities *capa);
+			 const struct iwl_pnvm_image *pnvm_data);
+	void (*set_pnvm)(struct iwl_trans *trans);
 	int (*load_reduce_power)(struct iwl_trans *trans,
-				 const struct iwl_pnvm_image *payloads,
-				 const struct iwl_ucode_capabilities *capa);
-	void (*set_reduce_power)(struct iwl_trans *trans,
-				 const struct iwl_ucode_capabilities *capa);
+				 const struct iwl_pnvm_image *payloads);
+	void (*set_reduce_power)(struct iwl_trans *trans);
 
 	bool (*is_pm_supported)(struct iwl_trans *trans);
 	bool (*is_ltr_enabled)(struct iwl_trans *trans);

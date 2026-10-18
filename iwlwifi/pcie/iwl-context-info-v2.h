@@ -14,15 +14,10 @@ void iwl_pcie_ctxt_info_v2_kick(struct iwl_trans *trans);
 void iwl_pcie_ctxt_info_v2_free(struct iwl_trans *trans, bool alive);
 
 int iwl_trans_pcie_ctx_info_v2_load_pnvm(struct iwl_trans *trans,
-					 const struct iwl_pnvm_image *pnvm_payloads,
-					 const struct iwl_ucode_capabilities *capa);
-void iwl_trans_pcie_ctx_info_v2_set_pnvm(struct iwl_trans *trans,
-					 const struct iwl_ucode_capabilities *capa);
+					 const struct iwl_pnvm_image *pnvm_payloads);
+void iwl_trans_pcie_ctx_info_v2_set_pnvm(struct iwl_trans *trans);
 int
 iwl_trans_pcie_ctx_info_v2_load_reduce_power(struct iwl_trans *trans,
-					     const struct iwl_pnvm_image *payloads,
-					     const struct iwl_ucode_capabilities *capa);
-void
-iwl_trans_pcie_ctx_info_v2_set_reduce_power(struct iwl_trans *trans,
-					    const struct iwl_ucode_capabilities *capa);
+					     const struct iwl_pnvm_image *payloads);
+void iwl_trans_pcie_ctx_info_v2_set_reduce_power(struct iwl_trans *trans);
 #endif /* __iwl_context_info_file_v2_h__ */

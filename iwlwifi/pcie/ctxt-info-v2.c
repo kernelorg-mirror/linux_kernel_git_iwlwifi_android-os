@@ -537,8 +537,7 @@ static int iwl_pcie_load_payloads_segments
 }
 
 int iwl_trans_pcie_ctx_info_v2_load_pnvm(struct iwl_trans *trans,
-					 const struct iwl_pnvm_image *pnvm_payloads,
-					 const struct iwl_ucode_capabilities *capa)
+					 const struct iwl_pnvm_image *pnvm_payloads)
 {
 	struct iwl_trans_pcie *trans_pcie = IWL_TRANS_GET_PCIE_TRANS(trans);
 	struct iwl_prph_scratch_ctrl_cfg *prph_sc_ctrl =
@@ -562,7 +561,7 @@ int iwl_trans_pcie_ctx_info_v2_load_pnvm(struct iwl_trans *trans,
 	}
 
 	/* save payloads in several DRAM sections */
-	if (fw_has_capa(capa, IWL_UCODE_TLV_CAPA_FRAGMENTED_PNVM_IMG)) {
+	if (trans->conf.fragmented_pnvm) {
 		ret = iwl_pcie_load_payloads_segments(trans,
 						      dram_regions,
 						      pnvm_payloads);
@@ -618,21 +617,19 @@ static void iwl_pcie_set_contig_pnvm(struct iwl_trans *trans)
 		cpu_to_le32(trans_pcie->pnvm_data.drams[0].size);
 }
 
-void iwl_trans_pcie_ctx_info_v2_set_pnvm(struct iwl_trans *trans,
-					 const struct iwl_ucode_capabilities *capa)
+void iwl_trans_pcie_ctx_info_v2_set_pnvm(struct iwl_trans *trans)
 {
 	if (trans->mac_cfg->device_family < IWL_DEVICE_FAMILY_AX210)
 		return;
 
-	if (fw_has_capa(capa, IWL_UCODE_TLV_CAPA_FRAGMENTED_PNVM_IMG))
+	if (trans->conf.fragmented_pnvm)
 		iwl_pcie_set_pnvm_segments(trans);
 	else
 		iwl_pcie_set_contig_pnvm(trans);
 }
 
 int iwl_trans_pcie_ctx_info_v2_load_reduce_power(struct iwl_trans *trans,
-						 const struct iwl_pnvm_image *payloads,
-						 const struct iwl_ucode_capabilities *capa)
+						 const struct iwl_pnvm_image *payloads)
 {
 	struct iwl_trans_pcie *trans_pcie = IWL_TRANS_GET_PCIE_TRANS(trans);
 	struct iwl_prph_scratch_ctrl_cfg *prph_sc_ctrl =
@@ -656,7 +653,7 @@ int iwl_trans_pcie_ctx_info_v2_load_reduce_power(struct iwl_trans *trans,
 	}
 
 	/* save payloads in several DRAM sections */
-	if (fw_has_capa(capa, IWL_UCODE_TLV_CAPA_FRAGMENTED_PNVM_IMG)) {
+	if (trans->conf.fragmented_pnvm) {
 		ret = iwl_pcie_load_payloads_segments(trans,
 						      dram_regions,
 						      payloads);
@@ -700,14 +697,12 @@ static void iwl_pcie_set_contig_reduce_power(struct iwl_trans *trans)
 		cpu_to_le32(trans_pcie->reduced_tables_data.drams[0].size);
 }
 
-void
-iwl_trans_pcie_ctx_info_v2_set_reduce_power(struct iwl_trans *trans,
-					    const struct iwl_ucode_capabilities *capa)
+void iwl_trans_pcie_ctx_info_v2_set_reduce_power(struct iwl_trans *trans)
 {
 	if (trans->mac_cfg->device_family < IWL_DEVICE_FAMILY_AX210)
 		return;
 
-	if (fw_has_capa(capa, IWL_UCODE_TLV_CAPA_FRAGMENTED_PNVM_IMG))
+	if (trans->conf.fragmented_pnvm)
 		iwl_pcie_set_reduce_power_segments(trans);
 	else
 		iwl_pcie_set_contig_reduce_power(trans);

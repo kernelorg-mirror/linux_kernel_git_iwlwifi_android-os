@@ -421,6 +421,9 @@ iwl_mld_configure_trans(struct iwl_op_mode *op_mode)
 	trans->conf.cb_data_offs = offsetof(struct ieee80211_tx_info,
 					    driver_data[2]);
 	trans->conf.fseq_img = &mld->fw->fseq;
+	trans->conf.fragmented_pnvm =
+		fw_has_capa(&mld->fw->ucode_capa,
+			    IWL_UCODE_TLV_CAPA_FRAGMENTED_PNVM_IMG);
 	BUILD_BUG_ON(sizeof(no_reclaim_cmds) >
 		     sizeof(trans->conf.no_reclaim_cmds));
 	memcpy(trans->conf.no_reclaim_cmds, no_reclaim_cmds,

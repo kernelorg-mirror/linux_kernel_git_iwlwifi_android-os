@@ -410,13 +410,13 @@ iwl_pnvm_load_pnvm_to_trans(struct iwl_trans *trans,
 		goto free;
 	}
 
-	ret = iwl_trans_load_pnvm(trans, pnvm_data, &fw->ucode_capa);
+	ret = iwl_trans_load_pnvm(trans, pnvm_data);
 	if (ret)
 		goto free;
 	IWL_DEBUG_INFO(trans, "loaded PNVM version %08x\n", pnvm_data->version);
 
 set:
-	iwl_trans_set_pnvm(trans, &fw->ucode_capa);
+	iwl_trans_set_pnvm(trans);
 free:
 	/* free only if it was allocated, i.e. not just embedded PNVM data */
 	if (data != fw->pnvm_data)
@@ -426,7 +426,6 @@ free:
 
 static void
 iwl_pnvm_load_reduce_power_to_trans(struct iwl_trans *trans,
-				    const struct iwl_ucode_capabilities *capa,
 				    __le32 sku_id[3])
 {
 	struct iwl_pnvm_image *pnvm_data = NULL;
@@ -457,7 +456,7 @@ iwl_pnvm_load_reduce_power_to_trans(struct iwl_trans *trans,
 		goto free;
 	}
 
-	ret = iwl_trans_load_reduce_power(trans, pnvm_data, capa);
+	ret = iwl_trans_load_reduce_power(trans, pnvm_data);
 	if (ret) {
 		IWL_DEBUG_FW(trans,
 			     "Failed to load reduce power table %d\n",
@@ -467,7 +466,7 @@ iwl_pnvm_load_reduce_power_to_trans(struct iwl_trans *trans,
 	}
 
 set:
-	iwl_trans_set_reduce_power(trans, capa);
+	iwl_trans_set_reduce_power(trans);
 free:
 	kfree(data);
 	kfree(pnvm_data);
@@ -486,7 +485,7 @@ int iwl_pnvm_load(struct iwl_trans *trans,
 		return 0;
 
 	iwl_pnvm_load_pnvm_to_trans(trans, fw, sku_id);
-	iwl_pnvm_load_reduce_power_to_trans(trans, &fw->ucode_capa, sku_id);
+	iwl_pnvm_load_reduce_power_to_trans(trans, sku_id);
 
 	iwl_init_notification_wait(notif_wait, &pnvm_wait,
 				   ntf_cmds, ARRAY_SIZE(ntf_cmds),
@@ -527,7 +526,7 @@ int iwl_xvt_pnvm_load(struct iwl_trans *trans,
 		return 0;
 
 	iwl_pnvm_load_pnvm_to_trans(trans, fw, sku_id);
-	iwl_pnvm_load_reduce_power_to_trans(trans, &fw->ucode_capa, sku_id);
+	iwl_pnvm_load_reduce_power_to_trans(trans, sku_id);
 
 	iwl_init_notification_wait(notif_wait, &pnvm_wait,
 				   ntf_cmds, ARRAY_SIZE(ntf_cmds),

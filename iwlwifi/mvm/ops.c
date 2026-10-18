@@ -1521,6 +1521,10 @@ iwl_op_mode_mvm_start(struct iwl_trans *trans, const struct iwl_rf_cfg *cfg,
 			    IWL_UCODE_TLV_CAPA_FW_RESET_HANDSHAKE) &&
 		mvm->fw->ucode_ver > 77;
 
+	trans->conf.fragmented_pnvm =
+		fw_has_capa(&mvm->fw->ucode_capa,
+			    IWL_UCODE_TLV_CAPA_FRAGMENTED_PNVM_IMG);
+
 	mvm->sta_remove_requires_queue_remove =
 		iwl_fw_lookup_cmd_ver(mvm->fw,
 				      WIDE_ID(DATA_PATH_GROUP,

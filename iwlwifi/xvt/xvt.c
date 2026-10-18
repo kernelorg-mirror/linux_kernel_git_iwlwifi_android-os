@@ -256,6 +256,10 @@ static struct iwl_op_mode *iwl_xvt_start(struct iwl_trans *trans,
 		fw_has_capa(&xvt->fw->ucode_capa,
 			    IWL_UCODE_TLV_CAPA_FW_RESET_HANDSHAKE);
 
+	trans->conf.fragmented_pnvm =
+		fw_has_capa(&xvt->fw->ucode_capa,
+			    IWL_UCODE_TLV_CAPA_FRAGMENTED_PNVM_IMG);
+
 	iwl_trans_op_mode_enter(xvt->trans, op_mode);
 
 	/* set up notification wait support */
