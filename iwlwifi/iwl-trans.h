@@ -768,11 +768,11 @@ struct iwl_trans_ops;
  * @status: a bit-mask of transport status flags
  * @dev: pointer to struct device * that represents the device
  * @info: device information for use by other layers
- * @pnvm_loaded: indicates PNVM was loaded
+ * @pnvm_allocated: indicates PNVM was allocated
  * @suppress_cmd_error_once: suppress "FW error in SYNC CMD" once,
  *	e.g. for testing
  * @fail_to_parse_pnvm_image: set to true if pnvm parsing failed
- * @reduce_power_loaded: indicates reduced power section was loaded
+ * @reduce_power_allocated: indicates reduced power section was allocated
  * @failed_to_load_reduce_power_image: set to true if pnvm loading failed
  * @dbgfs_dir: iwlwifi debugfs base dir for this device
  * @sync_cmd_lockdep_map: lockdep map for checking sync commands
@@ -811,9 +811,9 @@ struct iwl_trans {
 	bool step_urm;
 	bool suppress_cmd_error_once;
 
-	u8 pnvm_loaded:1;
+	u8 pnvm_allocated:1;
 	u8 fail_to_parse_pnvm_image:1;
-	u8 reduce_power_loaded:1;
+	u8 reduce_power_allocated:1;
 	u8 failed_to_load_reduce_power_image:1;
 
 	struct dentry *dbgfs_dir;
@@ -1220,15 +1220,11 @@ void iwl_trans_sync_nmi(struct iwl_trans *trans);
 
 void iwl_trans_force_nmi(struct iwl_trans *trans);
 
-int iwl_trans_load_pnvm(struct iwl_trans *trans,
-			const struct iwl_pnvm_image *pnvm_data);
+int iwl_trans_alloc_pnvm(struct iwl_trans *trans,
+			 const struct iwl_pnvm_image *payloads,
+			 bool reduce_power);
 
-void iwl_trans_set_pnvm(struct iwl_trans *trans);
-
-int iwl_trans_load_reduce_power(struct iwl_trans *trans,
-				const struct iwl_pnvm_image *payloads);
-
-void iwl_trans_set_reduce_power(struct iwl_trans *trans);
+void iwl_trans_kick_pnvm(struct iwl_trans *trans);
 
 static inline bool iwl_trans_dbg_ini_valid(struct iwl_trans *trans)
 {
@@ -1371,10 +1367,9 @@ void iwl_trans_fw_reset_handshake(struct iwl_trans *trans);
  * @txq_alloc: allocate a TX queue (gen2)
  * @txq_free: free a TX queue allocated by @txq_alloc
  * @rxq_dma_data: get the DMA addresses of an RX queue
- * @load_pnvm: load the PNVM image
- * @set_pnvm: tell the firmware to use the loaded PNVM
- * @load_reduce_power: load the reduced power table
- * @set_reduce_power: tell the firmware to use the reduced power table
+ * @alloc_pnvm: allocate and store a copy of the PNVM image, or of the
+ *	reduced power table if @reduce_power is set
+ * @kick_pnvm: tell the firmware that the PNVM is ready
  * @is_pm_supported: whether bus power management is supported
  * @is_ltr_enabled: whether LTR is enabled on the bus
  * @activate_nic: bring the NIC out of low power and make it accessible
@@ -1453,12 +1448,10 @@ struct iwl_trans_ops {
 	int (*rxq_dma_data)(struct iwl_trans *trans, int queue,
 			    struct iwl_trans_rxq_dma_data *data);
 
-	int (*load_pnvm)(struct iwl_trans *trans,
-			 const struct iwl_pnvm_image *pnvm_data);
-	void (*set_pnvm)(struct iwl_trans *trans);
-	int (*load_reduce_power)(struct iwl_trans *trans,
-				 const struct iwl_pnvm_image *payloads);
-	void (*set_reduce_power)(struct iwl_trans *trans);
+	int (*alloc_pnvm)(struct iwl_trans *trans,
+			  const struct iwl_pnvm_image *payloads,
+			  bool reduce_power);
+	void (*kick_pnvm)(struct iwl_trans *trans);
 
 	bool (*is_pm_supported)(struct iwl_trans *trans);
 	bool (*is_ltr_enabled)(struct iwl_trans *trans);

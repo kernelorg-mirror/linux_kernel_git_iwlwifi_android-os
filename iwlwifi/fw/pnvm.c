@@ -391,8 +391,8 @@ iwl_pnvm_load_pnvm_to_trans(struct iwl_trans *trans,
 	if (trans->fail_to_parse_pnvm_image)
 		return;
 
-	if (trans->pnvm_loaded)
-		goto set;
+	if (trans->pnvm_allocated)
+		return;
 
 	data = iwl_get_pnvm_image(trans, &length, sku_id, fw);
 	if (!data) {
@@ -410,13 +410,11 @@ iwl_pnvm_load_pnvm_to_trans(struct iwl_trans *trans,
 		goto free;
 	}
 
-	ret = iwl_trans_load_pnvm(trans, pnvm_data);
+	ret = iwl_trans_alloc_pnvm(trans, pnvm_data, false);
 	if (ret)
 		goto free;
 	IWL_DEBUG_INFO(trans, "loaded PNVM version %08x\n", pnvm_data->version);
 
-set:
-	iwl_trans_set_pnvm(trans);
 free:
 	/* free only if it was allocated, i.e. not just embedded PNVM data */
 	if (data != fw->pnvm_data)
@@ -436,8 +434,8 @@ iwl_pnvm_load_reduce_power_to_trans(struct iwl_trans *trans,
 	if (trans->failed_to_load_reduce_power_image)
 		return;
 
-	if (trans->reduce_power_loaded)
-		goto set;
+	if (trans->reduce_power_allocated)
+		return;
 
 	data = iwl_uefi_get_reduced_power(trans, &length);
 	if (IS_ERR(data)) {
@@ -456,7 +454,7 @@ iwl_pnvm_load_reduce_power_to_trans(struct iwl_trans *trans,
 		goto free;
 	}
 
-	ret = iwl_trans_load_reduce_power(trans, pnvm_data);
+	ret = iwl_trans_alloc_pnvm(trans, pnvm_data, true);
 	if (ret) {
 		IWL_DEBUG_FW(trans,
 			     "Failed to load reduce power table %d\n",
@@ -465,8 +463,6 @@ iwl_pnvm_load_reduce_power_to_trans(struct iwl_trans *trans,
 		goto free;
 	}
 
-set:
-	iwl_trans_set_reduce_power(trans);
 free:
 	kfree(data);
 	kfree(pnvm_data);
@@ -491,9 +487,7 @@ int iwl_pnvm_load(struct iwl_trans *trans,
 				   ntf_cmds, ARRAY_SIZE(ntf_cmds),
 				   iwl_pnvm_complete_fn, trans);
 
-	/* kick the doorbell */
-	iwl_trans_write_umac_prph(trans, UREG_DOORBELL_TO_ISR6,
-				  UREG_DOORBELL_TO_ISR6_PNVM);
+	iwl_trans_kick_pnvm(trans);
 
 	return iwl_wait_notification(notif_wait, &pnvm_wait,
 				     MVM_UCODE_PNVM_TIMEOUT);
@@ -536,9 +530,7 @@ int iwl_xvt_pnvm_load(struct iwl_trans *trans,
 							    LMPM2_NIC_EN_VEC_6);
 	reg_lmpm2_nic_isr6_bd = iwl_trans_read_umac_prph(trans, LMPM2_NIC_ISR6);
 
-	/* kick the doorbell */
-	iwl_trans_write_umac_prph(trans, UREG_DOORBELL_TO_ISR6,
-				  UREG_DOORBELL_TO_ISR6_PNVM);
+	iwl_trans_kick_pnvm(trans);
 
 	reg_value_nic_en_isr6_bw = iwl_trans_read_umac_prph(trans,
 							    LMPM2_NIC_EN_VEC_6);

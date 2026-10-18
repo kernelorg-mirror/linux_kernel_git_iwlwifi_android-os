@@ -1010,35 +1010,21 @@ int iwl_trans_get_rxq_dma_data(struct iwl_trans *trans, int queue,
 }
 IWL_EXPORT_SYMBOL(iwl_trans_get_rxq_dma_data);
 
-int iwl_trans_load_pnvm(struct iwl_trans *trans,
-			const struct iwl_pnvm_image *pnvm_data)
+int iwl_trans_alloc_pnvm(struct iwl_trans *trans,
+			 const struct iwl_pnvm_image *payloads,
+			 bool reduce_power)
 {
-	if (WARN_ON_ONCE(!trans->ops->load_pnvm))
+	if (WARN_ON_ONCE(!trans->ops->alloc_pnvm))
 		return -EOPNOTSUPP;
-	return trans->ops->load_pnvm(trans, pnvm_data);
+	return trans->ops->alloc_pnvm(trans, payloads, reduce_power);
 }
-IWL_EXPORT_SYMBOL(iwl_trans_load_pnvm);
+IWL_EXPORT_SYMBOL(iwl_trans_alloc_pnvm);
 
-void iwl_trans_set_pnvm(struct iwl_trans *trans)
+void iwl_trans_kick_pnvm(struct iwl_trans *trans)
 {
-	if (WARN_ON_ONCE(!trans->ops->set_pnvm))
+	if (WARN_ON_ONCE(!trans->ops->kick_pnvm))
 		return;
-	trans->ops->set_pnvm(trans);
-}
-
-int iwl_trans_load_reduce_power(struct iwl_trans *trans,
-				const struct iwl_pnvm_image *payloads)
-{
-	if (WARN_ON_ONCE(!trans->ops->load_reduce_power))
-		return -EOPNOTSUPP;
-	return trans->ops->load_reduce_power(trans, payloads);
-}
-
-void iwl_trans_set_reduce_power(struct iwl_trans *trans)
-{
-	if (WARN_ON_ONCE(!trans->ops->set_reduce_power))
-		return;
-	trans->ops->set_reduce_power(trans);
+	trans->ops->kick_pnvm(trans);
 }
 
 bool iwl_trans_is_pm_supported(struct iwl_trans *trans)

@@ -3803,10 +3803,8 @@ const struct iwl_trans_ops iwl_trans_pcie_ops = {
 	.txq_free = iwl_txq_dyn_free,
 	.rxq_dma_data = iwl_trans_pcie_rxq_dma_data,
 
-	.load_pnvm = iwl_trans_pcie_ctx_info_v2_load_pnvm,
-	.set_pnvm = iwl_trans_pcie_ctx_info_v2_set_pnvm,
-	.load_reduce_power = iwl_trans_pcie_ctx_info_v2_load_reduce_power,
-	.set_reduce_power = iwl_trans_pcie_ctx_info_v2_set_reduce_power,
+	.alloc_pnvm = iwl_trans_pcie_ctx_info_v2_alloc_pnvm,
+	.kick_pnvm = iwl_trans_pcie_kick_pnvm,
 
 	.is_pm_supported = iwl_pcie_gen1_is_pm_supported,
 	.is_ltr_enabled = iwl_pcie_is_ltr_enabled,

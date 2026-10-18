@@ -447,9 +447,9 @@ void iwl_pcie_ctxt_info_v2_free(struct iwl_trans *trans, bool alive)
 	trans_pcie->prph_info = NULL;
 }
 
-static int iwl_pcie_load_payloads_contig(struct iwl_trans *trans,
-					 const struct iwl_pnvm_image *pnvm_data,
-					 struct iwl_dram_data *dram)
+static int iwl_pcie_alloc_payloads_contig(struct iwl_trans *trans,
+					  const struct iwl_pnvm_image *pnvm_data,
+					  struct iwl_dram_data *dram)
 {
 	u32 len, len0, len1;
 
@@ -481,7 +481,7 @@ static int iwl_pcie_load_payloads_contig(struct iwl_trans *trans,
 	return 0;
 }
 
-static int iwl_pcie_load_payloads_segments
+static int iwl_pcie_alloc_payloads_segments
 				(struct iwl_trans *trans,
 				 struct iwl_dram_regions *dram_regions,
 				 const struct iwl_pnvm_image *pnvm_data)
@@ -536,8 +536,54 @@ static int iwl_pcie_load_payloads_segments
 
 }
 
-int iwl_trans_pcie_ctx_info_v2_load_pnvm(struct iwl_trans *trans,
-					 const struct iwl_pnvm_image *pnvm_payloads)
+static int
+iwl_pcie_ctx_info_v2_alloc_reduce_power(struct iwl_trans *trans,
+					const struct iwl_pnvm_image *payloads)
+{
+	struct iwl_trans_pcie *trans_pcie = IWL_TRANS_GET_PCIE_TRANS(trans);
+	struct iwl_prph_scratch_ctrl_cfg *prph_sc_ctrl =
+		&trans_pcie->prph_scratch->ctrl_cfg;
+	struct iwl_dram_regions *dram_regions = &trans_pcie->reduced_tables_data;
+	int ret = 0;
+
+	/* only allocate the DRAM if not allocated yet */
+	if (trans->reduce_power_allocated)
+		return 0;
+
+	if (trans->mac_cfg->device_family < IWL_DEVICE_FAMILY_AX210)
+		return 0;
+
+	if (WARN_ON(prph_sc_ctrl->reduce_power_cfg.size))
+		return -EBUSY;
+
+	if (!payloads->n_chunks) {
+		IWL_DEBUG_FW(trans, "no payloads\n");
+		return -EINVAL;
+	}
+
+	/* save payloads in several DRAM sections */
+	if (trans->conf.fragmented_pnvm) {
+		ret = iwl_pcie_alloc_payloads_segments(trans,
+						       dram_regions,
+						       payloads);
+		if (!ret)
+			trans->reduce_power_allocated = true;
+	} else {
+		/* save only in one DRAM section */
+		ret = iwl_pcie_alloc_payloads_contig(trans, payloads,
+						     &dram_regions->drams[0]);
+		if (!ret) {
+			dram_regions->n_regions = 1;
+			trans->reduce_power_allocated = true;
+		}
+	}
+
+	return ret;
+}
+
+int iwl_trans_pcie_ctx_info_v2_alloc_pnvm(struct iwl_trans *trans,
+					  const struct iwl_pnvm_image *payloads,
+					  bool reduce_power)
 {
 	struct iwl_trans_pcie *trans_pcie = IWL_TRANS_GET_PCIE_TRANS(trans);
 	struct iwl_prph_scratch_ctrl_cfg *prph_sc_ctrl =
@@ -545,8 +591,11 @@ int iwl_trans_pcie_ctx_info_v2_load_pnvm(struct iwl_trans *trans,
 	struct iwl_dram_regions *dram_regions = &trans_pcie->pnvm_data;
 	int ret = 0;
 
+	if (reduce_power)
+		return iwl_pcie_ctx_info_v2_alloc_reduce_power(trans, payloads);
+
 	/* only allocate the DRAM if not allocated yet */
-	if (trans->pnvm_loaded)
+	if (trans->pnvm_allocated)
 		return 0;
 
 	if (WARN_ON(prph_sc_ctrl->pnvm_cfg.pnvm_size))
@@ -555,25 +604,25 @@ int iwl_trans_pcie_ctx_info_v2_load_pnvm(struct iwl_trans *trans,
 	if (trans->mac_cfg->device_family < IWL_DEVICE_FAMILY_AX210)
 		return 0;
 
-	if (!pnvm_payloads->n_chunks) {
+	if (!payloads->n_chunks) {
 		IWL_DEBUG_FW(trans, "no payloads\n");
 		return -EINVAL;
 	}
 
 	/* save payloads in several DRAM sections */
 	if (trans->conf.fragmented_pnvm) {
-		ret = iwl_pcie_load_payloads_segments(trans,
-						      dram_regions,
-						      pnvm_payloads);
+		ret = iwl_pcie_alloc_payloads_segments(trans,
+						       dram_regions,
+						       payloads);
 		if (!ret)
-			trans->pnvm_loaded = true;
+			trans->pnvm_allocated = true;
 	} else {
 		/* save only in one DRAM section */
-		ret = iwl_pcie_load_payloads_contig(trans, pnvm_payloads,
-						    &dram_regions->drams[0]);
+		ret = iwl_pcie_alloc_payloads_contig(trans, payloads,
+						     &dram_regions->drams[0]);
 		if (!ret) {
 			dram_regions->n_regions = 1;
-			trans->pnvm_loaded = true;
+			trans->pnvm_allocated = true;
 		}
 	}
 
@@ -617,59 +666,18 @@ static void iwl_pcie_set_contig_pnvm(struct iwl_trans *trans)
 		cpu_to_le32(trans_pcie->pnvm_data.drams[0].size);
 }
 
-void iwl_trans_pcie_ctx_info_v2_set_pnvm(struct iwl_trans *trans)
+static void iwl_trans_pcie_ctx_info_v2_set_pnvm(struct iwl_trans *trans)
 {
 	if (trans->mac_cfg->device_family < IWL_DEVICE_FAMILY_AX210)
+		return;
+
+	if (!trans->pnvm_allocated)
 		return;
 
 	if (trans->conf.fragmented_pnvm)
 		iwl_pcie_set_pnvm_segments(trans);
 	else
 		iwl_pcie_set_contig_pnvm(trans);
-}
-
-int iwl_trans_pcie_ctx_info_v2_load_reduce_power(struct iwl_trans *trans,
-						 const struct iwl_pnvm_image *payloads)
-{
-	struct iwl_trans_pcie *trans_pcie = IWL_TRANS_GET_PCIE_TRANS(trans);
-	struct iwl_prph_scratch_ctrl_cfg *prph_sc_ctrl =
-		&trans_pcie->prph_scratch->ctrl_cfg;
-	struct iwl_dram_regions *dram_regions = &trans_pcie->reduced_tables_data;
-	int ret = 0;
-
-	/* only allocate the DRAM if not allocated yet */
-	if (trans->reduce_power_loaded)
-		return 0;
-
-	if (trans->mac_cfg->device_family < IWL_DEVICE_FAMILY_AX210)
-		return 0;
-
-	if (WARN_ON(prph_sc_ctrl->reduce_power_cfg.size))
-		return -EBUSY;
-
-	if (!payloads->n_chunks) {
-		IWL_DEBUG_FW(trans, "no payloads\n");
-		return -EINVAL;
-	}
-
-	/* save payloads in several DRAM sections */
-	if (trans->conf.fragmented_pnvm) {
-		ret = iwl_pcie_load_payloads_segments(trans,
-						      dram_regions,
-						      payloads);
-		if (!ret)
-			trans->reduce_power_loaded = true;
-	} else {
-		/* save only in one DRAM section */
-		ret = iwl_pcie_load_payloads_contig(trans, payloads,
-						    &dram_regions->drams[0]);
-		if (!ret) {
-			dram_regions->n_regions = 1;
-			trans->reduce_power_loaded = true;
-		}
-	}
-
-	return ret;
 }
 
 static void iwl_pcie_set_reduce_power_segments(struct iwl_trans *trans)
@@ -697,9 +705,12 @@ static void iwl_pcie_set_contig_reduce_power(struct iwl_trans *trans)
 		cpu_to_le32(trans_pcie->reduced_tables_data.drams[0].size);
 }
 
-void iwl_trans_pcie_ctx_info_v2_set_reduce_power(struct iwl_trans *trans)
+static void iwl_trans_pcie_ctx_info_v2_set_reduce_power(struct iwl_trans *trans)
 {
 	if (trans->mac_cfg->device_family < IWL_DEVICE_FAMILY_AX210)
+		return;
+
+	if (!trans->reduce_power_allocated)
 		return;
 
 	if (trans->conf.fragmented_pnvm)
@@ -708,3 +719,10 @@ void iwl_trans_pcie_ctx_info_v2_set_reduce_power(struct iwl_trans *trans)
 		iwl_pcie_set_contig_reduce_power(trans);
 }
 
+void iwl_trans_pcie_kick_pnvm(struct iwl_trans *trans)
+{
+	iwl_trans_pcie_ctx_info_v2_set_pnvm(trans);
+	iwl_trans_pcie_ctx_info_v2_set_reduce_power(trans);
+	iwl_trans_write_umac_prph(trans, UREG_DOORBELL_TO_ISR6,
+				  UREG_DOORBELL_TO_ISR6_PNVM);
+}
