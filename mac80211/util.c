@@ -1258,6 +1258,20 @@ static int ieee80211_put_s1g_cap(struct sk_buff *skb,
 	return 0;
 }
 
+static bool ieee80211_ies_have_ml_preq(const u8 *ie, size_t ie_len)
+{
+	const struct element *elem;
+
+	for_each_element_extid(elem, WLAN_EID_EXT_EHT_MULTI_LINK, ie, ie_len) {
+		if (ieee80211_mle_type_ok(elem->data + 1,
+					  IEEE80211_ML_CONTROL_TYPE_PREQ,
+					  elem->datalen - 1))
+			return true;
+	}
+
+	return false;
+}
+
 static int ieee80211_put_preq_ies_band(struct sk_buff *skb,
 				       struct ieee80211_sub_if_data *sdata,
 				       const u8 *ie, size_t ie_len,
@@ -1265,7 +1279,7 @@ static int ieee80211_put_preq_ies_band(struct sk_buff *skb,
 				       enum nl80211_band band,
 				       u32 rate_mask,
 				       struct cfg80211_chan_def *chandef,
-				       u32 flags)
+				       u32 flags, bool ml_preq)
 {
 	struct ieee80211_local *local = sdata->local;
 	struct ieee80211_supported_band *sband;
@@ -1447,7 +1461,8 @@ static int ieee80211_put_preq_ies_band(struct sk_buff *skb,
 			return err;
 	}
 
-	if (cfg80211_any_usable_channels(local->hw.wiphy, BIT(sband->band),
+	if (ml_preq &&
+	    cfg80211_any_usable_channels(local->hw.wiphy, BIT(sband->band),
 					 IEEE80211_CHAN_NO_HE |
 					 IEEE80211_CHAN_NO_EHT)) {
 		err = ieee80211_put_eht_cap(skb, sdata, sband, NULL);
@@ -1459,7 +1474,8 @@ static int ieee80211_put_preq_ies_band(struct sk_buff *skb,
 	if (err)
 		return err;
 
-	if (cfg80211_any_usable_channels(local->hw.wiphy, BIT(sband->band),
+	if (ml_preq &&
+	    cfg80211_any_usable_channels(local->hw.wiphy, BIT(sband->band),
 					 IEEE80211_CHAN_NO_UHR)) {
 		err = ieee80211_put_uhr_cap(skb, sdata, sband);
 		if (err)
@@ -1482,6 +1498,7 @@ static int ieee80211_put_preq_ies(struct sk_buff *skb,
 				  struct cfg80211_chan_def *chandef,
 				  u32 flags)
 {
+	bool ml_preq = ieee80211_ies_have_ml_preq(ie, ie_len);
 	size_t custom_ie_offset = 0;
 	int i, err;
 
@@ -1494,7 +1511,8 @@ static int ieee80211_put_preq_ies(struct sk_buff *skb,
 							  ie, ie_len,
 							  &custom_ie_offset,
 							  i, rate_masks[i],
-							  chandef, flags);
+							  chandef, flags,
+							  ml_preq);
 			if (err)
 				return err;
 			ie_desc->len[i] = skb_tail_pointer(skb) -
