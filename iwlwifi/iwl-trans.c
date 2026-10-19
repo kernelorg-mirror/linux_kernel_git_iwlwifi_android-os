@@ -300,6 +300,46 @@ void iwl_trans_free(struct iwl_trans *trans)
 	cancel_delayed_work_sync(&trans->restart.wk);
 }
 
+static int iwl_trans_validate_hcmd(struct iwl_trans *trans,
+				   const struct iwl_host_cmd *cmd)
+{
+	u32 copy_size = iwl_cmd_groupid(cmd->id) ?
+			sizeof(struct iwl_cmd_header_wide) :
+			sizeof(struct iwl_cmd_header);
+	bool had_nocopy = false;
+	bool had_dup = false;
+
+	for (int i = 0; i < IWL_MAX_CMD_CHUNKS_PER_HCMD; i++) {
+		if (!cmd->len[i])
+			continue;
+
+		if (cmd->dataflags[i] & IWL_HCMD_DFL_NOCOPY) {
+			if (WARN_ON(cmd->dataflags[i] & IWL_HCMD_DFL_DUP))
+				return -EINVAL;
+			had_nocopy = true;
+		} else if (cmd->dataflags[i] & IWL_HCMD_DFL_DUP) {
+			/* only allowed once */
+			if (WARN_ON(had_dup))
+				return -EINVAL;
+			/* also not copied to the static buffer */
+			had_nocopy = true;
+			had_dup = true;
+		} else {
+			/* NOCOPY/DUP must not be followed by normal! */
+			if (WARN_ON(had_nocopy))
+				return -EINVAL;
+			copy_size += cmd->len[i];
+		}
+	}
+
+	if (WARN(copy_size > TFD_MAX_PAYLOAD_SIZE,
+		 "Command %s (%#x) is too large (%u bytes)\n",
+		 iwl_get_cmd_string(trans, cmd->id), cmd->id, copy_size))
+		return -EINVAL;
+
+	return 0;
+}
+
 int iwl_trans_send_cmd(struct iwl_trans *trans, struct iwl_host_cmd *cmd)
 {
 	int ret;
@@ -318,13 +358,17 @@ int iwl_trans_send_cmd(struct iwl_trans *trans, struct iwl_host_cmd *cmd)
 		      "bad state = %d\n", trans->state))
 		return -EIO;
 
-	if (!(cmd->flags & CMD_ASYNC))
-		lock_map_acquire_read(&trans->sync_cmd_lockdep_map);
-
 	if (trans->conf.wide_cmd_header && !iwl_cmd_groupid(cmd->id)) {
 		if (cmd->id != REPLY_ERROR)
 			cmd->id = DEF_ID(cmd->id);
 	}
+
+	ret = iwl_trans_validate_hcmd(trans, cmd);
+	if (ret)
+		return ret;
+
+	if (!(cmd->flags & CMD_ASYNC))
+		lock_map_acquire_read(&trans->sync_cmd_lockdep_map);
 
 	ret = trans->ops->send_cmd(trans, cmd);
 

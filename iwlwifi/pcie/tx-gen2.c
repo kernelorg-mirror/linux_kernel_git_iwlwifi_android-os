@@ -1154,7 +1154,6 @@ int iwl_pcie_gen2_enqueue_hcmd(struct iwl_trans *trans,
 	dma_addr_t phys_addr;
 	int i, cmd_pos, idx;
 	u16 copy_size, cmd_size, tb0_size;
-	bool had_nocopy = false;
 	u8 group_id = iwl_cmd_groupid(cmd->id);
 	const u8 *cmddata[IWL_MAX_CMD_CHUNKS_PER_HCMD];
 	u16 cmdlen[IWL_MAX_CMD_CHUNKS_PER_HCMD];
@@ -1184,50 +1183,15 @@ int iwl_pcie_gen2_enqueue_hcmd(struct iwl_trans *trans,
 			copy_size += copy;
 		}
 
-		if (cmd->dataflags[i] & IWL_HCMD_DFL_NOCOPY) {
-			had_nocopy = true;
-			if (WARN_ON(cmd->dataflags[i] & IWL_HCMD_DFL_DUP)) {
-				idx = -EINVAL;
-				goto free_dup_buf;
-			}
-		} else if (cmd->dataflags[i] & IWL_HCMD_DFL_DUP) {
-			/*
-			 * This is also a chunk that isn't copied
-			 * to the static buffer so set had_nocopy.
-			 */
-			had_nocopy = true;
-
-			/* only allowed once */
-			if (WARN_ON(dup_buf)) {
-				idx = -EINVAL;
-				goto free_dup_buf;
-			}
-
+		if (cmd->dataflags[i] & IWL_HCMD_DFL_DUP) {
 			dup_buf = kmemdup(cmddata[i], cmdlen[i],
 					  GFP_ATOMIC);
 			if (!dup_buf)
 				return -ENOMEM;
-		} else {
-			/* NOCOPY must not be followed by normal! */
-			if (WARN_ON(had_nocopy)) {
-				idx = -EINVAL;
-				goto free_dup_buf;
-			}
+		} else if (!(cmd->dataflags[i] & IWL_HCMD_DFL_NOCOPY)) {
 			copy_size += cmdlen[i];
 		}
 		cmd_size += cmd->len[i];
-	}
-
-	/*
-	 * If any of the command structures end up being larger than the
-	 * TFD_MAX_PAYLOAD_SIZE and they aren't dynamically allocated into
-	 * separate TFDs, then we will need to increase the size of the buffers
-	 */
-	if (WARN(copy_size > TFD_MAX_PAYLOAD_SIZE,
-		 "Command %s (%#x) is too large (%d bytes)\n",
-		 iwl_get_cmd_string(trans, cmd->id), cmd->id, copy_size)) {
-		idx = -EINVAL;
-		goto free_dup_buf;
 	}
 
 	spin_lock_bh(&txq->lock);
