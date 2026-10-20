@@ -304,8 +304,34 @@ static void ieee80211_tdls_add_wmm_param_ie(struct ieee80211_sub_if_data *sdata,
 	}
 }
 
+static bool
+ieee80211_tdls_chandef_can_upgrade(struct ieee80211_local *local,
+				   struct ieee80211_link_data *link,
+				   struct cfg80211_chan_def *chandef)
+{
+	struct ieee80211_beacon_check check = {};
+	struct ieee80211_chanctx_conf *conf;
+
+	if (!iwl7000_reg_can_beacon_strict(local->hw.wiphy, chandef, link->sdata->wdev.iftype))
+		return false;
+
+	conf = rcu_dereference_protected(link->conf->chanctx_conf,
+					 lockdep_is_held(&local->hw.wiphy->mtx));
+	if (!conf)
+		return false;
+
+	check.combined = cfg80211_chandef_compatible(chandef, &conf->def);
+	if (!check.combined)
+		return false;
+
+	check.ctx = container_of(conf, struct ieee80211_chanctx, conf);
+
+	return ieee80211_chanctx_beaconing_ok(local, &check);
+}
+
 static void
 ieee80211_tdls_chandef_vht_upgrade(struct ieee80211_sub_if_data *sdata,
+				   struct ieee80211_link_data *link,
 				   struct sta_info *sta)
 {
 	/* IEEE802.11ac-2013 Table E-4 */
@@ -349,8 +375,7 @@ ieee80211_tdls_chandef_vht_upgrade(struct ieee80211_sub_if_data *sdata,
 	/* proceed to downgrade the chandef until usable or the same as AP BW */
 	while (uc.width > max_width ||
 	       (uc.width > sta->tdls_chandef.width &&
-		!cfg80211_reg_can_beacon_relax(sdata->local->hw.wiphy, &uc,
-					       sdata->wdev.iftype)))
+		!ieee80211_tdls_chandef_can_upgrade(sdata->local, link, &uc)))
 		ieee80211_chandef_downgrade(&uc, NULL);
 
 	if (!cfg80211_chandef_identical(&uc, &sta->tdls_chandef)) {
@@ -533,7 +558,7 @@ ieee80211_tdls_add_setup_start_ies(struct ieee80211_link_data *link,
 		 * a wider compatible one, up to 80MHz
 		 */
 		if (test_sta_flag(sta, WLAN_STA_TDLS_WIDER_BW))
-			ieee80211_tdls_chandef_vht_upgrade(sdata, sta);
+			ieee80211_tdls_chandef_vht_upgrade(sdata, link, sta);
 	}
 
 	/* add any custom IEs that go before HE capabilities */
@@ -675,7 +700,7 @@ ieee80211_tdls_add_setup_cfm_ies(struct ieee80211_link_data *link,
 		 * a wider compatible one, up to 80MHz
 		 */
 		if (test_sta_flag(sta, WLAN_STA_TDLS_WIDER_BW))
-			ieee80211_tdls_chandef_vht_upgrade(sdata, sta);
+			ieee80211_tdls_chandef_vht_upgrade(sdata, link, sta);
 
 		pos = skb_put(skb, 2 + sizeof(struct ieee80211_vht_operation));
 		ieee80211_ie_build_vht_oper(pos, &sta->sta.deflink.vht_cap,

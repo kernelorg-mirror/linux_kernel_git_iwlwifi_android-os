@@ -1637,6 +1637,11 @@ static int ieee80211_start_ap(struct wiphy *wiphy, struct net_device *dev,
 
 	lockdep_assert_wiphy(local->hw.wiphy);
 
+	if (ieee80211_hw_check(&local->hw, NEED_FULL_CHANDEF_RELAX) &&
+	    !iwl7000_reg_can_beacon_strict(local->hw.wiphy, &params->chandef,
+					   ieee80211_vif_type_p2p(&sdata->vif)))
+		return -EINVAL;
+
 	link = sdata_dereference(sdata->link[link_id], sdata);
 	if (!link)
 		return -ENOLINK;
@@ -4661,6 +4666,11 @@ __ieee80211_channel_switch(struct wiphy *wiphy, struct net_device *dev,
 	link_conf = link_data->conf;
 
 	if (chanreq.oper.punctured && !link_conf->eht_support)
+		return -EINVAL;
+
+	if (ieee80211_hw_check(&local->hw, NEED_FULL_CHANDEF_RELAX) &&
+	    !iwl7000_reg_can_beacon_strict(local->hw.wiphy, &chanreq.oper,
+					   ieee80211_vif_type_p2p(&sdata->vif)))
 		return -EINVAL;
 
 	/* don't allow another channel switch if one is already active. */

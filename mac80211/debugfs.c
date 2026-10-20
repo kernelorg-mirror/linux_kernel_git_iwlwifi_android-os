@@ -473,6 +473,7 @@ static const char *hw_flag_names[] = {
 	FLAG(STRICT),
 	FLAG(SUPPORTS_NDP_BLOCKACK),
 	FLAG(PER_STA_AP_GTK),
+	FLAG(NEED_FULL_CHANDEF_RELAX),
 #undef FLAG
 };
 

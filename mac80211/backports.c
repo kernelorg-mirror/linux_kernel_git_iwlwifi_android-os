@@ -393,3 +393,60 @@ void michael_mic(const u8 *key, struct ieee80211_hdr *hdr,
 	put_unaligned_le32(mctx.l, mic);
 	put_unaligned_le32(mctx.r, mic + 4);
 }
+
+/*
+ * The kernel's cfg80211 doesn't have the
+ * cfg80211_beaconing_check_config struct on older kernels, and applies
+ * the NO_IR relaxation to the whole chandef based only on the control
+ * channel. That's too lenient for IEEE80211_HW_NEED_FULL_CHANDEF_RELAX:
+ * the firmware asserts if a GO is in a PHY context with channels it isn't
+ * permitted on. So if relaxation is needed, also check each 20 MHz
+ * subchannel on its own, which applies the relaxation per channel.
+ */
+bool iwl7000_reg_can_beacon_strict(struct wiphy *wiphy,
+				   const struct cfg80211_chan_def *chandef,
+				   enum nl80211_iftype iftype)
+{
+	struct cfg80211_chan_def tmp = *chandef;
+	int width;
+
+	lockdep_assert_wiphy(wiphy);
+
+	if (cfg80211_reg_can_beacon(wiphy, &tmp, iftype))
+		return true;
+
+	if (!cfg80211_reg_can_beacon_relax(wiphy, &tmp, iftype))
+		return false;
+
+	width = nl80211_chan_width_to_mhz(chandef->width);
+	/* only the control channel, so cfg80211 checked it correctly */
+	if (width <= 20)
+		return true;
+
+	/* not used by iwlwifi, just reject */
+	if (chandef->center_freq2)
+		return false;
+
+	/* also checks punctured subchannels, which is only more strict */
+	for (u32 freq = chandef->center_freq1 - width / 2 + 10;
+	     freq < chandef->center_freq1 + width / 2;
+	     freq += 20) {
+		struct ieee80211_channel *chan = ieee80211_get_channel(wiphy, freq);
+		struct cfg80211_chan_def sub;
+
+		if (!chan)
+			return false;
+
+#if LINUX_VERSION_IS_GEQ(6,15,0)
+		/* permits NO_IR in the 20 MHz check, but not for wider */
+		if (chan->flags & IEEE80211_CHAN_ALLOW_20MHZ_ACTIVITY)
+			return false;
+#endif
+
+		cfg80211_chandef_create(&sub, chan, NL80211_CHAN_NO_HT);
+		if (!cfg80211_reg_can_beacon_relax(wiphy, &sub, iftype))
+			return false;
+	}
+
+	return true;
+}

@@ -74,7 +74,8 @@ ieee80211_nan_use_chanctx(struct ieee80211_sub_if_data *sdata,
 					 IEEE80211_CHANCTX_SHARED, 0, -1))
 		return -EBUSY;
 
-	ctx = ieee80211_find_or_create_chanctx(sdata, &nan_channel->chanreq,
+	ctx = ieee80211_find_or_create_chanctx(sdata, NULL,
+					       &nan_channel->chanreq,
 					       IEEE80211_CHANCTX_SHARED,
 					       assign_on_failure,
 					       &reused_ctx);

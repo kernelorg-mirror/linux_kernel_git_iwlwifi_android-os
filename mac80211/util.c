@@ -4316,6 +4316,7 @@ ieee80211_fill_ifcomb_params(struct ieee80211_local *local,
 			     struct iface_combination_params *params,
 			     const struct cfg80211_chan_def *chandef,
 			     struct ieee80211_sub_if_data *sdata,
+			     struct ieee80211_link_data *link,
 			     bool (*chanctx_filter)(struct ieee80211_chanctx *ctx,
 						    void *filter_data),
 			     void *filter_data)
@@ -4335,9 +4336,20 @@ ieee80211_fill_ifcomb_params(struct ieee80211_local *local,
 		params->radar_detect |=
 			ieee80211_chanctx_radar_detect(local, ctx);
 
-		if (chandef && ctx->mode != IEEE80211_CHANCTX_EXCLUSIVE &&
-		    cfg80211_chandef_compatible(chandef, &ctx->conf.def))
-			continue;
+		if (chandef && ctx->mode != IEEE80211_CHANCTX_EXCLUSIVE) {
+			struct ieee80211_beacon_check check = {
+				.ctx = ctx,
+				.sdata = sdata,
+				.link = link,
+				.chandef = chandef,
+			};
+
+			check.combined = cfg80211_chandef_compatible(chandef,
+								     &ctx->conf.def);
+			if (check.combined &&
+			    ieee80211_chanctx_beaconing_ok(local, &check))
+				continue;
+		}
 
 		if (chanctx_filter &&
 		    chanctx_filter(ctx, filter_data))
@@ -4417,7 +4429,7 @@ int ieee80211_check_combinations_ext(struct ieee80211_sub_if_data *sdata,
 
 	total = ieee80211_fill_ifcomb_params(local, &params,
 					     shared ? chandef : NULL,
-					     sdata,
+					     sdata, data->link,
 					     data->chanctx_filter,
 					     data->filter_data);
 	if (total == 1 && !params.radar_detect)
@@ -4446,7 +4458,8 @@ int ieee80211_max_num_channels(struct ieee80211_local *local, int radio_idx)
 
 	lockdep_assert_wiphy(local->hw.wiphy);
 
-	ieee80211_fill_ifcomb_params(local, &params, NULL, NULL, NULL, NULL);
+	ieee80211_fill_ifcomb_params(local, &params, NULL, NULL, NULL, NULL,
+				     NULL);
 
 	err = cfg80211_iter_combinations(local->hw.wiphy, &params,
 					 ieee80211_iter_max_chans,

@@ -347,6 +347,10 @@ static inline void aes_cmac_zeroize_ctx(struct aes_cmac_ctx *ctx)
 		memzero_explicit(ctx, sizeof(*ctx));
 }
 
+bool iwl7000_reg_can_beacon_strict(struct wiphy *wiphy,
+				   const struct cfg80211_chan_def *chandef,
+				   enum nl80211_iftype iftype);
+
 #define NL80211_EXT_FEATURE_EPP_ROBUST_MGMT	-1
 #define NL80211_STA_FLAG_EPP_ROBUST_MGMT	10
 #define ASSOC_REQ_EPP_ROBUST_MGMT		BIT(11)

@@ -2903,6 +2903,15 @@ ieee80211_chanreq_downgrade(struct ieee80211_chan_req *chanreq,
 bool ieee80211_chanreq_identical(const struct ieee80211_chan_req *a,
 				 const struct ieee80211_chan_req *b);
 
+static inline enum ieee80211_ap_reg_power
+ieee80211_link_ap_reg_power(struct ieee80211_link_data *link)
+{
+	if (!link || link->sdata->vif.type != NL80211_IFTYPE_AP)
+		return IEEE80211_REG_UNSET_AP;
+
+	return IEEE80211_REG_UNSET_AP;
+}
+
 int __must_check
 _ieee80211_link_use_channel(struct ieee80211_link_data *link,
 			    const struct ieee80211_chan_req *req,
@@ -2960,6 +2969,7 @@ void ieee80211_recalc_sb_count(struct ieee80211_sub_if_data *sdata, u64 tsf);
 void ieee80211_recalc_dtim(struct ieee80211_sub_if_data *sdata, u64 tsf);
 
 struct ieee80211_check_combinations_data {
+	struct ieee80211_link_data *link;
 	const struct cfg80211_chan_def *chandef;
 	enum ieee80211_chanctx_mode chanmode;
 	u8 radar_detect;
@@ -2989,11 +2999,37 @@ ieee80211_check_combinations(struct ieee80211_sub_if_data *sdata,
 }
 
 int ieee80211_max_num_channels(struct ieee80211_local *local, int radio_idx);
+
+/**
+ * struct ieee80211_beacon_check - parameters for a beaconing check
+ * @ctx: the channel context to check
+ * @sdata: the interface that wants to use the context, may be %NULL
+ * @link: the link that wants to use the context, may be %NULL; if it
+ *	already uses (or reserves) the context that's ignored for the
+ *	check, it must be taken into account via @chandef
+ * @chandef: the chandef the link/interface wants to use, ignored if
+ *	@sdata is %NULL
+ * @combined: the resulting combined chandef of the context
+ * @reservation: check the users after reservations are completed, i.e.
+ *	ignore links that are reserving another context
+ */
+struct ieee80211_beacon_check {
+	struct ieee80211_chanctx *ctx;
+	struct ieee80211_sub_if_data *sdata;
+	struct ieee80211_link_data *link;
+	const struct cfg80211_chan_def *chandef;
+	const struct cfg80211_chan_def *combined;
+	bool reservation;
+};
+
+bool ieee80211_chanctx_beaconing_ok(struct ieee80211_local *local,
+				    const struct ieee80211_beacon_check *check);
 u32 ieee80211_get_radio_mask(struct wiphy *wiphy, struct net_device *dev);
 void ieee80211_recalc_chanctx_chantype(struct ieee80211_local *local,
 				       struct ieee80211_chanctx *ctx);
 struct ieee80211_chanctx *
 ieee80211_find_or_create_chanctx(struct ieee80211_sub_if_data *sdata,
+				 struct ieee80211_link_data *link,
 				 const struct ieee80211_chan_req *chanreq,
 				 enum ieee80211_chanctx_mode mode,
 				 bool assign_on_failure,

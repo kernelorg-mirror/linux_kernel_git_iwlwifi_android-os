@@ -3117,6 +3117,12 @@ struct ieee80211_txq {
  * @IEEE80211_HW_PER_STA_AP_GTK: Install GTKs to the AP STA entry instead
  *	of with %NULL sta.
  *
+ * @IEEE80211_HW_NEED_FULL_CHANDEF_RELAX: Require that when beacon relaxation
+ *	is used, it's permitted on the entire chandef for the whole chanctx
+ *	(which may be wider than the P2P GO bandwidth due to sharing). This
+ *	then prevents said sharing if the full chandef isn't allowed to do
+ *	relaxation.
+ *
  * @NUM_IEEE80211_HW_FLAGS: number of hardware flags, used for sizing arrays
  */
 enum ieee80211_hw_flags {
@@ -3179,6 +3185,7 @@ enum ieee80211_hw_flags {
 	IEEE80211_HW_STRICT,
 	IEEE80211_HW_SUPPORTS_NDP_BLOCKACK,
 	IEEE80211_HW_PER_STA_AP_GTK,
+	IEEE80211_HW_NEED_FULL_CHANDEF_RELAX,
 
 	/* keep last, obviously */
 	NUM_IEEE80211_HW_FLAGS
