@@ -147,6 +147,7 @@ static int iwl_dump_ini_prph_phy_iter_common(struct iwl_fw_runtime *fwrt,
 	__le32 *val = range->data;
 	u32 indirect_wr_addr = WMAL_INDRCT_RD_CMD1;
 	u32 indirect_rd_addr = WMAL_MRSPF_1;
+	u32 stts_addr = WMAL_MRSPF_STTS;
 	u32 prph_val;
 	u32 dphy_state;
 	u32 dphy_addr;
@@ -161,6 +162,7 @@ static int iwl_dump_ini_prph_phy_iter_common(struct iwl_fw_runtime *fwrt,
 
 	indirect_wr_addr += le32_to_cpu(offset);
 	indirect_rd_addr += le32_to_cpu(offset);
+	stts_addr += le32_to_cpu(offset);
 
 	dphy_addr = (offset) ? WFPM_LMAC2_PS_CTL_RW : WFPM_LMAC1_PS_CTL_RW;
 	dphy_state = iwl_trans_read_umac_prph_no_grab(fwrt->trans, dphy_addr);
@@ -182,10 +184,9 @@ static int iwl_dump_ini_prph_phy_iter_common(struct iwl_fw_runtime *fwrt,
 		    fwrt->trans->info.hw_rf_id != IWL_CFG_RF_TYPE_HR2) {
 			udelay(2);
 			prph_stts = iwl_trans_read_prph_no_grab(fwrt->trans,
-								WMAL_MRSPF_STTS);
+								stts_addr);
 
-			/* Abort dump if status is 0xA5A5A5A2 or FIFO1 empty */
-			if (prph_stts == WMAL_TIMEOUT_VAL ||
+			if (iwl_trans_is_hw_error_value(prph_stts) ||
 			    !WMAL_MRSPF_STTS_IS_FIFO1_NOT_EMPTY(prph_stts))
 				break;
 		}
