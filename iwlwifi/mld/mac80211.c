@@ -313,6 +313,7 @@ static void iwl_mac_hw_set_flags(struct iwl_mld *mld)
 #endif
 	ieee80211_hw_set(hw, TDLS_WIDER_BW);
 	ieee80211_hw_set(hw, PER_STA_AP_GTK);
+	ieee80211_hw_set(hw, NEED_FULL_CHANDEF_RELAX);
 }
 
 static void iwl_mld_hw_set_nan(struct iwl_mld *mld)

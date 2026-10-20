@@ -418,6 +418,7 @@ int iwl_mvm_mac_setup_register(struct iwl_mvm *mvm)
 #else
 	ieee80211_hw_set(hw, SUPPORTS_AMSDU_IN_AMPDU);
 #endif
+	ieee80211_hw_set(hw, NEED_FULL_CHANDEF_RELAX);
 
 	/* Set this early since we need to have it for the check below */
 	if (mvm->mld_api_is_used && mvm->nvm_data->sku_cap_11be_enable &&
