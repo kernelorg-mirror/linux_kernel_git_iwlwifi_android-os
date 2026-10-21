@@ -462,8 +462,7 @@ iwl_mld_wondertap_set_station_info(void *handle,
 
 	switch (action) {
 	case WONDERTAP_STATION_STATE_NEW:
-		ret = iwl_mld_wonder_alloc_sta(mld, wonder_ctx,
-					       info->mac);
+		ret = iwl_mld_wonder_alloc_sta(mld, wonder_ctx, info);
 		if (ret) {
 			IWL_ERR(mld,
 				"wonder: failed to add sta %pM: %d\n",
@@ -485,6 +484,12 @@ iwl_mld_wondertap_set_station_info(void *handle,
 		sta = iwl_mld_wonder_find_sta(wonder_ctx, info->mac);
 		if (!sta)
 			return -ENOENT;
+		ret = iwl_mld_wonder_update_sta(mld, wonder_ctx, sta, info);
+		if (ret) {
+			IWL_WARN(mld, "wonder: sta update failed %pM: %d\n",
+				 info->mac, ret);
+			return ret;
+		}
 		ret = iwl_mld_wonder_send_tlc_cfg(mld, wonder_ctx, sta, info);
 		if (ret)
 			IWL_WARN(mld,

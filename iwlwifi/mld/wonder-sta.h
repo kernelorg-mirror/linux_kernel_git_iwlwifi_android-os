@@ -30,6 +30,12 @@ struct iwl_mld_wonder_sta {
 	struct iwl_mld_wonder_rx_ba __rcu *rx_ba[IWL_MAX_TID_COUNT];
 };
 
+static inline bool
+iwl_mld_wonder_he_capa_valid(const struct wondertap_station_info *info)
+{
+	return info->he_capa_len >= sizeof(info->he_capa);
+}
+
 int
 iwl_mld_wonder_alloc_bcast_mgmt_sta(struct iwl_mld *mld,
 				    struct iwl_mld_wonder_ctx *wonder_ctx,
@@ -44,7 +50,11 @@ iwl_mld_wonder_free_mcast_bcast_stas(struct iwl_mld *mld,
 
 int iwl_mld_wonder_alloc_sta(struct iwl_mld *mld,
 			     struct iwl_mld_wonder_ctx *wonder_ctx,
-			     const u8 *addr);
+			     const struct wondertap_station_info *info);
+int iwl_mld_wonder_update_sta(struct iwl_mld *mld,
+			      const struct iwl_mld_wonder_ctx *wonder_ctx,
+			      const struct iwl_mld_wonder_sta *sta,
+			      const struct wondertap_station_info *info);
 void iwl_mld_wonder_free_sta(struct iwl_mld *mld,
 			     struct iwl_mld_wonder_ctx *wonder_ctx,
 			     const u8 *addr);

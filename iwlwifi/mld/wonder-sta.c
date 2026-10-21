@@ -6,6 +6,7 @@
 #include <linux/etherdevice.h>
 
 #include "fw/api/mac-cfg.h"
+#include "fw/api/sta.h"
 #include "hcmd.h"
 #include "mld.h"
 #include "sta.h"
@@ -36,10 +37,70 @@ static int iwl_mld_wonder_send_sta_cmd(struct iwl_mld *mld,
 	return iwl_mld_send_cmd_pdu(mld, cmd_id, cmd, sizeof(*cmd));
 }
 
+/* Same rules as iwl_mld_fill_ampdu_size_and_dens() and MIMO setup in sta.c */
+static void
+iwl_mld_wonder_fill_peer_caps(struct iwl_mld *mld,
+			      const struct wondertap_station_info *info,
+			      struct iwl_sta_cfg_cmd *cmd)
+{
+	bool has_vht = info->capability_mask & BIT(WONDERTAP_STATION_CAP_VHT);
+	bool has_ht = info->capability_mask & BIT(WONDERTAP_STATION_CAP_HT);
+	bool has_he = info->capability_mask & BIT(WONDERTAP_STATION_CAP_HE);
+	u16 ht_cap = le16_to_cpu(info->ht_capa.cap_info);
+	u32 agg_size = 0, mpdu_dens = 0;
+	bool peer_mimo = false;
+
+	if (has_ht) {
+		agg_size = u8_get_bits(info->ht_capa.ampdu_params_info,
+				       IEEE80211_HT_AMPDU_PARM_FACTOR);
+		mpdu_dens = u8_get_bits(info->ht_capa.ampdu_params_info,
+					IEEE80211_HT_AMPDU_PARM_DENSITY);
+		peer_mimo = info->ht_capa.mcs.rx_mask[1];
+	}
+
+	if (has_vht) {
+		u16 rx_map = le16_to_cpu(info->vht_capa.supp_mcs.rx_mcs_map);
+
+		agg_size = le32_get_bits(info->vht_capa.vht_cap_info,
+					 IEEE80211_VHT_CAP_MAX_A_MPDU_LENGTH_EXPONENT_MASK);
+		peer_mimo = ((rx_map >> 2) & 0x3) !=
+			    IEEE80211_VHT_MCS_NOT_SUPPORTED;
+	}
+
+	if (has_he && iwl_mld_wonder_he_capa_valid(info))
+		agg_size += u8_get_bits(info->he_capa.mac_cap_info[3],
+					IEEE80211_HE_MAC_CAP3_MAX_AMPDU_LEN_EXP_MASK);
+
+	agg_size = min_t(u32, agg_size,
+			 STA_FLG_MAX_AGG_SIZE_4M >> STA_FLG_MAX_AGG_SIZE_SHIFT);
+	cmd->tx_ampdu_max_size = cpu_to_le32(agg_size);
+	cmd->tx_ampdu_spacing = cpu_to_le32(mpdu_dens);
+
+	if (peer_mimo && hweight8(iwl_mld_get_valid_tx_ant(mld)) >= 2) {
+		switch (u16_get_bits(ht_cap, IEEE80211_HT_CAP_SM_PS)) {
+		case WLAN_HT_CAP_SM_PS_STATIC:
+			break;
+		case WLAN_HT_CAP_SM_PS_DYNAMIC:
+			cmd->mimo = cpu_to_le32(1);
+			cmd->mimo_protection = cpu_to_le32(1);
+			break;
+		default:
+			cmd->mimo = cpu_to_le32(1);
+			break;
+		}
+	}
+
+	IWL_DEBUG_INFO(mld,
+		       "wonder: sta %pM mimo=%u mimo_prot=%u ampdu_max_size=%u ampdu_spacing=%u\n",
+		       info->mac, le32_to_cpu(cmd->mimo),
+		       le32_to_cpu(cmd->mimo_protection), agg_size, mpdu_dens);
+}
+
 static int
 iwl_mld_wonder_set_sta_to_fw(struct iwl_mld *mld, u32 sta_id,
 			     enum iwl_fw_sta_type sta_type,
-			     u32 link_mask, const u8 *addr)
+			     u32 link_mask, const u8 *addr,
+			     const struct wondertap_station_info *info)
 {
 	struct iwl_sta_cfg_cmd cmd = {
 		.sta_id = cpu_to_le32(sta_id),
@@ -49,6 +110,9 @@ iwl_mld_wonder_set_sta_to_fw(struct iwl_mld *mld, u32 sta_id,
 
 	memcpy(cmd.peer_mld_address, addr, ETH_ALEN);
 	memcpy(cmd.peer_link_address, addr, ETH_ALEN);
+
+	if (info)
+		iwl_mld_wonder_fill_peer_caps(mld, info, &cmd);
 
 	return iwl_mld_wonder_send_sta_cmd(mld, &cmd);
 }
@@ -88,7 +152,7 @@ static int iwl_mld_wonder_add_sta(struct iwl_mld *mld,
 
 	ret = iwl_mld_wonder_set_sta_to_fw(mld, internal_sta->sta_id,
 					   internal_sta->sta_type, link_mask,
-					   addr);
+					   addr, NULL);
 	if (ret)
 		goto err;
 
@@ -295,20 +359,21 @@ static void iwl_mld_wonder_free_sta_queue(struct iwl_mld *mld, u8 sta_id,
  * iwl_mld_wonder_alloc_sta - add a station
  * @mld: the MLD instance
  * @wonder_ctx: the wonder context; must have a valid @link_id
- * @addr: the station's MAC address
+ * @info: the station's MAC address and capabilities
  *
  * Allocates a STATION_TYPE_PEER station and its single TX queue, used
  * for all TIDs. Must be called with wiphy lock held.
  *
- * Return: 0 on success, -EALREADY if @addr is already a known station,
+ * Return: 0 on success, -EALREADY if the address is already a known station,
  *	-ENOSPC if IWL_MLD_WONDER_MAX_STAS are already in use, other
  *	negative error code on failure.
  */
 int iwl_mld_wonder_alloc_sta(struct iwl_mld *mld,
 			     struct iwl_mld_wonder_ctx *wonder_ctx,
-			     const u8 *addr)
+			     const struct wondertap_station_info *info)
 {
 	struct iwl_mld_wonder_sta *sta;
+	const u8 *addr = info->mac;
 	int ret;
 
 	lockdep_assert_wiphy(mld->wiphy);
@@ -333,7 +398,8 @@ int iwl_mld_wonder_alloc_sta(struct iwl_mld *mld,
 		return ret;
 
 	ret = iwl_mld_wonder_set_sta_to_fw(mld, sta->sta_id, STATION_TYPE_PEER,
-					   BIT(wonder_ctx->link_id), addr);
+					   BIT(wonder_ctx->link_id), addr,
+					   info);
 	if (ret)
 		goto free_fw_id;
 
@@ -350,6 +416,34 @@ free_fw_id:
 	RCU_INIT_POINTER(mld->fw_id_to_link_sta[sta->sta_id], NULL);
 	sta->sta_id = IWL_INVALID_STA;
 	return ret;
+}
+
+/**
+ * iwl_mld_wonder_update_sta - update a station's capabilities in the firmware
+ * @mld: the MLD instance
+ * @wonder_ctx: the wonder context; must have a valid @link_id
+ * @sta: the station to update
+ * @info: the station's capabilities
+ *
+ * Re-sends STA_CONFIG_CMD so the MIMO and A-MPDU limits follow the
+ * capabilities learned after the station was added.
+ * Must be called with wiphy lock held.
+ *
+ * Return: 0 on success, negative error code on failure.
+ */
+int iwl_mld_wonder_update_sta(struct iwl_mld *mld,
+			      const struct iwl_mld_wonder_ctx *wonder_ctx,
+			      const struct iwl_mld_wonder_sta *sta,
+			      const struct wondertap_station_info *info)
+{
+	lockdep_assert_wiphy(mld->wiphy);
+
+	if (WARN_ON(wonder_ctx->link_id == IWL_MLD_INVALID_FW_ID))
+		return -EINVAL;
+
+	return iwl_mld_wonder_set_sta_to_fw(mld, sta->sta_id, STATION_TYPE_PEER,
+					    BIT(wonder_ctx->link_id), sta->addr,
+					    info);
 }
 
 /**

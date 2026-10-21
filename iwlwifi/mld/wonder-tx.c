@@ -359,12 +359,6 @@ iwl_mld_wonder_get_fw_chains(struct iwl_mld *mld)
 	return fw_chains;
 }
 
-static bool
-iwl_mld_wonder_he_capa_valid(const struct wondertap_station_info *info)
-{
-	return info->he_capa_len >= sizeof(info->he_capa.mac_cap_info) + 3;
-}
-
 /* wondertap gives peer caps as raw bitmasks; derive max FW channel width. */
 static u8
 iwl_mld_wonder_fw_bw_from_sta_bw(const struct wondertap_station_info *info,
