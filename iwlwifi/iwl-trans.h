@@ -305,8 +305,8 @@ static inline void iwl_rxb_add_frags(struct iwl_rx_cmd_buffer *rxb,
 
 	for (unsigned int i = 0; len && i < ARRAY_SIZE(rxb->_frags); i++) {
 		/*
-		 * Only AX210 HW will put multiple commands into one buffer
-		 * and only then is _frags[0].offset % rxb->truesize != 0
+		 * Only AX210 HW and USB will put multiple commands into one
+		 * buffer and only then is _frags[0].offset % rxb->truesize != 0
 		 */
 		unsigned int fraglen =
 			min(len, rxb->truesize - offset -
@@ -792,6 +792,7 @@ struct iwl_cmd_meta {
 /**
  * struct iwl_trans_info - transport info for outside use
  * @bus_type: transport bus type (%IWL_BUS_TYPE_*)
+ * @use_page_pool: the transport allocates its RX buffers from a page pool
  * @name: the device name
  * @max_skb_frags: maximum number of fragments an SKB can have when transmitted.
  *	0 indicates that frag SKBs (NETIF_F_SG) aren't supported.
