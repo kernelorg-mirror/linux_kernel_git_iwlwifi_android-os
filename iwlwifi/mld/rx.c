@@ -2266,6 +2266,7 @@ static int iwl_mld_build_rx_skb(struct iwl_mld *mld, struct sk_buff *skb,
 			     (u8 *)rxb_addr(rxb);
 
 		iwl_rxb_add_frags(rxb, skb, offset, fraglen);
+
 	}
 
 	return 0;
