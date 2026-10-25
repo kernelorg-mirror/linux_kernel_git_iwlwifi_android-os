@@ -508,87 +508,6 @@ iwl_mld_convert_mlo_keys(struct iwl_mld *mld,
 }
 
 static void
-iwl_mld_convert_wowlan_notif_v5(const struct iwl_wowlan_info_notif_v5 *notif_v5,
-				struct iwl_wowlan_info_notif *notif)
-{
-	/* Convert GTK from v3 to the new format */
-	BUILD_BUG_ON(ARRAY_SIZE(notif->gtk) != ARRAY_SIZE(notif_v5->gtk));
-
-	for (int i = 0; i < ARRAY_SIZE(notif_v5->gtk); i++) {
-		const struct iwl_wowlan_gtk_status_v3 *gtk_v3 = &notif_v5->gtk[i];
-		struct iwl_wowlan_gtk_status *gtk = &notif->gtk[i];
-
-		/* Copy key material and metadata */
-		BUILD_BUG_ON(sizeof(gtk->key) != sizeof(gtk_v3->key));
-		BUILD_BUG_ON(sizeof(gtk->tkip_mic_key) != sizeof(gtk_v3->tkip_mic_key));
-
-		memcpy(gtk->key, gtk_v3->key, sizeof(gtk_v3->key));
-
-		gtk->key_len = gtk_v3->key_len;
-		gtk->key_flags = gtk_v3->key_flags;
-
-		memcpy(gtk->tkip_mic_key, gtk_v3->tkip_mic_key,
-		       sizeof(gtk_v3->tkip_mic_key));
-		gtk->sc = gtk_v3->sc;
-
-		/* Set key_status based on whether key material is present.
-		 * in v5, a key is either invalid (should be skipped) or has
-		 * both meta data and the key itself.
-		 */
-		if (gtk_v3->key_len)
-			gtk->key_status = IWL_WOWLAN_STATUS_NEW_KEY;
-	}
-
-	/* Convert IGTK from v1 to the new format, only one IGTK is passed by FW */
-	BUILD_BUG_ON(offsetof(struct iwl_wowlan_igtk_status, key_status) !=
-		     sizeof(struct iwl_wowlan_igtk_status_v1));
-
-	memcpy(&notif->igtk[0], &notif_v5->igtk[0],
-	       offsetof(struct iwl_wowlan_igtk_status, key_status));
-
-	/* Set key_status based on whether key material is present.
-	 * in v5, a key is either invalid (should be skipped) or has
-	 * both meta data and the key itself.
-	 */
-	if (notif_v5->igtk[0].key_len)
-		notif->igtk[0].key_status = IWL_WOWLAN_STATUS_NEW_KEY;
-
-	/* Convert BIGTK from v1 to the new format */
-	BUILD_BUG_ON(ARRAY_SIZE(notif->bigtk) != ARRAY_SIZE(notif_v5->bigtk));
-
-	for (int i = 0; i < ARRAY_SIZE(notif_v5->bigtk); i++) {
-		/* Copy everything until key_status */
-		memcpy(&notif->bigtk[i], &notif_v5->bigtk[i],
-		       offsetof(struct iwl_wowlan_igtk_status, key_status));
-
-		/* Set key_status based on whether key material is present.
-		 * in v5, a key is either invalid (should be skipped) or has
-		 * both meta data and the key itself.
-		 */
-		if (notif_v5->bigtk[i].key_len)
-			notif->bigtk[i].key_status = IWL_WOWLAN_STATUS_NEW_KEY;
-	}
-
-	notif->replay_ctr = notif_v5->replay_ctr;
-	notif->pattern_number = notif_v5->pattern_number;
-	notif->qos_seq_ctr = notif_v5->qos_seq_ctr;
-	notif->wakeup_reasons = notif_v5->wakeup_reasons;
-	notif->num_of_gtk_rekeys = notif_v5->num_of_gtk_rekeys;
-	notif->transmitted_ndps = notif_v5->transmitted_ndps;
-	notif->received_beacons = notif_v5->received_beacons;
-	notif->tid_tear_down = notif_v5->tid_tear_down;
-	notif->station_id = notif_v5->station_id;
-	notif->num_mlo_link_keys = notif_v5->num_mlo_link_keys;
-	notif->tid_offloaded_tx = notif_v5->tid_offloaded_tx;
-
-	/* Copy MLO GTK keys */
-	if (notif_v5->num_mlo_link_keys) {
-		memcpy(notif->mlo_gtks, notif_v5->mlo_gtks,
-		       notif_v5->num_mlo_link_keys * sizeof(struct iwl_wowlan_mlo_gtk));
-	}
-}
-
-static void
 iwl_mld_convert_wowlan_notif_v6(const struct iwl_wowlan_info_notif_v6 *notif_v6,
 				struct iwl_wowlan_info_notif *notif)
 {
@@ -628,18 +547,7 @@ static bool iwl_mld_validate_wowlan_notif_size(struct iwl_mld *mld, u32 len,
 	u8 num_mlo_keys;
 
 	/* Extract num_mlo_keys from the void pointer based on version */
-	if (version == 5) {
-		const struct iwl_wowlan_info_notif_v5 *notif_v5 = notif_data;
-
-		expected_len = sizeof(*notif_v5);
-
-		if (IWL_FW_CHECK(mld, len < expected_len,
-				 "Invalid wowlan_info_notif v5 (expected=%u got=%u)\n",
-				 expected_len, len))
-			return false;
-
-		num_mlo_keys = notif_v5->num_mlo_link_keys;
-	} else if (version == 6) {
+	if (version == 6) {
 		const struct iwl_wowlan_info_notif_v6 *notif_v6 = notif_data;
 
 		expected_len = sizeof(*notif_v6);
@@ -779,26 +687,7 @@ iwl_mld_handle_wowlan_info_notif(struct iwl_mld *mld,
 						    RSC_NOTIF,
 						    IWL_FW_CMD_VER_UNKNOWN);
 
-	if (wowlan_info_ver == 5) {
-		/* v5 format - validate before conversion */
-		const struct iwl_wowlan_info_notif_v5 *_notif =
-			(void *)pkt->data;
-
-		if (!iwl_mld_validate_wowlan_notif_size(mld, len, _notif, 5))
-			return true;
-
-		converted_notif = kzalloc_flex(*converted_notif, mlo_gtks,
-					       _notif->num_mlo_link_keys,
-					       GFP_ATOMIC);
-		if (!converted_notif) {
-			IWL_ERR(mld,
-				"Failed to allocate memory for converted wowlan_info_notif\n");
-			return true;
-		}
-
-		iwl_mld_convert_wowlan_notif_v5(_notif, converted_notif);
-		notif = converted_notif;
-	} else if (wowlan_info_ver == 6) {
+	if (wowlan_info_ver == 6) {
 		const struct iwl_wowlan_info_notif_v6 *_notif =
 			(void *)pkt->data;
 
