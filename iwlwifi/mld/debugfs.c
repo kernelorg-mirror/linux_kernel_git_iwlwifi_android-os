@@ -550,7 +550,9 @@ static ssize_t iwl_dbgfs_inject_packet_write(struct iwl_mld *mld,
 	struct iwl_op_mode *opmode = container_of((void *)mld,
 						  struct iwl_op_mode,
 						  op_mode_specific);
-	struct iwl_rx_cmd_buffer rxb = {};
+	struct iwl_rx_cmd_buffer rxb = {
+		.truesize = PAGE_SIZE,
+	};
 	struct iwl_rx_packet *pkt;
 	int n_bytes = count / 2;
 	int ret = -EINVAL;

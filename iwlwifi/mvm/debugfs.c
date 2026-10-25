@@ -1325,7 +1325,7 @@ static ssize_t iwl_dbgfs_inject_packet_write(struct iwl_mvm *mvm,
 						  op_mode_specific);
 	struct iwl_rx_cmd_buffer rxb = {
 		._rx_page_order = 0,
-		.truesize = 0, /* not used */
+		.truesize = PAGE_SIZE,
 		._frags[0].offset = 0,
 	};
 	struct iwl_rx_packet *pkt;
