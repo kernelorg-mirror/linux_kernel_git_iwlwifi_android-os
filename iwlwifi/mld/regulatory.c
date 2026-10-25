@@ -20,12 +20,6 @@ static ssize_t iwl_mld_get_lari_config_cmd_size(u8 cmd_ver)
 	case 14:
 		return offsetof(struct iwl_lari_config_change_cmd,
 				oem_supported_dsm_bitmap);
-	case 13:
-		return offsetof(struct iwl_lari_config_change_cmd,
-				oem_uhb_allow_extension_bitmap);
-	case 12:
-		return offsetof(struct iwl_lari_config_change_cmd,
-				oem_11bn_allow_bitmap);
 	default:
 		WARN(true, "unsupported version: %d", cmd_ver);
 		return -EINVAL;
@@ -350,14 +344,7 @@ void iwl_mld_configure_lari(struct iwl_mld *mld)
 	};
 	u8 cmd_ver = iwl_fw_lookup_cmd_ver(mld->fw,
 					   WIDE_ID(REGULATORY_AND_NVM_GROUP,
-						   LARI_CONFIG_CHANGE), 12);
-	/*
-	 * For LARI_CONFIG_CHANGE command version 13 and above, firmware accepts
-	 * raw DSM values by default and this TLV is no longer needed.
-	 */
-	bool has_raw_dsm_capa = cmd_ver >= 13 ||
-		fw_has_capa(&fwrt->fw->ucode_capa,
-			    IWL_UCODE_TLV_CAPA_FW_ACCEPTS_RAW_DSM_TABLE);
+						   LARI_CONFIG_CHANGE), 0);
 	ssize_t cmd_len = iwl_mld_get_lari_config_cmd_size(cmd_ver);
 	int ret;
 	u32 value;
@@ -366,44 +353,29 @@ void iwl_mld_configure_lari(struct iwl_mld *mld)
 		return;
 
 	ret = iwl_bios_get_dsm(fwrt, DSM_FUNC_11AX_ENABLEMENT, &value);
-	if (!ret) {
-		if (!has_raw_dsm_capa)
-			value &= DSM_11AX_ALLOW_BITMAP;
+	if (!ret)
 		cmd.oem_11ax_allow_bitmap = cpu_to_le32(value);
-	}
 
 	ret = iwl_bios_get_dsm(fwrt, DSM_FUNC_ENABLE_UNII4_CHAN, &value);
-	if (!ret) {
-		if (!has_raw_dsm_capa)
-			value &= DSM_UNII4_ALLOW_BITMAP;
+	if (!ret)
 		cmd.oem_unii4_allow_bitmap = cpu_to_le32(value);
-	}
 
 	ret = iwl_bios_get_dsm(fwrt, DSM_FUNC_ACTIVATE_CHANNEL, &value);
-	if (!ret) {
-		if (!has_raw_dsm_capa)
-			value &= CHAN_STATE_ACTIVE_BITMAP_CMD_V12;
+	if (!ret)
 		cmd.chan_state_active_bitmap = cpu_to_le32(value);
-	}
 
 	ret = iwl_bios_get_dsm(fwrt, DSM_FUNC_ENABLE_6E, &value);
 	if (!ret)
 		cmd.oem_uhb_allow_bitmap = cpu_to_le32(value);
 
 	ret = iwl_bios_get_dsm(fwrt, DSM_FUNC_FORCE_DISABLE_CHANNELS, &value);
-	if (!ret) {
-		if (!has_raw_dsm_capa)
-			value &= DSM_FORCE_DISABLE_CHANNELS_ALLOWED_BITMAP;
+	if (!ret)
 		cmd.force_disable_channels_bitmap = cpu_to_le32(value);
-	}
 
 	ret = iwl_bios_get_dsm(fwrt, DSM_FUNC_ENERGY_DETECTION_THRESHOLD,
 			       &value);
-	if (!ret) {
-		if (!has_raw_dsm_capa)
-			value &= DSM_EDT_ALLOWED_BITMAP;
+	if (!ret)
 		cmd.edt_bitmap = cpu_to_le32(value);
-	}
 
 	ret = iwl_bios_get_wbem(fwrt, &value);
 	if (!ret) {
