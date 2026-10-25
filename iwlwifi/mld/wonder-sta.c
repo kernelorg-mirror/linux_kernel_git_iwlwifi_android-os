@@ -32,10 +32,6 @@ static int iwl_mld_wonder_send_sta_cmd(struct iwl_mld *mld,
 				       struct iwl_sta_cfg_cmd *cmd)
 {
 	int cmd_id = WIDE_ID(MAC_CONF_GROUP, STA_CONFIG_CMD);
-	int cmd_ver = iwl_fw_lookup_cmd_ver(mld->fw, cmd_id, 0);
-
-	if (WARN_ON(cmd_ver < 3))
-		return -EINVAL;
 
 	return iwl_mld_send_cmd_pdu(mld, cmd_id, cmd, sizeof(*cmd));
 }
