@@ -1232,47 +1232,9 @@ static int iwl_mld_scan_umac_v18(struct iwl_mld *mld, struct ieee80211_vif *vif,
 	return uid;
 }
 
-static int iwl_mld_scan_umac_v17(struct iwl_mld *mld, struct ieee80211_vif *vif,
-				 struct iwl_mld_scan_params *params,
-				 enum iwl_mld_scan_status scan_status,
-				 int uid, u32 ooc_priority, bool low_latency)
-{
-	struct iwl_scan_req_umac_v17 *cmd = mld->scan.cmd;
-	struct iwl_scan_req_params_ptrs scan_ptrs = {
-		.general_params = &cmd->scan_params.general_params,
-		.probe_params = &cmd->scan_params.probe_params,
-
-		/* struct iwl_scan_channel_params_v8 and struct
-		 * iwl_scan_channel_params_v7 are almost identical. The only
-		 * difference is that the newer version allows configuration of
-		 * more channels. So casting here is ok as long as we ensure
-		 * that we don't exceed the max number of channels supported by
-		 * the older version (see the WARN_ON below).
-		 */
-		.channel_params = (struct iwl_scan_channel_params_v8 *)
-			&cmd->scan_params.channel_params,
-		.periodic_params = &cmd->scan_params.periodic_params
-	};
-	int ret;
-
-	if (WARN_ON(params->n_channels > SCAN_MAX_NUM_CHANS_V3))
-		return -EINVAL;
-
-	cmd->uid = cpu_to_le32(uid);
-	cmd->ooc_priority = cpu_to_le32(ooc_priority);
-
-	ret = iwl_mld_scan_umac_common(mld, vif, params, &scan_ptrs,
-				       scan_status, low_latency);
-	if (ret)
-		return ret;
-
-	return uid;
-}
-
 static const struct iwl_scan_umac_handler iwl_scan_umac_handlers[] = {
 	/* set the newest version first to shorten the list traverse time */
 	IWL_SCAN_UMAC_HANDLER(18),
-	IWL_SCAN_UMAC_HANDLER(17),
 };
 
 static int
@@ -2184,9 +2146,7 @@ int iwl_mld_alloc_scan_cmd(struct iwl_mld *mld)
 						IWL_FW_CMD_VER_UNKNOWN);
 	size_t scan_cmd_size;
 
-	if (scan_cmd_ver == 17) {
-		scan_cmd_size = sizeof(struct iwl_scan_req_umac_v17);
-	} else if (scan_cmd_ver == 18) {
+	if (scan_cmd_ver == 18) {
 		scan_cmd_size = sizeof(struct iwl_scan_req_umac_v18);
 	} else {
 		IWL_ERR(mld, "Unexpected scan cmd version %d\n", scan_cmd_ver);
