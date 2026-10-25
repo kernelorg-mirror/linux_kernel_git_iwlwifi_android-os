@@ -485,27 +485,7 @@ void iwl_mld_init_ap_type_tables(struct iwl_mld *mld)
 	if (!mld->fwrt.ap_type_cmd_valid)
 		return;
 
-	if (iwl_fw_lookup_cmd_ver(mld->fw, cmd.id, 1) == 1) {
-		struct iwl_mcc_allowed_ap_type_cmd_v1 *cmd_v1 = kzalloc_obj(*cmd_v1);
-
-		if (!cmd_v1)
-			return;
-
-		BUILD_BUG_ON(sizeof(mld->fwrt.ap_type_cmd.mcc_to_ap_type_map) !=
-			     sizeof(cmd_v1->mcc_to_ap_type_map));
-
-		memcpy(cmd_v1->mcc_to_ap_type_map,
-		       mld->fwrt.ap_type_cmd.mcc_to_ap_type_map,
-		       sizeof(mld->fwrt.ap_type_cmd.mcc_to_ap_type_map));
-
-		cmd.data[0] = cmd_v1;
-		cmd.len[0] = sizeof(*cmd_v1);
-		ret = iwl_mld_send_cmd(mld, &cmd);
-		kfree(cmd_v1);
-	} else {
-		ret = iwl_mld_send_cmd(mld, &cmd);
-	}
-
+	ret = iwl_mld_send_cmd(mld, &cmd);
 	if (ret)
 		IWL_ERR(mld, "failed to send MCC_ALLOWED_AP_TYPE_CMD (%d)\n",
 			ret);
