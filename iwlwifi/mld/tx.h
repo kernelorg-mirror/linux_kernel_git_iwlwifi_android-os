@@ -87,8 +87,8 @@ void iwl_mld_tx_skb(struct iwl_mld *mld, struct sk_buff *skb,
  * schedules @wk to refresh gp2 in process context and adds @delta_us to the
  * host clock to timestamp queued frames.
  *
- * A zero @valid_until leaves frames unstamped, including on older firmware
- * without TX_CMD v12. A deadline that wraps to zero is published as one.
+ * A zero @valid_until leaves frames unstamped. A deadline that wraps to zero
+ * is published as one.
  * Failed refreshes clear @valid_until, leaving @delta_us for old readers, and
  * schedule a retry with %IWL_MLD_TX_GP2_RETRY_PERIOD rounded for timer
  * coalescing, even without further TX traffic. Old readers may retry sooner.

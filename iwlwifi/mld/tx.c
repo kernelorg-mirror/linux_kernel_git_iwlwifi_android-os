@@ -132,9 +132,6 @@ void iwl_mld_tx_gp2_start(struct iwl_mld *mld)
 {
 	lockdep_assert_wiphy(mld->wiphy);
 
-	if (iwl_fw_lookup_cmd_ver(mld->fw, TX_CMD, 0) < 12)
-		return;
-
 	iwl_mld_tx_gp2_refresh(mld);
 }
 
@@ -142,9 +139,6 @@ void iwl_mld_tx_gp2_start(struct iwl_mld *mld)
 void iwl_mld_tx_gp2_stop(struct iwl_mld *mld)
 {
 	lockdep_assert_wiphy(mld->wiphy);
-
-	if (iwl_fw_lookup_cmd_ver(mld->fw, TX_CMD, 0) < 12)
-		return;
 
 	wiphy_delayed_work_cancel(mld->wiphy, &mld->tx_gp2.wk);
 
