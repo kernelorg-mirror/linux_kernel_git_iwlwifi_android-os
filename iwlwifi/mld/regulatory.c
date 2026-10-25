@@ -258,25 +258,15 @@ static int iwl_mld_ppag_send_cmd(struct iwl_mld *mld)
 {
 	struct iwl_fw_runtime *fwrt = &mld->fwrt;
 	union iwl_ppag_table_cmd cmd = {
-		/* v7 and v8 have the same layout for the ppag_config_info */
 		.v8.ppag_config_info.hdr.table_source = fwrt->ppag_bios_source,
 		.v8.ppag_config_info.hdr.table_revision = fwrt->ppag_bios_rev,
 		.v8.ppag_config_info.value = cpu_to_le32(fwrt->ppag_flags),
 	};
 	u32 cmd_id = WIDE_ID(PHY_OPS_GROUP, PER_PLATFORM_ANT_GAIN_CMD);
-	int cmd_ver = iwl_fw_lookup_cmd_ver(mld->fw, cmd_id, 1);
-	int cmd_len = sizeof(cmd.v8);
+	enum bios_source bios_source = fwrt->ppag_bios_source;
 	u8 cmd_bios_rev;
 	int ret;
 
-	BUILD_BUG_ON(offsetof(typeof(cmd), v8.ppag_config_info.hdr) !=
-		     offsetof(typeof(cmd), v7.ppag_config_info.hdr));
-	BUILD_BUG_ON(offsetof(typeof(cmd), v8.gain) !=
-		     offsetof(typeof(cmd), v7.gain));
-
-	BUILD_BUG_ON(ARRAY_SIZE(cmd.v7.gain) > ARRAY_SIZE(fwrt->ppag_chains));
-	BUILD_BUG_ON(ARRAY_SIZE(cmd.v7.gain[0]) >
-		     ARRAY_SIZE(fwrt->ppag_chains[0].subbands));
 	BUILD_BUG_ON(ARRAY_SIZE(cmd.v8.gain) > ARRAY_SIZE(fwrt->ppag_chains));
 	BUILD_BUG_ON(ARRAY_SIZE(cmd.v8.gain[0]) >
 		     ARRAY_SIZE(fwrt->ppag_chains[0].subbands));
@@ -285,49 +275,21 @@ static int iwl_mld_ppag_send_cmd(struct iwl_mld *mld)
 			"PPAG MODE bits going to be sent: %d\n",
 			fwrt->ppag_flags);
 
-	/* Since ver 7 will be deprecated at some point, don't bother making
-	 * this code generic for both ver 7 and ver 8: duplicate the code.
-	 */
-	if (cmd_ver == 7) {
-		for (int chain = 0; chain < ARRAY_SIZE(cmd.v7.gain); chain++) {
-			for (int subband = 0;
-			     subband < ARRAY_SIZE(cmd.v7.gain[0]);
-			     subband++) {
-				cmd.v7.gain[chain][subband] =
-					fwrt->ppag_chains[chain].subbands[subband];
-				IWL_DEBUG_RADIO(fwrt,
-						"PPAG table: chain[%d] band[%d]: gain = %d\n",
-						chain, subband,
-						cmd.v7.gain[chain][subband]);
-			}
+	for (int chain = 0; chain < ARRAY_SIZE(cmd.v8.gain); chain++) {
+		for (int subband = 0;
+		     subband < ARRAY_SIZE(cmd.v8.gain[0]);
+		     subband++) {
+			cmd.v8.gain[chain][subband] =
+				fwrt->ppag_chains[chain].subbands[subband];
+			IWL_DEBUG_RADIO(fwrt,
+					"PPAG table: chain[%d] band[%d]: gain = %d\n",
+					chain, subband,
+					cmd.v8.gain[chain][subband]);
 		}
-		cmd_len = sizeof(cmd.v7);
-		cmd_bios_rev =
-			iwl_fw_lookup_cmd_bios_supported_revision(fwrt->fw,
-								  fwrt->ppag_bios_source,
-								  cmd_id, 4);
-	} else if (cmd_ver == 8) {
-		for (int chain = 0; chain < ARRAY_SIZE(cmd.v8.gain); chain++) {
-			for (int subband = 0;
-			     subband < ARRAY_SIZE(cmd.v8.gain[0]);
-			     subband++) {
-				cmd.v8.gain[chain][subband] =
-					fwrt->ppag_chains[chain].subbands[subband];
-				IWL_DEBUG_RADIO(fwrt,
-						"PPAG table: chain[%d] band[%d]: gain = %d\n",
-						chain, subband,
-						cmd.v8.gain[chain][subband]);
-			}
-		}
-		cmd_bios_rev =
-			iwl_fw_lookup_cmd_bios_supported_revision(fwrt->fw,
-								  fwrt->ppag_bios_source,
-								  cmd_id, 5);
-	} else {
-		WARN(1, "Bad version for PER_PLATFORM_ANT_GAIN_CMD %d\n",
-		     cmd_ver);
-		return -EINVAL;
 	}
+	cmd_bios_rev =
+		iwl_fw_lookup_cmd_bios_supported_revision(fwrt->fw, bios_source,
+							  cmd_id, 5);
 
 	if (cmd_bios_rev < fwrt->ppag_bios_rev) {
 		IWL_ERR(mld,
@@ -337,7 +299,7 @@ static int iwl_mld_ppag_send_cmd(struct iwl_mld *mld)
 	}
 
 	IWL_DEBUG_RADIO(mld, "Sending PER_PLATFORM_ANT_GAIN_CMD\n");
-	ret = iwl_mld_send_cmd_pdu(mld, cmd_id, &cmd, cmd_len);
+	ret = iwl_mld_send_cmd_pdu(mld, cmd_id, &cmd, sizeof(cmd.v8));
 	if (ret < 0)
 		IWL_ERR(mld, "failed to send PER_PLATFORM_ANT_GAIN_CMD (%d)\n",
 			ret);
