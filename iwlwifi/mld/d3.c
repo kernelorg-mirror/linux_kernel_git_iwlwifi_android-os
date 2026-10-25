@@ -140,8 +140,6 @@ struct iwl_mld_wowlan_mlo_key {
  * @igtk: data of the last used igtk by the FW upon resume
  * @bigtk: data of the last two used gtk's by the FW upon resume
  * @cigtk: data of the last two used cigtk's by the FW upon resume
- * @ptk: last seq numbers per tid passed by the FW,
- *	holds both in tkip and aes formats
  * @num_mlo_keys: number of &struct iwl_mld_wowlan_mlo_key structs
  * @mlo_keys: array of MLO keys
  */
@@ -159,11 +157,6 @@ struct iwl_mld_wowlan_status {
 	struct iwl_mld_mcast_key_data igtk;
 	struct iwl_mld_mcast_key_data bigtk[WOWLAN_BIGTK_KEYS_NUM];
 	struct iwl_mld_mcast_key_data cigtk[WOWLAN_CIGTK_KEYS_NUM];
-	struct {
-		struct ieee80211_key_seq aes_seq[IWL_MAX_TID_COUNT];
-		struct ieee80211_key_seq tkip_seq[IWL_MAX_TID_COUNT];
-
-	} ptk;
 
 	int num_mlo_keys;
 	struct iwl_mld_wowlan_mlo_key mlo_keys[WOWLAN_MAX_MLO_KEYS];
@@ -305,34 +298,9 @@ iwl_mld_le64_to_aes_seq(__le64 le_pn, struct ieee80211_key_seq *seq)
 }
 
 static void
-iwl_mld_convert_gtk_resume_seq(struct iwl_mld_mcast_key_data *gtk_data,
-			       const struct iwl_wowlan_all_rsc_tsc_v5 *sc,
-			       int rsc_idx)
-{
-	struct ieee80211_key_seq *aes_seq = gtk_data->gtk.aes_seq;
-	struct ieee80211_key_seq *tkip_seq = gtk_data->gtk.tkip_seq;
-
-	if (rsc_idx >= ARRAY_SIZE(sc->mcast_rsc))
-		return;
-
-	/* We store both the TKIP and AES representations coming from the
-	 * FW because we decode the data from there before we iterate
-	 * the keys and know which type is used.
-	 */
-	for (int tid = 0; tid < IWL_MAX_TID_COUNT; tid++) {
-		iwl_mld_le64_to_tkip_seq(sc->mcast_rsc[rsc_idx][tid],
-					 &tkip_seq[tid]);
-		iwl_mld_le64_to_aes_seq(sc->mcast_rsc[rsc_idx][tid],
-					&aes_seq[tid]);
-	}
-}
-
-static void
 iwl_mld_convert_gtk_resume_data(struct iwl_mld *mld,
 				struct iwl_mld_wowlan_status *wowlan_status,
-				const struct iwl_wowlan_gtk_status *gtk_data,
-				const struct iwl_wowlan_all_rsc_tsc_v5 *sc,
-				int rsc_notif_ver)
+				const struct iwl_wowlan_gtk_status *gtk_data)
 {
 	int status_idx = 0;
 
@@ -342,7 +310,6 @@ iwl_mld_convert_gtk_resume_data(struct iwl_mld *mld,
 
 	for (int notif_idx = 0; notif_idx < ARRAY_SIZE(wowlan_status->gtk);
 	     notif_idx++) {
-		int rsc_idx;
 		u8 key_status = gtk_data[notif_idx].key_status;
 
 		if (!key_status)
@@ -355,18 +322,6 @@ iwl_mld_convert_gtk_resume_data(struct iwl_mld *mld,
 		wowlan_status->gtk[status_idx].id =
 			wowlan_status->gtk[status_idx].flags &
 			IWL_WOWLAN_GTK_IDX_MASK;
-		/* If RSC_NOTIF is not supported */
-		if (rsc_notif_ver == IWL_FW_CMD_VER_UNKNOWN) {
-			/* The rsc for both gtk keys are stored in
-			 * gtk[0]->sc->mcast_rsc. The gtk ids can be any two
-			 * numbers between 0 and 3, the id_map maps between the
-			 * key id and the index in sc->mcast
-			 */
-			rsc_idx =
-				sc->mcast_key_id_map[wowlan_status->gtk[status_idx].id];
-			iwl_mld_convert_gtk_resume_seq(&wowlan_status->gtk[status_idx],
-						       sc, rsc_idx);
-		}
 
 		if (key_status == IWL_WOWLAN_STATUS_NEW_KEY) {
 			memcpy(wowlan_status->gtk[status_idx].key,
@@ -390,22 +345,6 @@ iwl_mld_convert_gtk_resume_data(struct iwl_mld *mld,
 			wowlan_status->gtk[status_idx].len = 0;
 		}
 		status_idx++;
-	}
-}
-
-static void
-iwl_mld_convert_ptk_resume_seq(struct iwl_mld *mld,
-			       struct iwl_mld_wowlan_status *wowlan_status,
-			       const struct iwl_wowlan_all_rsc_tsc_v5 *sc)
-{
-	struct ieee80211_key_seq *aes_seq = wowlan_status->ptk.aes_seq;
-	struct ieee80211_key_seq *tkip_seq = wowlan_status->ptk.tkip_seq;
-
-	BUILD_BUG_ON(ARRAY_SIZE(sc->ucast_rsc) != IWL_MAX_TID_COUNT);
-
-	for (int tid = 0; tid < IWL_MAX_TID_COUNT; tid++) {
-		iwl_mld_le64_to_aes_seq(sc->ucast_rsc[tid], &aes_seq[tid]);
-		iwl_mld_le64_to_tkip_seq(sc->ucast_rsc[tid], &tkip_seq[tid]);
 	}
 }
 
@@ -682,10 +621,6 @@ iwl_mld_handle_wowlan_info_notif(struct iwl_mld *mld,
 						      PROT_OFFLOAD_GROUP,
 						      WOWLAN_INFO_NOTIFICATION,
 						      IWL_FW_CMD_VER_UNKNOWN);
-	int rsc_notif_ver = iwl_fw_lookup_notif_ver(mld->fw,
-						    DATA_PATH_GROUP,
-						    RSC_NOTIF,
-						    IWL_FW_CMD_VER_UNKNOWN);
 
 	if (wowlan_info_ver == 6) {
 		const struct iwl_wowlan_info_notif_v6 *_notif =
@@ -726,11 +661,7 @@ iwl_mld_handle_wowlan_info_notif(struct iwl_mld *mld,
 	if (!iwl_mld_validate_keys_status(mld, notif))
 		return true;
 
-	iwl_mld_convert_gtk_resume_data(mld, wowlan_status, notif->gtk,
-					&notif->gtk[0].sc, rsc_notif_ver);
-	if (rsc_notif_ver == IWL_FW_CMD_VER_UNKNOWN)
-		iwl_mld_convert_ptk_resume_seq(mld, wowlan_status,
-					       &notif->gtk[0].sc);
+	iwl_mld_convert_gtk_resume_data(mld, wowlan_status, notif->gtk);
 	/* only one igtk is passed by FW */
 	iwl_mld_convert_mcast_keys_resume_data(&wowlan_status->igtk,
 					       notif->igtk, 1,
@@ -997,36 +928,6 @@ iwl_mld_update_mcast_rx_seq(struct ieee80211_key_conf *key,
 }
 
 static void
-iwl_mld_update_ptk_rx_seq(struct iwl_mld *mld,
-			  struct iwl_mld_wowlan_status *wowlan_status,
-			  struct ieee80211_sta *sta,
-			  struct ieee80211_key_conf *key,
-			  bool is_tkip)
-{
-	struct iwl_mld_sta *mld_sta =
-		iwl_mld_sta_from_mac80211(sta);
-	struct iwl_mld_ptk_pn *mld_ptk_pn =
-		wiphy_dereference(mld->wiphy,
-				  mld_sta->ptk_pn[key->keyidx]);
-
-	iwl_mld_set_key_rx_seq_tids(key, is_tkip ?
-				    wowlan_status->ptk.tkip_seq :
-				    wowlan_status->ptk.aes_seq);
-	if (is_tkip)
-		return;
-
-	if (WARN_ON(!mld_ptk_pn))
-		return;
-
-	for (int tid = 0; tid < IWL_MAX_TID_COUNT; tid++) {
-		for (int i = 1; i < mld->trans->info.num_rxqs; i++)
-			memcpy(mld_ptk_pn->q[i].pn[tid],
-			       wowlan_status->ptk.aes_seq[tid].ccmp.pn,
-			       IEEE80211_CCMP_PN_LEN);
-	}
-}
-
-static void
 iwl_mld_resume_keys_iter(struct ieee80211_hw *hw,
 			 struct ieee80211_vif *vif,
 			 struct ieee80211_sta *sta,
@@ -1036,10 +937,6 @@ iwl_mld_resume_keys_iter(struct ieee80211_hw *hw,
 	struct iwl_mld_resume_key_iter_data *data = _data;
 	struct iwl_mld_wowlan_status *wowlan_status = data->wowlan_status;
 	u8 status_idx;
-	int rsc_notif_ver = iwl_fw_lookup_notif_ver(data->mld->fw,
-						    DATA_PATH_GROUP,
-						    RSC_NOTIF,
-						    IWL_FW_CMD_VER_UNKNOWN);
 
 	if (iwl_mld_is_cigtk(key)) {
 		for (int i = 0; i < ARRAY_SIZE(wowlan_status->cigtk); i++) {
@@ -1052,23 +949,6 @@ iwl_mld_resume_keys_iter(struct ieee80211_hw *hw,
 			}
 		}
 		return;
-	}
-
-	/* If RSC_NOTIF is not supported */
-	if (rsc_notif_ver == IWL_FW_CMD_VER_UNKNOWN &&
-	    key->keyidx >= 0 && key->keyidx <= 3) {
-		/* PTK */
-		if (key->flags & IEEE80211_KEY_FLAG_PAIRWISE) {
-			iwl_mld_update_ptk_rx_seq(data->mld, wowlan_status,
-						  sta, key,
-						  key->cipher ==
-						  WLAN_CIPHER_SUITE_TKIP);
-		/* GTK */
-		} else {
-			status_idx = key->keyidx == wowlan_status->gtk[1].id;
-			iwl_mld_update_mcast_rx_seq(key,
-						    &wowlan_status->gtk[status_idx]);
-		}
 	}
 
 	/* IGTK */
