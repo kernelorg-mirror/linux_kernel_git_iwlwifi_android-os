@@ -243,12 +243,8 @@ static void iwl_mld_stop_beacon(struct iwl_mld *mld, struct ieee80211_vif *vif,
 {
 	struct iwl_mld_link *mld_link = iwl_mld_link_from_mac80211(link);
 	struct iwl_mac_beacon_cmd cmd = {};
-	int cmd_ver = iwl_fw_lookup_cmd_ver(mld->fw, BEACON_TEMPLATE_CMD, 14);
 
 	if (WARN_ON(!mld_link))
-		return;
-
-	if (cmd_ver < 15)
 		return;
 
 	/* leave byte_cnt 0 */
