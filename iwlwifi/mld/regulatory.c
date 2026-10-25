@@ -157,42 +157,29 @@ iwl_mld_config_sar_concurrent_profile(struct iwl_mld *mld, int prof_a,
 	struct iwl_dev_tx_power_cmd cmd = {
 		.common.set_mode = cpu_to_le32(IWL_TX_POWER_MODE_SET_CHAINS),
 	};
-	u8 cmd_ver = iwl_fw_lookup_cmd_ver(mld->fw, REDUCE_TX_POWER_CMD, 10);
-	int num_subbands;
-	int cmd_size;
+	u8 cmd_ver = iwl_fw_lookup_cmd_ver(mld->fw, REDUCE_TX_POWER_CMD, 0);
 	int ret;
 
-	switch (cmd_ver) {
-	case 10:
-		cmd.v10.flags = cpu_to_le32(mld->fwrt.reduced_power_flags);
-		cmd_size = sizeof(cmd.common) + sizeof(cmd.v10);
-		num_subbands = IWL_NUM_SUB_BANDS_V2;
-		break;
-	case 11:
-	case 12:
-		cmd.v12.flags = cpu_to_le32(mld->fwrt.reduced_power_flags);
-		cmd_size = sizeof(cmd.common) + sizeof(cmd.v12);
-		num_subbands = IWL_NUM_SUB_BANDS_V3;
-		break;
-	default:
+	/* v11 and v12 use the same command layout */
+	if (cmd_ver != 11 && cmd_ver != 12) {
 		WARN_ONCE(1, "Bad version for REDUCE_TX_POWER_CMD: %d\n",
 			  cmd_ver);
 		return -EOPNOTSUPP;
 	}
 
+	cmd.v12.flags = cpu_to_le32(mld->fwrt.reduced_power_flags);
+
 	/* TODO: CDB - support IWL_NUM_CHAIN_TABLES_V2 */
-	/* v10 and v12 have the same position for per_chain */
-	BUILD_BUG_ON(offsetof(typeof(cmd), v12.per_chain) !=
-		     offsetof(typeof(cmd), v10.per_chain));
 	ret = iwl_sar_fill_profile(&mld->fwrt, &cmd.v12.per_chain[0][0][0],
-				   IWL_NUM_CHAIN_TABLES, num_subbands,
+				   IWL_NUM_CHAIN_TABLES, IWL_NUM_SUB_BANDS_V3,
 				   prof_a, prof_b,
 				   mld->fwrt.sar_profiles, false);
 	/* return on error or if the profile is disabled (positive number) */
 	if (ret)
 		return ret;
 
-	return iwl_mld_send_cmd_pdu(mld, REDUCE_TX_POWER_CMD, &cmd, cmd_size);
+	return iwl_mld_send_cmd_pdu(mld, REDUCE_TX_POWER_CMD, &cmd,
+				    sizeof(cmd.common) + sizeof(cmd.v12));
 }
 
 static int iwl_mld_config_sar_standalone_profile(struct iwl_mld *mld,

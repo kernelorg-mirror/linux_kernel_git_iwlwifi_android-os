@@ -527,9 +527,6 @@ int iwl_mld_set_tx_power(struct iwl_mld *mld,
 	};
 	int len = sizeof(cmd.common) + sizeof(cmd.v12);
 
-	if (iwl_fw_lookup_cmd_ver(mld->fw, cmd_id, 10) == 10)
-		len = sizeof(cmd.common) + sizeof(cmd.v10);
-
 	if (WARN_ON(!mld_link))
 		return -ENODEV;
 
