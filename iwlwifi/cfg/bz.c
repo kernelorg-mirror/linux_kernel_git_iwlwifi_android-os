@@ -13,7 +13,7 @@
 #define IWL_BZ_UCODE_CORE_MAX	110
 
 /* Lowest firmware core release supported */
-#define IWL_BZ_UCODE_CORE_MIN	102
+#define IWL_BZ_UCODE_CORE_MIN	107
 
 #define IWL_GL_B_FM_B_FW_PRE		"iwlwifi-gl-b0-fm-b0"
 #define IWL_GL_C_FM_C_FW_PRE		"iwlwifi-gl-c0-fm-c0"
