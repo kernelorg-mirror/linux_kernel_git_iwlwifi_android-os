@@ -600,12 +600,6 @@ int iwl_mld_wonder_register(struct iwl_mld *mld)
 		return 0;
 	}
 
-	if (!iwl_mld_wonder_check_fw_version_supported(mld)) {
-		IWL_ERR(mld, "Wonder: unsupported firmware version\n");
-		ret = -EOPNOTSUPP;
-		goto err;
-	}
-
 	iwl_mld_wonder_set_capabilities(mld, wonder_ctx);
 
 	wonder_dev = kzalloc(sizeof(*wonder_dev), GFP_KERNEL);

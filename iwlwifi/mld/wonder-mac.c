@@ -14,24 +14,6 @@
 
 IWL_MLD_ALLOC_FN_STATIC(vif, vif)
 
-/**
- * iwl_mld_wonder_check_fw_version_supported - check MAC_CONFIG_CMD version
- * @mld: the MLD instance
- *
- * FW_MAC_TYPE_CHAN_HOP is only meaningful to firmware that supports
- * MAC_CONFIG_CMD version 4 or later; older firmware doesn't recognize the
- * mac_type value at all, so wonder must not register against it.
- *
- * Return: true if the running firmware's MAC_CONFIG_CMD version is at
- *	least 4, false otherwise.
- */
-bool iwl_mld_wonder_check_fw_version_supported(struct iwl_mld *mld)
-{
-	u16 cmd_id = WIDE_ID(MAC_CONF_GROUP, MAC_CONFIG_CMD);
-
-	return iwl_fw_lookup_cmd_ver(mld->fw, cmd_id, 0) >= 4;
-}
-
 static void
 iwl_mld_wonder_mac_fill_gen(struct iwl_mac_config_cmd *mac_cmd,
 			    const struct wondertap_init_params *params)

@@ -14,6 +14,4 @@ int iwl_mld_wonder_allocate_mac_ctx(struct iwl_mld *mld,
 void iwl_mld_wonder_free_mac_ctx(struct iwl_mld *mld,
 				 struct iwl_mld_wonder_ctx *wonder_ctx);
 
-bool iwl_mld_wonder_check_fw_version_supported(struct iwl_mld *mld);
-
 #endif /* __iwl_mld_wonder_mac_h__ */
