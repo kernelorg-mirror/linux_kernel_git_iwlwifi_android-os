@@ -405,29 +405,12 @@ static int iwl_mld_send_sta_cmd(struct iwl_mld *mld,
 {
 	int cmd_id = WIDE_ID(MAC_CONF_GROUP, STA_CONFIG_CMD);
 	int cmd_ver = iwl_fw_lookup_cmd_ver(mld->fw, cmd_id, 0);
-	int len = sizeof(*cmd);
 	int ret;
 
-	if (cmd_ver < 2) {
+	if (cmd_ver < 3) {
 		IWL_ERR(mld, "Unsupported STA_CONFIG_CMD version %d\n",
 			cmd_ver);
 		return -EINVAL;
-	} else if (cmd_ver == 2) {
-		struct iwl_sta_cfg_cmd_v2 *cmd_v2 = (void *)cmd;
-
-		if (WARN_ON(cmd->station_type == cpu_to_le32(STATION_TYPE_NAN_PEER_NMI) ||
-			    cmd->station_type == cpu_to_le32(STATION_TYPE_NAN_PEER_NDI) ||
-			    hweight32(le32_to_cpu(cmd->link_mask)) != 1))
-			return -EINVAL;
-		/*
-		 * These fields are located in a different place in the struct of v2.
-		 * The assumption is that UHR won't be used with FW that has v2.
-		 */
-		if (WARN_ON(cmd->mic_prep_pad_delay || cmd->mic_compute_pad_delay))
-			return -EINVAL;
-
-		len = sizeof(struct iwl_sta_cfg_cmd_v2);
-		cmd_v2->link_id = cpu_to_le32(__ffs(le32_to_cpu(cmd->link_mask)));
 	} else if (cmd->station_type ==
 		   cpu_to_le32(STATION_TYPE_NAN_MCAST_DATA)) {
 		if (WARN_ON(!hweight32(le32_to_cpu(cmd->link_mask))))
@@ -444,7 +427,7 @@ static int iwl_mld_send_sta_cmd(struct iwl_mld *mld,
 	if (cmd_ver < 4)
 		cmd->cip_defer = 0;
 
-	ret = iwl_mld_send_cmd_pdu(mld, cmd_id, cmd, len);
+	ret = iwl_mld_send_cmd_pdu(mld, cmd_id, cmd);
 	if (ret)
 		IWL_ERR(mld, "STA_CONFIG_CMD send failed, ret=0x%x\n", ret);
 	return ret;
