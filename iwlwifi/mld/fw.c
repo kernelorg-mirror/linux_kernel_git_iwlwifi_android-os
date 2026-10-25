@@ -522,11 +522,7 @@ static int iwl_mld_configure_rxq(struct iwl_mld *mld)
 		return -ENOMEM;
 
 	cmd->num_queues = num_queues;
-	cmd->en_split_rb = mld->trans->info.rx_split_rb &&
-			   iwl_fw_lookup_cmd_ver(mld->fw,
-						 WIDE_ID(DATA_PATH_GROUP,
-							 RFH_QUEUE_CONFIG_CMD),
-						 1) >= 3;
+	cmd->en_split_rb = mld->trans->info.rx_split_rb;
 
 	for (i = 0; i < num_queues; i++) {
 		struct iwl_trans_rxq_dma_data data;
