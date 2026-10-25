@@ -19,15 +19,9 @@
 
 bool iwl_mld_nan_supported(struct iwl_mld *mld)
 {
-	const struct iwl_fw *fw = mld->fw;
-
-	if (fw_has_capa(&fw->ucode_capa, IWL_UCODE_TLV_CAPA_NAN_SYNC_SUPPORT) &&
-	    iwl_fw_lookup_cmd_ver(fw, WIDE_ID(MAC_CONF_GROUP, NAN_SCHEDULE_CMD), 0) >= 1 &&
-	    iwl_fw_lookup_cmd_ver(fw, WIDE_ID(MAC_CONF_GROUP, NAN_PEER_CMD), 0) >= 1 &&
-	    iwl_fw_lookup_cmd_ver(fw, WIDE_ID(DATA_PATH_GROUP, TLC_MNG_CONFIG_CMD), 0) >= 6 &&
-		mld->nvm_data->nan_phy_capa.ht.ht_supported)
-		return true;
-	return false;
+	return fw_has_capa(&mld->fw->ucode_capa,
+			   IWL_UCODE_TLV_CAPA_NAN_SYNC_SUPPORT) &&
+	       mld->nvm_data->nan_phy_capa.ht.ht_supported;
 }
 
 static int iwl_mld_nan_send_config_cmd(struct iwl_mld *mld,
@@ -50,41 +44,12 @@ static int iwl_mld_nan_send_config_cmd(struct iwl_mld *mld,
 	return iwl_mld_send_cmd(mld, &hcmd);
 }
 
-bool iwl_mld_nan_use_nan_stations(struct iwl_mld *mld)
-{
-	/*
-	 * If the FW supports version 1 of the NAN config command, it means that
-	 * it needs to receive the station ID of the auxiliary station in the
-	 * NAN configuration command. Otherwise, use the NAN dedicated station
-	 * types.
-	 */
-	return iwl_fw_lookup_cmd_ver(mld->fw,
-				     WIDE_ID(MAC_CONF_GROUP,
-					     NAN_CFG_CMD), 1) != 1;
-}
-
-static const struct iwl_mld_int_sta *
-iwl_mld_nan_get_mgmt_sta(struct iwl_mld *mld, struct ieee80211_vif *vif)
-{
-	struct iwl_mld_vif *mld_vif = iwl_mld_vif_from_mac80211(vif);
-	const struct iwl_mld_int_sta *sta;
-
-	if (iwl_mld_nan_use_nan_stations(mld))
-		sta = &mld_vif->nan.mgmt_sta;
-	else
-		sta = &mld_vif->aux_sta;
-
-	if (WARN_ON(sta->sta_id == IWL_INVALID_STA))
-		return NULL;
-
-	return sta;
-}
-
 int iwl_mld_nan_get_mgmt_queue(struct iwl_mld *mld, struct ieee80211_vif *vif)
 {
-	const struct iwl_mld_int_sta *sta = iwl_mld_nan_get_mgmt_sta(mld, vif);
+	struct iwl_mld_vif *mld_vif = iwl_mld_vif_from_mac80211(vif);
+	const struct iwl_mld_int_sta *sta = &mld_vif->nan.mgmt_sta;
 
-	if (!sta)
+	if (WARN_ON(sta->sta_id == IWL_INVALID_STA))
 		return IWL_MLD_INVALID_QUEUE;
 
 	return sta->queue_id;
@@ -92,9 +57,10 @@ int iwl_mld_nan_get_mgmt_queue(struct iwl_mld *mld, struct ieee80211_vif *vif)
 
 static void iwl_mld_nan_flush(struct iwl_mld *mld, struct ieee80211_vif *vif)
 {
-	const struct iwl_mld_int_sta *sta = iwl_mld_nan_get_mgmt_sta(mld, vif);
+	struct iwl_mld_vif *mld_vif = iwl_mld_vif_from_mac80211(vif);
+	const struct iwl_mld_int_sta *sta = &mld_vif->nan.mgmt_sta;
 
-	if (!sta)
+	if (WARN_ON(sta->sta_id == IWL_INVALID_STA))
 		return;
 
 	if (WARN_ON(sta->queue_id == IWL_MLD_INVALID_QUEUE))
@@ -127,11 +93,6 @@ static void iwl_mld_nan_remove_stations(struct iwl_mld *mld,
 
 	iwl_mld_nan_flush(mld, vif);
 
-	if (!iwl_mld_nan_use_nan_stations(mld)) {
-		iwl_mld_remove_aux_sta(mld, vif);
-		return;
-	}
-
 	iwl_mld_remove_nan_bcast_sta(mld, &mld_vif->nan.bcast_sta);
 	iwl_mld_remove_nan_mgmt_sta(mld, &mld_vif->nan.mgmt_sta);
 }
@@ -141,9 +102,6 @@ static int iwl_mld_nan_add_stations(struct iwl_mld *mld,
 {
 	struct iwl_mld_vif *mld_vif = iwl_mld_vif_from_mac80211(vif);
 	int ret;
-
-	if (!iwl_mld_nan_use_nan_stations(mld))
-		return iwl_mld_add_aux_sta(mld, &mld_vif->aux_sta);
 
 	ret = iwl_mld_add_nan_bcast_sta(mld, &mld_vif->nan.bcast_sta);
 	if (ret)
@@ -161,7 +119,6 @@ static int iwl_mld_nan_config(struct iwl_mld *mld,
 			      struct cfg80211_nan_conf *conf,
 			      enum iwl_ctxt_action action)
 {
-	struct iwl_mld_vif *mld_vif = iwl_mld_vif_from_mac80211(vif);
 	struct iwl_nan_config_cmd cmd = {
 		.action = cpu_to_le32(action),
 	};
@@ -231,12 +188,6 @@ static int iwl_mld_nan_config(struct iwl_mld *mld,
 			       conf->vendor_elems,
 			       conf->vendor_elems_len);
 	}
-
-	/* FW needs to know about the station ID only with version 1 of the
-	 * NAN configuration command
-	 */
-	if (!iwl_mld_nan_use_nan_stations(mld))
-		cmd.sta_id = mld_vif->aux_sta.sta_id;
 
 	return iwl_mld_nan_send_config_cmd(mld, &cmd, data,
 					   conf->extra_nan_attrs_len +
@@ -862,7 +813,7 @@ void iwl_mld_nan_vif_cfg_changed(struct iwl_mld *mld,
 		 * In recovery - the station will be added later in
 		 * drv_add_interface
 		 */
-		if (iwl_mld_nan_use_nan_stations(mld) && !mld->fw_status.in_hw_restart) {
+		if (!mld->fw_status.in_hw_restart) {
 			struct ieee80211_vif *iter;
 
 			for_each_active_interface(iter, mld->hw)

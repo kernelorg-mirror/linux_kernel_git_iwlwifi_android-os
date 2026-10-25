@@ -88,12 +88,6 @@ static u32 iwl_mld_get_key_sta_mask(struct iwl_mld *mld,
 	lockdep_assert_wiphy(mld->wiphy);
 
 	if (vif->type == NL80211_IFTYPE_NAN_DATA && !sta) {
-		/* Older firmware versions do not support transmission of
-		 * multicast data frames.
-		 */
-		if (!iwl_mld_nan_use_nan_stations(mld))
-			return 0;
-
 		if (WARN_ON(mld_vif->nan.mcast_data_sta.sta_id ==
 			    IWL_INVALID_STA))
 			return 0;
@@ -102,12 +96,6 @@ static u32 iwl_mld_get_key_sta_mask(struct iwl_mld *mld,
 	}
 
 	if (vif->type == NL80211_IFTYPE_NAN && !sta) {
-		/* Older firmware versions do not support installation of
-		 * IGTK/BIGTK keys.
-		 */
-		if (!iwl_mld_nan_use_nan_stations(mld))
-			return 0;
-
 		if (WARN_ON(mld_vif->nan.bcast_sta.sta_id == IWL_INVALID_STA ||
 			    mld_vif->nan.mgmt_sta.sta_id == IWL_INVALID_STA))
 			return 0;
@@ -313,12 +301,6 @@ int iwl_mld_add_key(struct iwl_mld *mld,
 	lockdep_assert_wiphy(mld->wiphy);
 
 	if (!sta_mask) {
-		/* for NAN (GTK) indicate SW-only, it's not used at all */
-		if (vif->type == NL80211_IFTYPE_NAN_DATA && !sta &&
-		    !iwl_mld_nan_use_nan_stations(mld))
-			return 1;
-
-		/* otherwise that's not valid */
 		IWL_WARN(mld, "empty STA mask for key %d\n", key->keyidx);
 		return -EINVAL;
 	}

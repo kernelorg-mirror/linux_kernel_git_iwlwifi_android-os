@@ -872,9 +872,6 @@ iwl_mld_get_tx_queue_id(struct iwl_mld *mld, struct ieee80211_txq *txq,
 	case NL80211_IFTYPE_NAN_DATA:
 		WARN_ON(!ieee80211_is_data(fc));
 
-		if (!iwl_mld_nan_use_nan_stations(mld))
-			break;
-
 		mld_vif = iwl_mld_vif_from_mac80211(info->control.vif);
 		return mld_vif->nan.mcast_data_sta.queue_id;
 	default:

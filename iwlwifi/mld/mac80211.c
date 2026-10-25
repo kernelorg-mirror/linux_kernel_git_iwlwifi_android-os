@@ -799,23 +799,17 @@ int iwl_mld_mac80211_add_interface(struct ieee80211_hw *hw,
 		return ret;
 
 	if (vif->type == NL80211_IFTYPE_NAN_DATA) {
+		struct iwl_mld_vif *mld_vif = iwl_mld_vif_from_mac80211(vif);
+		struct iwl_mld_int_sta *sta = &mld_vif->nan.mcast_data_sta;
+
 		if (WARN_ON(!mld->nan_device_vif)) {
 			ret = -EINVAL;
 			goto err;
 		}
 
-		if (iwl_mld_nan_use_nan_stations(mld)) {
-			struct iwl_mld_vif *mld_vif =
-				iwl_mld_vif_from_mac80211(vif);
-			struct iwl_mld_int_sta *sta =
-				&mld_vif->nan.mcast_data_sta;
-
-			ret = iwl_mld_add_nan_mcast_data_sta(mld,
-							     vif->addr,
-							     sta);
-			if (ret)
-				goto err;
-		}
+		ret = iwl_mld_add_nan_mcast_data_sta(mld, vif->addr, sta);
+		if (ret)
+			goto err;
 
 		return 0;
 	}
@@ -890,7 +884,7 @@ void iwl_mld_mac80211_remove_interface(struct ieee80211_hw *hw,
 		mld->nan_device_vif = NULL;
 	} else if (vif->type != NL80211_IFTYPE_NAN_DATA) {
 		iwl_mld_remove_link(mld, &vif->bss_conf);
-	} else if (iwl_mld_nan_use_nan_stations(mld)) {
+	} else {
 		struct iwl_mld_vif *mld_vif = iwl_mld_vif_from_mac80211(vif);
 		struct iwl_mld_int_sta *sta = &mld_vif->nan.mcast_data_sta;
 
