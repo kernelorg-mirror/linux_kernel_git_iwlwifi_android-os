@@ -259,7 +259,6 @@ static inline u32 iwl_bios_get_ppag_flags(const u32 ppag_modes,
 						 IWL_PPAG_REV3_MASK);
 }
 
-bool iwl_puncturing_is_allowed_in_bios(u32 puncturing, u16 mcc);
 
 #define IWL_DSBR_FW_MODIFIED_URM_MASK	BIT(8)
 #define IWL_DSBR_PERMANENT_URM_MASK	BIT(9)

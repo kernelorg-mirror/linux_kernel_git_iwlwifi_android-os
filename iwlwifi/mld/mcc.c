@@ -149,26 +149,6 @@ iwl_mld_get_regdomain(struct iwl_mld *mld,
 	else if (puncturing_status == IWL_PUNCTURING_STATUS_DISABLED)
 		ieee80211_hw_set(mld->hw, DISALLOW_PUNCTURING);
 
-	if (resp_ver >= 10)
-		goto out;
-
-	/* FM follows BIOS/MCC policy, WH disallows puncturing only in US/CA. */
-	if (CSR_HW_RFID_TYPE(mld->trans->info.hw_rf_id) == IWL_CFG_RF_TYPE_FM) {
-		if (!iwl_puncturing_is_allowed_in_bios(mld->fwrt.bios_puncturing,
-						       mcc))
-			ieee80211_hw_set(mld->hw, DISALLOW_PUNCTURING);
-		else
-			__clear_bit(IEEE80211_HW_DISALLOW_PUNCTURING,
-				    mld->hw->flags);
-	} else if (CSR_HW_RFID_TYPE(mld->trans->info.hw_rf_id) ==
-		   IWL_CFG_RF_TYPE_WH) {
-		if (mcc == IWL_MCC_US || mcc == IWL_MCC_CANADA)
-			ieee80211_hw_set(mld->hw, DISALLOW_PUNCTURING);
-		else
-			__clear_bit(IEEE80211_HW_DISALLOW_PUNCTURING,
-				    mld->hw->flags);
-	}
-
 out:
 	kfree(resp);
 	return regd;

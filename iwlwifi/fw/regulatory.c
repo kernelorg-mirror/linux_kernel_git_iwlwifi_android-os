@@ -442,22 +442,6 @@ int iwl_bios_get_dsm(struct iwl_fw_runtime *fwrt, enum iwl_dsm_funcs func,
 }
 IWL_EXPORT_SYMBOL(iwl_bios_get_dsm);
 
-bool iwl_puncturing_is_allowed_in_bios(u32 puncturing, u16 mcc)
-{
-	/* Some kind of regulatory mess means we need to currently disallow
-	 * puncturing in the US and Canada unless enabled in BIOS.
-	 */
-	switch (mcc) {
-	case IWL_MCC_US:
-		return puncturing & IWL_UEFI_CNV_PUNCTURING_USA_EN_MSK;
-	case IWL_MCC_CANADA:
-		return puncturing & IWL_UEFI_CNV_PUNCTURING_CANADA_EN_MSK;
-	default:
-		return true;
-	}
-}
-IWL_EXPORT_SYMBOL(iwl_puncturing_is_allowed_in_bios);
-
 bool iwl_rfi_is_enabled_in_bios(struct iwl_fw_runtime *fwrt)
 {
 	/* default behaviour is disabled */
