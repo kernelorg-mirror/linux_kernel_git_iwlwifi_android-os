@@ -209,6 +209,8 @@ static int iwl_mld_txq_alloc_cmd(struct iwl_op_mode *op_mode,
 		.u.add.tfdq_dram_addr = cpu_to_le64(info->tfdq_dram_addr),
 		.u.add.bc_dram_addr = cpu_to_le64(info->bc_dram_addr),
 		.u.add.cb_size = cpu_to_le32(info->cb_size),
+		.u.add.flags = cpu_to_le32(info->short_tfd ?
+					   TX_QUEUE_CFG_TFD_SHORT_FORMAT : 0),
 		.u.add.sta_mask = cpu_to_le32(params->sta_mask),
 		.u.add.tid = params->tid,
 	};
@@ -240,14 +242,14 @@ out:
 }
 
 int iwl_mld_alloc_fw_txq(struct iwl_mld *mld, u32 sta_mask,
-			 u8 tid, int size, unsigned int timeout)
+			 u8 tid, int size, unsigned int timeout, bool is_sta)
 {
 	struct iwl_mld_txq_alloc_data data = {
 		.sta_mask = sta_mask,
 		.tid = tid,
 	};
 
-	return iwl_trans_txq_alloc(mld->trans, size, timeout,
+	return iwl_trans_txq_alloc(mld->trans, size, timeout, is_sta, tid,
 				   iwl_mld_txq_alloc_cmd, &data);
 }
 
@@ -277,7 +279,8 @@ static int iwl_mld_allocate_txq(struct iwl_mld *mld, struct ieee80211_txq *txq)
 		size = iwl_mld_get_queue_size(mld, txq);
 
 	queue = iwl_mld_alloc_fw_txq(mld, fw_sta_mask, tid, size,
-				     watchdog_timeout);
+				     watchdog_timeout,
+				     txq->vif->type == NL80211_IFTYPE_STATION);
 	if (queue >= 0)
 		IWL_DEBUG_TX_QUEUES(mld,
 				    "Enabling TXQ #%d for sta mask 0x%x tid %d\n",

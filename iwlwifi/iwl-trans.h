@@ -999,11 +999,13 @@ void iwl_trans_txq_free(struct iwl_trans *trans, int queue);
  * @tfdq_dram_addr: DRAM address of the TFD circular buffer
  * @bc_dram_addr: DRAM address of the byte count table
  * @cb_size: size code of the TFD cyclic buffer (value is exponent - 3)
+ * @short_tfd: whether the queue uses the short TFD format.
  */
 struct iwl_txq_alloc_info {
 	dma_addr_t tfdq_dram_addr;
 	dma_addr_t bc_dram_addr;
 	u32 cb_size;
+	bool short_tfd;
 };
 
 /**
@@ -1024,6 +1026,8 @@ struct iwl_txq_alloc_result {
  * @trans: the transport
  * @size: requested queue size
  * @wdg_timeout: queue watchdog timeout
+ * @is_sta: the queue is for a station of a station interface
+ * @tid: the TID of the queue
  * @add_txq_cmd: op_mode callback that sends the queue allocation command to
  *	the firmware based on @info and fills @result from the response
  * @data: opaque data passed to @add_txq_cmd
@@ -1031,7 +1035,7 @@ struct iwl_txq_alloc_result {
  * Return: the queue ID on success, a negative error code otherwise.
  */
 int iwl_trans_txq_alloc(struct iwl_trans *trans, int size,
-			unsigned int wdg_timeout,
+			unsigned int wdg_timeout, bool is_sta, u8 tid,
 			int (*add_txq_cmd)(struct iwl_op_mode *op_mode,
 					   const struct iwl_txq_alloc_info *info,
 					   struct iwl_txq_alloc_result *result,
@@ -1512,7 +1516,7 @@ struct iwl_trans_ops {
 				    bool shared_mode);
 	void (*set_q_ptrs)(struct iwl_trans *trans, int queue, int ptr);
 	int (*txq_alloc)(struct iwl_trans *trans, int size,
-			 unsigned int wdg_timeout,
+			 unsigned int wdg_timeout, bool is_sta, u8 tid,
 			 int (*add_txq_cmd)(struct iwl_op_mode *op_mode,
 					    const struct iwl_txq_alloc_info *info,
 					    struct iwl_txq_alloc_result *result,

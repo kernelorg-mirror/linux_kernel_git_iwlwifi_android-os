@@ -838,7 +838,7 @@ void iwl_txq_gen2_tfd_unmap(struct iwl_trans *trans,
 			    struct iwl_tfh_tfd *tfd);
 
 int iwl_txq_dyn_alloc(struct iwl_trans *trans, int size,
-		      unsigned int timeout,
+		      unsigned int timeout, bool is_sta, u8 tid,
 		      int (*add_txq_cmd)(struct iwl_op_mode *op_mode,
 					 const struct iwl_txq_alloc_info *info,
 					 struct iwl_txq_alloc_result *result,

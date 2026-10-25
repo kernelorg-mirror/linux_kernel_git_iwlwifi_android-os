@@ -1058,7 +1058,7 @@ static int iwl_mld_allocate_internal_txq(struct iwl_mld *mld,
 		     mld->trans->mac_cfg->base->min_txq_size);
 
 	queue = iwl_mld_alloc_fw_txq(mld, sta_mask, tid, size,
-				     IWL_WATCHDOG_DISABLED);
+				     IWL_WATCHDOG_DISABLED, false);
 
 	if (queue >= 0)
 		IWL_DEBUG_TX_QUEUES(mld,

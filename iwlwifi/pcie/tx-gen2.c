@@ -994,7 +994,7 @@ static int iwl_txq_dyn_activate(struct iwl_trans *trans, struct iwl_txq *txq,
 }
 
 int iwl_txq_dyn_alloc(struct iwl_trans *trans, int size,
-		      unsigned int timeout,
+		      unsigned int timeout, bool is_sta, u8 tid,
 		      int (*add_txq_cmd)(struct iwl_op_mode *op_mode,
 					 const struct iwl_txq_alloc_info *info,
 					 struct iwl_txq_alloc_result *result,
@@ -1035,6 +1035,7 @@ int iwl_txq_dyn_alloc(struct iwl_trans *trans, int size,
 	info.tfdq_dram_addr = txq->dma_addr;
 	info.bc_dram_addr = txq->bc_tbl.dma;
 	info.cb_size = TFD_QUEUE_CB_SIZE(size);
+	info.short_tfd = false;
 
 	ret = add_txq_cmd(trans->op_mode, &info, &result, data);
 	if (ret)

@@ -62,6 +62,10 @@ static int iwl_xvt_txq_alloc_cmd(struct iwl_op_mode *op_mode,
 	struct iwl_tx_queue_cfg_rsp *rsp;
 	int ret;
 
+	/* short TFD format isn't supported */
+	if (WARN_ON(info->short_tfd))
+		return -EOPNOTSUPP;
+
 	if (cmd_ver == 0) {
 		if (hweight32(params->sta_mask) != 1)
 			return -EINVAL;
@@ -121,7 +125,7 @@ int iwl_xvt_alloc_fw_txq(struct iwl_xvt *xvt, u32 flags, u32 sta_mask,
 		.tid = tid,
 	};
 
-	return iwl_trans_txq_alloc(xvt->trans, size, timeout,
+	return iwl_trans_txq_alloc(xvt->trans, size, timeout, false, tid,
 				   iwl_xvt_txq_alloc_cmd, &data);
 }
 
