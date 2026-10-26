@@ -2916,11 +2916,7 @@ remove_added_links:
 		iwl_mld_remove_link(mld, link_conf);
 	}
 
-	if (WARN_ON(!iwl_mld_error_before_recovery(mld)))
-		return err;
-
-	/* reconfig will fix us anyway */
-	return 0;
+	return err;
 }
 
 static int iwl_mld_change_sta_links(struct ieee80211_hw *hw,
