@@ -966,7 +966,7 @@ static int iwl_txq_dyn_activate(struct iwl_trans *trans, struct iwl_txq *txq,
 				const struct iwl_txq_alloc_result *result)
 {
 	struct iwl_trans_pcie *trans_pcie = IWL_TRANS_GET_PCIE_TRANS(trans);
-	int qid = result->qid;
+	u16 qid = result->qid;
 	int wr_ptr;
 
 	if (qid >= ARRAY_SIZE(trans_pcie->txqs.txq)) {

@@ -1015,8 +1015,8 @@ struct iwl_txq_alloc_info {
  * @wr_ptr: initial write pointer of the queue
  */
 struct iwl_txq_alloc_result {
-	int qid;
-	int wr_ptr;
+	u16 qid;
+	u16 wr_ptr;
 };
 
 /**
