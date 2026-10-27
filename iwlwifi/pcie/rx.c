@@ -504,6 +504,14 @@ void iwl_pcie_free_rbs_pool(struct iwl_trans *trans)
 			     trans_pcie->rx_page_order);
 		trans_pcie->rx_pool[i].page = NULL;
 	}
+
+	spin_lock_bh(&trans_pcie->alloc_page_lock);
+	if (trans_pcie->alloc_page) {
+		__free_pages(trans_pcie->alloc_page, trans_pcie->rx_page_order);
+		trans_pcie->alloc_page = NULL;
+	}
+	trans_pcie->alloc_page_used = 0;
+	spin_unlock_bh(&trans_pcie->alloc_page_lock);
 }
 
 /*
@@ -1245,11 +1253,6 @@ void iwl_pcie_rx_free(struct iwl_trans *trans)
 	trans_pcie->global_table = NULL;
 	kfree(trans_pcie->rxq);
 	trans_pcie->rxq = NULL;
-
-	if (trans_pcie->alloc_page) {
-		__free_pages(trans_pcie->alloc_page, trans_pcie->rx_page_order);
-		trans_pcie->alloc_page = NULL;
-	}
 }
 
 static void iwl_pcie_rx_move_to_allocator(struct iwl_rxq *rxq,
