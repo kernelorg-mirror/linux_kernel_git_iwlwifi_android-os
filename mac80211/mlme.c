@@ -1512,8 +1512,6 @@ static int ieee80211_config_bw(struct ieee80211_link_data *link,
 	u16 ht_opmode;
 	int ret;
 
-	memset(out, 0, sizeof(*out));
-
 	switch (stype) {
 	case IEEE80211_STYPE_BEACON:
 		frame = "beacon";
@@ -5753,7 +5751,7 @@ bool ieee80211_assoc_config_link(struct ieee80211_mgd_assoc_data *assoc_data,
 	bool is_6ghz = cbss->channel->band == NL80211_BAND_6GHZ;
 	bool is_s1g = cbss->channel->band == NL80211_BAND_S1GHZ;
 	const struct cfg80211_bss_ies *bss_ies = NULL;
-	struct ieee80211_config_bw_out config_bw_out;
+	struct ieee80211_config_bw_out config_bw_out = {};
 	struct ieee802_11_elems *bss_elems = NULL;
 	struct ieee80211_supported_band *sband;
 	struct ieee802_11_elems *elems;
@@ -8397,7 +8395,7 @@ static void ieee80211_rx_mgmt_beacon(struct ieee80211_link_data *link,
 	size_t baselen;
 	struct ieee802_11_elems *elems;
 	struct ieee80211_local *local = sdata->local;
-	struct ieee80211_config_bw_out config_bw_out;
+	struct ieee80211_config_bw_out config_bw_out = {};
 	struct ieee80211_chanctx_conf *chanctx_conf;
 	struct ieee80211_supported_band *sband;
 	struct ieee80211_channel *chan;
