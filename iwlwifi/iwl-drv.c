@@ -1678,6 +1678,7 @@ fw_dbg_conf:
 			} else {
 				goto invalid_tlv_len;
 			}
+			internal_fseq = true;
 			break;
 		case IWL_UCODE_TLV_FW_NUM_STATIONS:
 			if (tlv_len != sizeof(u32))
