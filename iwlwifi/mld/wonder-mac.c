@@ -47,7 +47,8 @@ int iwl_mld_wonder_allocate_mac_ctx(struct iwl_mld *mld,
 		.mac_type = cpu_to_le32(FW_MAC_TYPE_CHAN_HOP),
 		.filter_flags = cpu_to_le32(MAC_CFG_FILTER_ACCEPT_GRP       |
 					    MAC_CFG_FILTER_ACCEPT_BEACON     |
-					    MAC_CFG_FILTER_ACCEPT_PROBE_REQ),
+					    MAC_CFG_FILTER_ACCEPT_PROBE_REQ  |
+					    MAC_CFG_FILTER_ACCEPT_CONTROL_AND_MGMT),
 	};
 	u8 mac_id;
 	int ret;
