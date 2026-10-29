@@ -1338,8 +1338,8 @@ free:
 }
 EXPORT_SYMBOL_IF_MAC80211_KUNIT(ieee80211_determine_chan_mode);
 
-static void ieee80211_send_uhr_omp_req_dbe(struct ieee80211_sub_if_data *sdata,
-					   u16 link_mask, bool initial)
+void ieee80211_send_uhr_omp_req_dbe(struct ieee80211_sub_if_data *sdata,
+				    u16 link_mask, bool initial)
 {
 	struct ieee80211_mle_basic_common_info *common;
 	struct ieee80211_mle_per_sta_profile *per_sta;
@@ -4177,8 +4177,8 @@ static u64 ieee80211_handle_bss_capability(struct ieee80211_link_data *link,
 	return changed;
 }
 
-static u64 ieee80211_link_set_associated(struct ieee80211_link_data *link,
-					 struct cfg80211_bss *cbss)
+u64 ieee80211_link_set_associated(struct ieee80211_link_data *link,
+				  struct cfg80211_bss *cbss)
 {
 	struct ieee80211_sub_if_data *sdata = link->sdata;
 	struct ieee80211_bss_conf *bss_conf = link->conf;
@@ -6828,6 +6828,28 @@ static bool ieee80211_get_dtim(const struct cfg80211_bss_ies *ies,
 	return true;
 }
 
+void ieee80211_mgd_link_beacon_info(struct ieee80211_link_data *link,
+				    struct cfg80211_bss *cbss)
+{
+	if (!link->u.mgd.have_beacon) {
+		const struct cfg80211_bss_ies *ies;
+
+		rcu_read_lock();
+		ies = rcu_dereference(cbss->beacon_ies);
+		if (ies)
+			link->u.mgd.have_beacon = true;
+		else
+			ies = rcu_dereference(cbss->ies);
+		ieee80211_get_dtim(ies,
+				   &link->conf->sync_dtim_count,
+				   &link->u.mgd.dtim_period);
+		link->conf->beacon_int = cbss->beacon_interval;
+		rcu_read_unlock();
+	}
+
+	link->conf->dtim_period = link->u.mgd.dtim_period ?: 1;
+}
+
 static u16 ieee80211_get_ttlm(u8 bm_size, u8 *data)
 {
 	if (bm_size == 1)
@@ -7042,23 +7064,7 @@ static bool ieee80211_assoc_success(struct ieee80211_sub_if_data *sdata,
 		if (WARN_ON(!link_sta))
 			goto out_err;
 
-		if (!link->u.mgd.have_beacon) {
-			const struct cfg80211_bss_ies *ies;
-
-			rcu_read_lock();
-			ies = rcu_dereference(cbss->beacon_ies);
-			if (ies)
-				link->u.mgd.have_beacon = true;
-			else
-				ies = rcu_dereference(cbss->ies);
-			ieee80211_get_dtim(ies,
-					   &link->conf->sync_dtim_count,
-					   &link->u.mgd.dtim_period);
-			link->conf->beacon_int = cbss->beacon_interval;
-			rcu_read_unlock();
-		}
-
-		link->conf->dtim_period = link->u.mgd.dtim_period ?: 1;
+		ieee80211_mgd_link_beacon_info(link, cbss);
 
 		if (link_id != assoc_data->assoc_link_id) {
 			link->u.mgd.conn = assoc_data->link[link_id].conn;

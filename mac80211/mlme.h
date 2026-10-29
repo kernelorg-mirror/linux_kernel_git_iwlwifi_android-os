@@ -59,6 +59,12 @@ int ieee80211_mgd_get_ap_ht_vht_capa(struct ieee80211_sub_if_data *sdata,
 int ieee80211_mgd_setup_link_sta(struct ieee80211_link_data *link,
 				 struct link_sta_info *link_sta,
 				 struct cfg80211_bss *cbss);
+void ieee80211_mgd_link_beacon_info(struct ieee80211_link_data *link,
+				    struct cfg80211_bss *cbss);
+u64 ieee80211_link_set_associated(struct ieee80211_link_data *link,
+				  struct cfg80211_bss *cbss);
+void ieee80211_send_uhr_omp_req_dbe(struct ieee80211_sub_if_data *sdata,
+				    u16 link_mask, bool initial);
 void ieee80211_mgd_reset_ap_state(struct ieee80211_sub_if_data *sdata);
 
 #endif /* IEEE80211_MLME_H */
