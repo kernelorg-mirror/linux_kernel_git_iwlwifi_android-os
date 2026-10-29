@@ -1088,7 +1088,7 @@ static int sta_info_insert_finish(struct sta_info *sta) __acquires(RCU)
 				continue;
 
 			ieee80211_link_sta_debugfs_add(link_sta);
-			if (sdata->vif.active_links & BIT(i))
+			if (sta->sta.active_links & BIT(i))
 				ieee80211_link_sta_debugfs_drv_add(link_sta);
 		}
 	} else {
