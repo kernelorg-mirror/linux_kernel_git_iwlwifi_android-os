@@ -1028,9 +1028,25 @@ static int sta_info_insert_finish(struct sta_info *sta) __acquires(RCU)
 	if (err)
 		goto out_drop_sta;
 
-	if (sta->sta.valid_links) {
-		err = link_sta_info_hash_add(local, &sta->deflink);
+	for (int i = 0; i < ARRAY_SIZE(sta->link); i++) {
+		struct link_sta_info *link_sta;
+
+		if (!(sta->sta.valid_links & BIT(i)))
+			continue;
+
+		link_sta = wiphy_dereference(local->hw.wiphy, sta->link[i]);
+		if (WARN_ON(!link_sta))
+			continue;
+
+		err = link_sta_info_hash_add(local, link_sta);
 		if (err) {
+			for (int j = 0; j < i; j++) {
+				link_sta = wiphy_dereference(local->hw.wiphy,
+							     sta->link[j]);
+				if (link_sta)
+					link_sta_info_hash_del(local,
+							       link_sta);
+			}
 			sta_info_hash_del(local, sta);
 			goto out_drop_sta;
 		}
@@ -1096,8 +1112,16 @@ static int sta_info_insert_finish(struct sta_info *sta) __acquires(RCU)
 
 	return 0;
  out_remove:
-	if (sta->sta.valid_links)
-		link_sta_info_hash_del(local, &sta->deflink);
+	for (int i = 0; i < ARRAY_SIZE(sta->link); i++) {
+		struct link_sta_info *link_sta;
+
+		if (!(sta->sta.valid_links & BIT(i)))
+			continue;
+
+		link_sta = wiphy_dereference(local->hw.wiphy, sta->link[i]);
+		if (link_sta)
+			link_sta_info_hash_del(local, link_sta);
+	}
 	sta_info_hash_del(local, sta);
 	list_del_rcu(&sta->list);
  out_drop_sta:
