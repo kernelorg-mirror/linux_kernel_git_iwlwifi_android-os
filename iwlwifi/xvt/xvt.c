@@ -793,13 +793,14 @@ static const struct iwl_op_mode_ops iwl_xvt_ops = {
 
 void iwl_xvt_free_tx_queue(struct iwl_xvt *xvt, u8 lmac_id)
 {
-	int ret = 0;
 	u32 new_cmd_id = WIDE_ID(DATA_PATH_GROUP, SCD_QUEUE_CONFIG_CMD);
+	u32 cmd_ver = iwl_fw_lookup_cmd_ver(xvt->fw, new_cmd_id, 0);
+	int ret = 0;
 
 	if (xvt->tx_meta_data[lmac_id].queue == -1)
 		return;
 
-	if (iwl_fw_lookup_cmd_ver(xvt->fw, new_cmd_id, 0) >= 3) {
+	if (cmd_ver == 3 || cmd_ver == 4) {
 		struct iwl_scd_queue_cfg_cmd remove_cmd = {
 			.operation = cpu_to_le32(IWL_SCD_QUEUE_REMOVE),
 			.u.remove.sta_mask = cpu_to_le32(xvt->tx_meta_data[lmac_id].sta_msk),

@@ -1908,13 +1908,14 @@ static int iwl_xvt_remove_txq(struct iwl_xvt *xvt,
 			      u32 sta_mask /* only for new MLD API */)
 {
 	u32 new_cmd_id = WIDE_ID(DATA_PATH_GROUP, SCD_QUEUE_CONFIG_CMD);
+	u32 cmd_ver = iwl_fw_lookup_cmd_ver(xvt->fw, new_cmd_id, 0);
 	int ret = 0;
 
 	/* for old API */
 	if (!sta_mask)
 		sta_mask = BIT(cmd->sta_id);
 
-	if (iwl_fw_lookup_cmd_ver(xvt->fw, new_cmd_id, 0) == 3) {
+	if (cmd_ver == 3 || cmd_ver == 4) {
 		struct iwl_scd_queue_cfg_cmd remove_cmd = {
 			.operation = cpu_to_le32(IWL_SCD_QUEUE_REMOVE),
 			.u.remove.sta_mask = cpu_to_le32(sta_mask),
