@@ -15,6 +15,8 @@
 #include "mld.h"
 #include "wonder-link.h"
 
+#define IWL_MLD_WONDER_CALIB_DONE_TIMEOUT	(5 * HZ)
+
 static int
 iwl_mld_wonder_link_fill_rates(struct iwl_mld *mld,
 			       struct iwl_link_config_cmd *cmd,
@@ -196,18 +198,15 @@ iwl_mld_wonder_allocate_link(struct iwl_mld *mld,
 		return ret;
 	}
 
-	/*
-	 * TODO: fail init on timeout once vLab testing is done. Currently
-	 * non-fatal because the notif never arrives in vLab (PHY never
-	 * reaches full calibration there); also re-evaluate the timeout
-	 * value below.
-	 */
-	ret = iwl_wait_notification(&mld->notif_wait, &calib_wait, 5 * HZ);
-	if (ret)
-		IWL_WARN(mld, "wonder: CHAN_HOP CALIB_DONE_NTF timed out\n");
-	else
-		IWL_INFO(mld, "wonder: CHAN_HOP CALIB_DONE_NTF received\n");
+	ret = iwl_wait_notification(&mld->notif_wait, &calib_wait,
+				    IWL_MLD_WONDER_CALIB_DONE_TIMEOUT);
+	if (ret) {
+		IWL_ERR(mld, "wonder: CALIB_DONE_NTF not received: %d\n", ret);
+		iwl_mld_wonder_free_link(mld, wonder_ctx);
+		return ret;
+	}
 
+	IWL_INFO(mld, "wonder: CHAN_HOP CALIB_DONE_NTF received\n");
 	return 0;
 
 err_free_id:
