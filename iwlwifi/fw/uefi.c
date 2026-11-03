@@ -349,8 +349,7 @@ int iwl_uefi_reduce_power_parse(struct iwl_trans *trans,
 				(const void *)(data + sizeof(*tlv));
 
 			if (tlv_len < sizeof(*tlv_sku_id)) {
-				IWL_ERR(trans,
-					"Invalid IWL_UCODE_TLV_PNVM_SKU len %u\n",
+				IWL_ERR(trans, "invalid PNVM SKU TLV len: %u\n",
 					tlv_len);
 				return -EINVAL;
 			}
@@ -358,11 +357,6 @@ int iwl_uefi_reduce_power_parse(struct iwl_trans *trans,
 			IWL_DEBUG_FW(trans,
 				     "Got IWL_UCODE_TLV_PNVM_SKU len %u\n",
 				     tlv_len);
-			if (tlv_len < sizeof(*tlv_sku_id)) {
-				IWL_ERR(trans, "invalid PNVM SKU TLV len: %u\n",
-					tlv_len);
-				return -EINVAL;
-			}
 
 			IWL_DEBUG_FW(trans, "sku_id 0x%0x 0x%0x 0x%0x\n",
 				     le32_to_cpu(tlv_sku_id->data[0]),

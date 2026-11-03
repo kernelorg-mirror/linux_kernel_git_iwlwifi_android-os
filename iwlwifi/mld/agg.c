@@ -659,11 +659,7 @@ int iwl_mld_ampdu_rx_stop(struct iwl_mld *mld, struct ieee80211_sta *sta,
 		return -EINVAL;
 
 	if (timer_pending(&baid_data->session_timer))
-#if LINUX_VERSION_IS_GEQ(6,2,1)
 		timer_shutdown_sync(&baid_data->session_timer);
-#else
-		del_timer_sync(&baid_data->session_timer);
-#endif
 
 	iwl_mld_free_reorder_buffer(mld, baid_data);
 

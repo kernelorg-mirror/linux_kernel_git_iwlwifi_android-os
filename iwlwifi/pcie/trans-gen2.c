@@ -453,8 +453,7 @@ static bool iwl_pcie_set_ltr(struct iwl_trans *trans)
 		/* First clear the interrupt, just in case */
 		iwl_trans_pcie_write32(trans, CSR_MSIX_HW_INT_CAUSES_AD,
 				       MSIX_HW_INT_CAUSES_REG_IML);
-		/*
-		 * In this case, unfortunately the same ROM bug exists in the
+		/* In this case, unfortunately the same ROM bug exists in the
 		 * device (not setting LTR correctly), but we don't have control
 		 * over the settings from the host due to some hardware security
 		 * features. The only workaround we've been able to come up with
