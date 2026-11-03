@@ -1193,8 +1193,11 @@ void ieee80211_recalc_chanctx_chantype(struct ieee80211_local *local,
 	lockdep_assert_wiphy(local->hw.wiphy);
 
 	for_each_chanctx_user_assigned(local, ctx, &iter) {
-		if (!compat)
+		/* don't combine with itself, that would remove NPCA */
+		if (!compat) {
 			compat = iter.chanreq;
+			continue;
+		}
 
 		compat = ieee80211_chanreq_compatible(iter.chanreq,
 						      compat, &tmp);
