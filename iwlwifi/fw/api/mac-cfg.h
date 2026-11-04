@@ -96,6 +96,10 @@ enum iwl_mac_conf_subcmd_ids {
 	CHANNEL_HOP_CALIB_DONE_NOTIF = 0xf0,
 #endif
 	/**
+	 * @UHR_OMP_STATUS_NOTIF: &struct iwl_uhr_omp_status_notif
+	 */
+	UHR_OMP_STATUS_NOTIF = 0xf1,
+	/**
 	 * @NAN_ULW_ATTR_NOTIF: &struct iwl_nan_ulw_attr_notif
 	 */
 	NAN_ULW_ATTR_NOTIF = 0xf2,
@@ -1156,6 +1160,38 @@ struct iwl_esr_trans_fail_notif {
 	__le32 activation;
 	__le32 err_code;
 } __packed; /* ESR_TRANSITION_FAILED_NTFY_API_S_VER_1 */
+
+/**
+ * enum iwl_uhr_omp_status - UHR OMP status
+ *
+ * @IWL_UHR_OMP_STATUS_SUCCESS: the mode was enabled/disabled
+ * @IWL_UHR_OMP_STATUS_ERR_TX_FAILED: failed to TX the OMP request frame
+ * @IWL_UHR_OMP_STATUS_ERR_TX_TIMEOUT: timeout on the OMP request frame
+ * @IWL_UHR_OMP_STATUS_ERR_BEACONS_NOT_HEARD: beacons were not heard
+ */
+enum iwl_uhr_omp_status {
+	IWL_UHR_OMP_STATUS_SUCCESS,
+	IWL_UHR_OMP_STATUS_ERR_TX_FAILED,
+	IWL_UHR_OMP_STATUS_ERR_TX_TIMEOUT,
+	IWL_UHR_OMP_STATUS_ERR_BEACONS_NOT_HEARD,
+};
+
+/**
+ * struct iwl_uhr_omp_status_notif - UHR OMP status
+ *
+ * @link_id: FW link ID of the affected link
+ *	(Note for EMLSR: on activation the pre-existing link,
+ *	on deactivation the remaining link)
+ * @mode_id: the mode, see &enum ieee80211_uhr_mode_change_mode_id
+ * @enable: whether the mode was enabled or disabled
+ * @status: see &enum iwl_uhr_omp_status
+ */
+struct iwl_uhr_omp_status_notif {
+	__le32 link_id;
+	__le32 mode_id;
+	__le32 enable;
+	__le32 status;
+} __packed; /* UHR_OMP_STATUS_NTFY_API_S_VER_1 */
 
 /*
  * enum iwl_twt_operation_type: TWT operation in a TWT action frame

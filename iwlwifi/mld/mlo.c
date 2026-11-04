@@ -398,6 +398,24 @@ iwl_mld_vif_iter_disconnect_emlsr(void *data, u8 *mac,
 	ieee80211_connection_loss(vif);
 }
 
+void iwl_mld_emlsr_trans_failed(struct iwl_mld *mld,
+				struct ieee80211_bss_conf *bss_conf,
+				bool activation)
+{
+	/* Disconnect if we failed to deactivate a link */
+	if (!activation) {
+		ieee80211_connection_loss(bss_conf->vif);
+		return;
+	}
+
+	/*
+	 * We failed to activate the second link, go back to the link specified
+	 * by the firmware as that is the one that is still valid now.
+	 */
+	iwl_mld_exit_emlsr(mld, bss_conf->vif, IWL_MLD_EMLSR_EXIT_FAIL_ENTRY,
+			   bss_conf->link_id);
+}
+
 void iwl_mld_handle_emlsr_trans_fail_notif(struct iwl_mld *mld,
 					   struct iwl_rx_packet *pkt)
 {
@@ -423,18 +441,8 @@ void iwl_mld_handle_emlsr_trans_fail_notif(struct iwl_mld *mld,
 		return;
 	}
 
-	/* Disconnect if we failed to deactivate a link */
-	if (!le32_to_cpu(notif->activation)) {
-		ieee80211_connection_loss(bss_conf->vif);
-		return;
-	}
-
-	/*
-	 * We failed to activate the second link, go back to the link specified
-	 * by the firmware as that is the one that is still valid now.
-	 */
-	iwl_mld_exit_emlsr(mld, bss_conf->vif, IWL_MLD_EMLSR_EXIT_FAIL_ENTRY,
-			   bss_conf->link_id);
+	iwl_mld_emlsr_trans_failed(mld, bss_conf,
+				   le32_to_cpu(notif->activation));
 }
 
 /* Active non-station link tracking */

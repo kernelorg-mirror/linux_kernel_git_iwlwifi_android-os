@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0 OR BSD-3-Clause */
 /*
- * Copyright (C) 2024-2025 Intel Corporation
+ * Copyright (C) 2024-2026 Intel Corporation
  */
 #ifndef __iwl_mld_mlo_h__
 #define __iwl_mld_mlo_h__
@@ -126,6 +126,9 @@ int iwl_mld_emlsr_check_non_bss_block(struct iwl_mld *mld,
 
 void iwl_mld_handle_emlsr_mode_notif(struct iwl_mld *mld,
 				     struct iwl_rx_packet *pkt);
+void iwl_mld_emlsr_trans_failed(struct iwl_mld *mld,
+				struct ieee80211_bss_conf *bss_conf,
+				bool activation);
 void iwl_mld_handle_emlsr_trans_fail_notif(struct iwl_mld *mld,
 					   struct iwl_rx_packet *pkt);
 

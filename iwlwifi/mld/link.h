@@ -147,6 +147,8 @@ void iwl_mld_deactivate_link(struct iwl_mld *mld,
 			     struct ieee80211_bss_conf *link);
 int iwl_mld_change_link_in_fw(struct iwl_mld *mld,
 			      struct ieee80211_bss_conf *link, u32 changes);
+void iwl_mld_handle_uhr_omp_status_notif(struct iwl_mld *mld,
+					 struct iwl_rx_packet *pkt);
 u16 iwl_mld_link_uhr_modes_wanted(struct ieee80211_bss_conf *link);
 void iwl_mld_handle_missed_beacon_notif(struct iwl_mld *mld,
 					struct iwl_rx_packet *pkt);

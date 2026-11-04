@@ -342,6 +342,8 @@ CMD_VERSIONS(beacon_notification,
 	     CMD_VER_ENTRY(6, iwl_extended_beacon_notif))
 CMD_VERSIONS(emlsr_mode_notif,
 	     CMD_VER_ENTRY(2, iwl_esr_mode_notif))
+CMD_VERSIONS(uhr_omp_status_notif,
+	     CMD_VER_ENTRY(1, iwl_uhr_omp_status_notif))
 CMD_VERSIONS(emlsr_trans_fail_notif,
 	     CMD_VER_ENTRY(1, iwl_esr_trans_fail_notif))
 CMD_VERSIONS(time_msmt_notif,
@@ -371,6 +373,7 @@ DEFINE_SIMPLE_CANCELLATION(probe_resp_data, iwl_probe_resp_data_notif,
 			   mac_id)
 DEFINE_SIMPLE_CANCELLATION(ftm_resp, iwl_tof_range_rsp_ntfy, request_id)
 DEFINE_SIMPLE_CANCELLATION(beacon_filter, iwl_beacon_filter_notif, link_id)
+DEFINE_SIMPLE_CANCELLATION(uhr_omp_status, iwl_uhr_omp_status_notif, link_id)
 
 /**
  * DOC: Handlers for fw notifications
@@ -459,6 +462,8 @@ const struct iwl_rx_handler iwl_mld_rx_handlers[] = {
 			     beacon_notification, RX_HANDLER_ASYNC)
 	RX_HANDLER_NO_OBJECT(DATA_PATH_GROUP, ESR_MODE_NOTIF,
 			     emlsr_mode_notif, RX_HANDLER_ASYNC)
+	RX_HANDLER_OF_LINK(MAC_CONF_GROUP, UHR_OMP_STATUS_NOTIF,
+			   uhr_omp_status_notif)
 	RX_HANDLER_NO_OBJECT(MAC_CONF_GROUP, EMLSR_TRANS_FAIL_NOTIF,
 			     emlsr_trans_fail_notif, RX_HANDLER_ASYNC)
 	RX_HANDLER_NO_OBJECT(LEGACY_GROUP,

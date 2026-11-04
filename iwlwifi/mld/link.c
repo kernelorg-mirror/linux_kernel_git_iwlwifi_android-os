@@ -603,6 +603,31 @@ void iwl_mld_remove_link(struct iwl_mld *mld,
 		kfree_rcu(link, rcu_head);
 }
 
+void iwl_mld_handle_uhr_omp_status_notif(struct iwl_mld *mld,
+					 struct iwl_rx_packet *pkt)
+{
+	const struct iwl_uhr_omp_status_notif *notif = (const void *)pkt->data;
+	u32 fw_link_id = le32_to_cpu(notif->link_id);
+	u32 mode_id = le32_to_cpu(notif->mode_id);
+	bool enable = le32_to_cpu(notif->enable);
+	u32 status = le32_to_cpu(notif->status);
+	struct ieee80211_bss_conf *bss_conf =
+		iwl_mld_fw_id_to_link_conf(mld, fw_link_id, false);
+
+	if (!bss_conf)
+		return;
+
+	IWL_DEBUG_EHT(mld, "UHR OMP: FW link %u mode %u %s, status %u\n",
+		      fw_link_id, mode_id, enable ? "enable" : "disable",
+		      status);
+
+	if (mode_id != IEEE80211_UHR_MODE_CHANGE_MODE_ID_EMLSR ||
+	    status == IWL_UHR_OMP_STATUS_SUCCESS)
+		return;
+
+	iwl_mld_emlsr_trans_failed(mld, bss_conf, enable);
+}
+
 void iwl_mld_handle_missed_beacon_notif(struct iwl_mld *mld,
 					struct iwl_rx_packet *pkt)
 {
