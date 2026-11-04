@@ -1779,6 +1779,7 @@ enum ieee80211_eid {
 	WLAN_EID_S1G_CAPABILITIES = 217,
 	WLAN_EID_VENDOR_SPECIFIC = 221,
 	WLAN_EID_QOS_PARAMETER = 222,
+	WLAN_EID_EXT_LENGTH = 227,
 	WLAN_EID_S1G_OPERATION = 232,
 	WLAN_EID_CAG_NUMBER = 237,
 	WLAN_EID_AP_CSN = 239,
@@ -2748,11 +2749,12 @@ struct element {
 #define element_iteration_typecheck(type, id)				\
 	(((type)0 == (id)) || true)
 
-/* element iteration helpers */
+/* element iteration helpers, these stop at an Extended Length element */
 #define for_each_element(_elem, _data, _datalen)			\
 	for (_elem = (const struct element *)(_data);			\
 	     (const u8 *)(_data) + (_datalen) - (const u8 *)_elem >=	\
 		(int)sizeof(*_elem) &&					\
+	     _elem->id != WLAN_EID_EXT_LENGTH &&			\
 	     (const u8 *)(_data) + (_datalen) - (const u8 *)_elem >=	\
 		(int)sizeof(*_elem) + _elem->datalen;			\
 	     _elem = (const struct element *)(_elem->data + _elem->datalen))
