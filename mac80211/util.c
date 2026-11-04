@@ -1781,6 +1781,10 @@ static void ieee80211_reconfig_stations(struct ieee80211_sub_if_data *sdata)
 		if (!sta->uploaded || sta->sdata != sdata)
 			continue;
 
+		/* client MLDs restart with a single active link */
+		if (sdata->vif.type == NL80211_IFTYPE_STATION)
+			sta->sta.active_links = sdata->vif.active_links;
+
 		for (state = IEEE80211_STA_NOTEXIST;
 		     state < sta->sta_state; state++)
 			WARN_ON(drv_sta_state(local, sta->sdata, sta, state,
