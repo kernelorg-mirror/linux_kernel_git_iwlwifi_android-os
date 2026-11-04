@@ -1157,12 +1157,29 @@ void ieee80211_send_auth(struct ieee80211_sub_if_data *sdata,
 		.ml.control = cpu_to_le16(IEEE80211_ML_CONTROL_TYPE_BASIC),
 		.basic.len = sizeof(mle.basic),
 	};
-	bool add_mle;
+	bool add_mle = false;
 	int err;
 
-	add_mle = (multi_link &&
-		   !cfg80211_find_ext_elem(WLAN_EID_EXT_EHT_MULTI_LINK,
-					   extra, extra_len));
+	if (multi_link) {
+		size_t ies_len = extra_len;
+		const u8 *ies = extra;
+
+		/*
+		 * According to Table 9-71 in IEEE P802.11bi D6.0 when the
+		 * authentication algorithm is IEEE 802.1X, the encapsulated
+		 * length field and the encapsulated data are present, so need
+		 * to skip them before iterating the elements.
+		 */
+		if (auth_alg == WLAN_AUTH_IEEE8021X) {
+			u16 encap_len = get_unaligned_le16(extra);
+
+			ies += 2 + encap_len;
+			ies_len -= 2 + encap_len;
+		}
+
+		add_mle = !cfg80211_find_ext_elem(WLAN_EID_EXT_EHT_MULTI_LINK,
+						  ies, ies_len);
+	}
 
 	/* 24 + 6 = header + auth_algo + auth_transaction + status_code */
 	skb = dev_alloc_skb(local->hw.extra_tx_headroom + IEEE80211_WEP_IV_LEN +
