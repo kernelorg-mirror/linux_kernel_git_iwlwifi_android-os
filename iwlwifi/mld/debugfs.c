@@ -1097,6 +1097,58 @@ static ssize_t iwl_dbgfs_link_fw_id_read(struct ieee80211_bss_conf *link_conf,
 
 LINK_DEBUGFS_READ_FILE_OPS(fw_id, 64);
 
+static ssize_t
+iwl_dbgfs_link_uhr_modes_read(struct ieee80211_bss_conf *link_conf,
+			      size_t count, char *buf)
+{
+	struct iwl_mld_link *mld_link;
+
+	mld_link = iwl_mld_link_from_mac80211(link_conf);
+	if (!mld_link)
+		return -ENOLINK;
+
+	return scnprintf(buf, count, "requested=0x%x\neffective=0x%x\n",
+			 mld_link->uhr_modes_force,
+			 iwl_mld_link_uhr_modes_wanted(link_conf));
+}
+
+static ssize_t iwl_dbgfs_link_uhr_modes_write(struct iwl_mld *mld, char *buf,
+					      size_t count, void *data)
+{
+	struct ieee80211_bss_conf *link_conf = data;
+	struct iwl_mld_link *mld_link = iwl_mld_link_from_mac80211(link_conf);
+	u16 modes;
+	int ret;
+
+	if (!mld_link)
+		return -ENOLINK;
+
+	if (kstrtou16(buf, 0, &modes) ||
+	    modes & ~(IWL_MLD_UHR_MODE_DPS | IWL_MLD_UHR_MODE_NPCA))
+		return -EINVAL;
+
+	if (hweight16(modes) > 1)
+		return -EOPNOTSUPP;
+
+	if (modes == mld_link->uhr_modes_force)
+		return count;
+
+	if (modes && mld_link->uhr_modes_force)
+		return -EBUSY;
+
+	mld_link->uhr_modes_force = modes;
+
+	if (!mld_link->active)
+		return count;
+
+	ret = iwl_mld_change_link_in_fw(mld, link_conf,
+					LINK_CONTEXT_MODIFY_UHR_PARAMS);
+
+	return ret ?: count;
+}
+
+WIPHY_DEBUGFS_READ_WRITE_FILE_OPS(link_uhr_modes, 256, bss_conf);
+
 void iwl_mld_add_link_debugfs(struct ieee80211_hw *hw,
 			      struct ieee80211_vif *vif,
 			      struct ieee80211_bss_conf *link_conf,
@@ -1128,6 +1180,9 @@ void iwl_mld_add_link_debugfs(struct ieee80211_hw *hw,
 #endif
 
 	LINK_DEBUGFS_ADD_FILE(fw_id, mld_link_dir, 0400);
+
+	if (vif->type == NL80211_IFTYPE_STATION)
+		LINK_DEBUGFS_ADD_FILE(uhr_modes, mld_link_dir, 0600);
 }
 
 static ssize_t _iwl_dbgfs_fixed_rate_write(struct iwl_mld *mld, char *buf,

@@ -30,6 +30,9 @@ struct iwl_probe_resp_data {
 	int noa_len;
 };
 
+#define IWL_MLD_UHR_MODE_DPS	BIT(IEEE80211_UHR_MODE_CHANGE_MODE_ID_DPS)
+#define IWL_MLD_UHR_MODE_NPCA	BIT(IEEE80211_UHR_MODE_CHANGE_MODE_ID_NPCA)
+
 /**
  * struct iwl_mld_link - link configuration parameters
  *
@@ -63,6 +66,7 @@ struct iwl_probe_resp_data {
  *	inserted into probe response.
  * @chan_load_lvl: current channel load level for a link, computed based on
  *	channel load by others on a link.
+ * @uhr_modes_force: UHR mode ID bitmap to use if available (debugfs)
  */
 struct iwl_mld_link {
 	struct rcu_head rcu_head;
@@ -80,6 +84,9 @@ struct iwl_mld_link {
 		enum iwl_mld_link_chan_load_level chan_load_lvl;
 	);
 	/* And here fields that survive a fw restart */
+#ifdef CPTCFG_IWLWIFI_DEBUGFS
+	u16 uhr_modes_force;
+#endif
 	struct iwl_mld_int_sta bcast_sta;
 	struct iwl_mld_int_sta mcast_sta;
 	struct iwl_mld_int_sta mon_sta;
@@ -115,6 +122,11 @@ iwl_mld_cleanup_link(struct iwl_mld *mld, struct iwl_mld_link *link)
 		iwl_mld_free_internal_sta(mld, &link->mon_sta);
 }
 
+static inline bool iwl_mld_link_npca_enabled(struct ieee80211_bss_conf *link)
+{
+	return link->uhr_support && link->npca.enabled;
+}
+
 /* Convert a percentage from [0,100] to [0,255] */
 #define NORMALIZE_PERCENT_TO_255(percentage) ((percentage) * 256 / 100)
 
@@ -135,6 +147,7 @@ void iwl_mld_deactivate_link(struct iwl_mld *mld,
 			     struct ieee80211_bss_conf *link);
 int iwl_mld_change_link_in_fw(struct iwl_mld *mld,
 			      struct ieee80211_bss_conf *link, u32 changes);
+u16 iwl_mld_link_uhr_modes_wanted(struct ieee80211_bss_conf *link);
 void iwl_mld_handle_missed_beacon_notif(struct iwl_mld *mld,
 					struct iwl_rx_packet *pkt);
 bool iwl_mld_cancel_missed_beacon_notif(struct iwl_mld *mld,

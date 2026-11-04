@@ -283,6 +283,37 @@ static bool iwl_mld_fill_mu_edca(struct iwl_mld *mld,
 	return true;
 }
 
+#ifdef CPTCFG_IWLWIFI_DEBUGFS
+static bool iwl_mld_link_can_use_dps(struct ieee80211_bss_conf *link)
+{
+			return false;
+}
+
+/*
+ * The firmware enables/disables NPCA and DPS with the AP when the
+ * UHR params are changed in the link command. Only use them via
+ * debugfs since we don't have a manager yet.
+ */
+u16 iwl_mld_link_uhr_modes_wanted(struct ieee80211_bss_conf *link)
+{
+	struct iwl_mld_link *mld_link = iwl_mld_link_from_mac80211(link);
+
+	if (link->vif->type != NL80211_IFTYPE_STATION || !link->uhr_support ||
+	    !mld_link)
+		return 0;
+
+	/* only use the forced mode if it's available */
+	return mld_link->uhr_modes_force &
+	       ((iwl_mld_link_npca_enabled(link) ? IWL_MLD_UHR_MODE_NPCA : 0) |
+		(iwl_mld_link_can_use_dps(link) ? IWL_MLD_UHR_MODE_DPS : 0));
+}
+#else
+u16 iwl_mld_link_uhr_modes_wanted(struct ieee80211_bss_conf *link)
+{
+	return 0;
+}
+#endif
+
 int
 iwl_mld_change_link_in_fw(struct iwl_mld *mld, struct ieee80211_bss_conf *link,
 			  u32 changes)
@@ -292,6 +323,7 @@ iwl_mld_change_link_in_fw(struct iwl_mld *mld, struct ieee80211_bss_conf *link,
 	struct iwl_mld_vif *mld_vif = iwl_mld_vif_from_mac80211(vif);
 	struct ieee80211_chanctx_conf *chan_ctx;
 	struct iwl_link_config_cmd cmd = {};
+	u16 uhr_modes = 0;
 	u32 flags = 0;
 
 	lockdep_assert_wiphy(mld->wiphy);
@@ -393,6 +425,14 @@ iwl_mld_change_link_in_fw(struct iwl_mld *mld, struct ieee80211_bss_conf *link,
 	 */
 	if (WARN_ON(changes & LINK_CONTEXT_MODIFY_EHT_PARAMS))
 		changes &= ~LINK_CONTEXT_MODIFY_EHT_PARAMS;
+
+	if (vif->type == NL80211_IFTYPE_STATION)
+		uhr_modes = iwl_mld_link_uhr_modes_wanted(link);
+	else if (iwl_mld_link_npca_enabled(link))
+		uhr_modes = IWL_MLD_UHR_MODE_NPCA;
+
+	if (uhr_modes & IWL_MLD_UHR_MODE_DPS)
+		flags |= LINK_FLG_DPS;
 
 send_cmd:
 	cmd.modify_mask = cpu_to_le32(changes);
