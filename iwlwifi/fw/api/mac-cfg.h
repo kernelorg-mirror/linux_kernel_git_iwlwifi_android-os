@@ -1319,25 +1319,6 @@ struct iwl_nan_config_cmd {
 	u8 beacon_data[];
 } __packed; /*  NAN_CONFIG_CMD_API_S_VER_1, NAN_CONFIG_CMD_API_S_VER_2 */
 
-/**
- * struct iwl_nan_schedule_cmd_v1 - NAN schedule command
- * @channels: per channel information
- * @channels.availability_map: bitmap of slots this channel is advertising
- *	availability on, will be ULW'ed out if no link/inactive link is
- *	referenced by the link ID below
- * @channels.channel_entry: NAN channel entry descriptor
- * @channels.link_id: FW link ID, or %0xFF for unset
- * @channels.reserved: (reserved)
- */
-struct iwl_nan_schedule_cmd_v1 {
-	struct {
-		__le32 availability_map;
-		u8 channel_entry[6];
-		u8 link_id;
-		u8 reserved;
-	} __packed channels[NUM_PHY_CTX];
-} __packed; /* NAN_SCHEDULE_CMD_API_S_VER_1 */
-
 #define IWL_MAX_AVAILABILITY_ATTR_LEN 54
 
 /**

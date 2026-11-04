@@ -635,41 +635,18 @@ void iwl_mld_nan_vif_cfg_changed(struct iwl_mld *mld,
 	bool added_links = false;
 	bool empty_schedule = true;
 	int ret, i;
-	u16 cmd_size;
-	u32 cmd_id = WIDE_ID(MAC_CONF_GROUP, NAN_SCHEDULE_CMD);
-	u8 version = iwl_fw_lookup_cmd_ver(mld->fw, cmd_id, 0);
 
 	if (!(changes & BSS_CHANGED_NAN_LOCAL_SCHED))
 		return;
 
-	switch (version) {
-	case 1:
-		if (sched_cfg->deferred) {
-			IWL_ERR(mld,
-				"NAN: deferred schedule not supported by FW\n");
-			return;
-		}
+	if (sched_cfg->deferred)
+		cmd.deferred = 1;
 
-		cmd_size = sizeof(struct iwl_nan_schedule_cmd_v1);
-		break;
-	case 2:
-		cmd_size = sizeof(struct iwl_nan_schedule_cmd);
-
-		if (sched_cfg->deferred)
-			cmd.deferred = 1;
-
-		if (sched_cfg->avail_blob_len &&
-		    !WARN_ON(sched_cfg->avail_blob_len >
-			     sizeof(cmd.avail_attr.attr))) {
-			cmd.avail_attr.attr_len = sched_cfg->avail_blob_len;
-			memcpy(cmd.avail_attr.attr, sched_cfg->avail_blob,
-			       sched_cfg->avail_blob_len);
-		}
-		break;
-	default:
-		IWL_ERR(mld, "NAN: unsupported NAN schedule cmd version %d\n",
-			version);
-		return;
+	if (sched_cfg->avail_blob_len &&
+	    !WARN_ON(sched_cfg->avail_blob_len > sizeof(cmd.avail_attr.attr))) {
+		cmd.avail_attr.attr_len = sched_cfg->avail_blob_len;
+		memcpy(cmd.avail_attr.attr, sched_cfg->avail_blob,
+		       sched_cfg->avail_blob_len);
 	}
 
 	for (i = 0; i < ARRAY_SIZE(sched_cfg->channels); i++) {
@@ -778,7 +755,9 @@ void iwl_mld_nan_vif_cfg_changed(struct iwl_mld *mld,
 		cmd.channels[chan_idx].availability_map |= cpu_to_le32(BIT(i));
 	}
 
-	ret = iwl_mld_send_cmd_pdu(mld, cmd_id, &cmd, cmd_size);
+	ret = iwl_mld_send_cmd_pdu(mld,
+				   WIDE_ID(MAC_CONF_GROUP, NAN_SCHEDULE_CMD),
+				   &cmd);
 	if (ret)
 		IWL_ERR(mld, "NAN: failed to update schedule (%d)\n", ret);
 
