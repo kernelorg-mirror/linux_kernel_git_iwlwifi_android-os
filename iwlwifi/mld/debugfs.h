@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0 OR BSD-3-Clause */
 /*
- * Copyright (C) 2024-2025 Intel Corporation
+ * Copyright (C) 2024-2026 Intel Corporation
  */
 #include "iface.h"
 #include "sta.h"
@@ -31,40 +31,10 @@ static int _iwl_dbgfs_##name##_open(struct inode *inode,		\
 	return 0;							\
 }
 
-#define MLD_DEBUGFS_READ_WRAPPER(name)					\
-static ssize_t _iwl_dbgfs_##name##_read(struct file *file,		\
-					char __user *user_buf,		\
-					size_t count, loff_t *ppos)	\
-{									\
-	struct dbgfs_##name##_data *data = file->private_data;		\
-									\
-	if (!data->read_done) {						\
-		data->read_done = true;					\
-		data->rlen = iwl_dbgfs_##name##_read(data->arg,		\
-						     sizeof(data->buf),\
-						     data->buf);	\
-	}								\
-									\
-	if (data->rlen < 0)						\
-		return data->rlen;					\
-	return simple_read_from_buffer(user_buf, count, ppos,		\
-				       data->buf, data->rlen);		\
-}
-
 static int _iwl_dbgfs_release(struct inode *inode, struct file *file)
 {
 	kfree(file->private_data);
 	return 0;
-}
-
-#define _MLD_DEBUGFS_READ_FILE_OPS(name, buflen, argtype)		\
-MLD_DEBUGFS_OPEN_WRAPPER(name, buflen, argtype)				\
-MLD_DEBUGFS_READ_WRAPPER(name)						\
-static const struct file_operations iwl_dbgfs_##name##_ops = {		\
-	.read = _iwl_dbgfs_##name##_read,				\
-	.open = _iwl_dbgfs_##name##_open,				\
-	.llseek = generic_file_llseek,					\
-	.release = _iwl_dbgfs_release,					\
 }
 
 #define WIPHY_DEBUGFS_WRITE_HANDLER_WRAPPER(name)			\
@@ -213,32 +183,46 @@ static ssize_t __iwl_dbgfs_##name##_read(struct file *file,		\
 		.release = _iwl_dbgfs_release,				\
 	}
 
-#define WIPHY_DEBUGFS_WRITE_WRAPPER_IEEE80211(name, bufsz, objtype)	\
-WIPHY_DEBUGFS_WRITE_HANDLER_WRAPPER(name)				\
-static ssize_t _iwl_dbgfs_##name##_write(struct file *file,		\
-					  const char __user *user_buf,	\
-					  size_t count, loff_t *ppos)	\
+#define WIPHY_DEBUGFS_READ_HANDLER_WRAPPER(name, objtype)		\
+static ssize_t iwl_dbgfs_##name##_read_handler(struct wiphy *wiphy,	\
+				       struct file *file, char *buf,	\
+				       size_t count, void *data)	\
 {									\
-	struct dbgfs_##name##_data *data = file->private_data;		\
-	struct ieee80211_##objtype *arg = data->arg;			\
+	struct ieee80211_##objtype *arg = data;				\
+	return iwl_dbgfs_##name##_read(arg, count, buf);		\
+}
+
+#define WIPHY_DEBUGFS_READ_WRAPPER(name, bufsz, objtype)		\
+WIPHY_DEBUGFS_READ_HANDLER_WRAPPER(name, objtype)			\
+static ssize_t __iwl_dbgfs_##name##_read(struct file *file,		\
+					 char __user *user_buf,		\
+					 size_t count, loff_t *ppos)	\
+{									\
+	struct ieee80211_##objtype *arg = file->private_data;		\
 	struct iwl_mld *mld = iwl_mld_from_##objtype(arg);		\
 	char buf[bufsz] = {};						\
 									\
-	return wiphy_locked_debugfs_write(mld->wiphy, file,		\
+	return wiphy_locked_debugfs_read(mld->wiphy, file,		\
 				buf, sizeof(buf),			\
-				user_buf, count,			\
-				iwl_dbgfs_##name##_write_handler,	\
+				user_buf, count, ppos,			\
+				iwl_dbgfs_##name##_read_handler,	\
 				arg);					\
 }
 
-#define IEEE80211_WIPHY_DEBUGFS_READ_WRITE_FILE_OPS(name, bufsz, objtype) \
-	MLD_DEBUGFS_OPEN_WRAPPER(name, bufsz, struct ieee80211_##objtype) \
-	WIPHY_DEBUGFS_WRITE_WRAPPER_IEEE80211(name, bufsz, objtype)	  \
-	MLD_DEBUGFS_READ_WRAPPER(name)					  \
-	static const struct file_operations iwl_dbgfs_##name##_ops = {	  \
-		.write = _iwl_dbgfs_##name##_write,			  \
-		.read = _iwl_dbgfs_##name##_read,			  \
-		.open = _iwl_dbgfs_##name##_open,			  \
-		.llseek = generic_file_llseek,				  \
-		.release = _iwl_dbgfs_release,				  \
+#define WIPHY_DEBUGFS_READ_FILE_OPS(name, bufsz, objtype)		\
+	WIPHY_DEBUGFS_READ_WRAPPER(name, bufsz, objtype)		\
+	static const struct file_operations iwl_dbgfs_##name##_ops = {	\
+		.read = __iwl_dbgfs_##name##_read,			\
+		.open = simple_open,					\
+		.llseek = generic_file_llseek,				\
+	}
+
+#define WIPHY_DEBUGFS_READ_WRITE_FILE_OPS(name, bufsz, objtype)		\
+	WIPHY_DEBUGFS_WRITE_WRAPPER(name, bufsz, objtype)		\
+	WIPHY_DEBUGFS_READ_WRAPPER(name, bufsz, objtype)		\
+	static const struct file_operations iwl_dbgfs_##name##_ops = {	\
+		.write = __iwl_dbgfs_##name##_write,			\
+		.read = __iwl_dbgfs_##name##_read,			\
+		.open = simple_open,					\
+		.llseek = generic_file_llseek,				\
 	}
