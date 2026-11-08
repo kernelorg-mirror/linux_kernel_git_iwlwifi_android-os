@@ -832,6 +832,11 @@ static bool iwl_mvm_reorder(struct iwl_mvm *mvm,
 	if (baid == IWL_RX_REORDER_DATA_INVALID_BAID)
 		return false;
 
+	if (IWL_FW_CHECK(mvm, baid >= ARRAY_SIZE(mvm->baid_map),
+			 "Got out-of-range BAID %u in reorder_data=0x%x\n",
+			 baid, reorder))
+		return false;
+
 	/* no sta yet */
 	if (WARN_ONCE(IS_ERR_OR_NULL(sta),
 		      "Got valid BAID without a valid station assigned\n"))
@@ -954,6 +959,11 @@ static void iwl_mvm_agg_rx_received(struct iwl_mvm *mvm,
 	unsigned long now = jiffies;
 	unsigned long timeout;
 	struct iwl_mvm_baid_data *data;
+
+	if (IWL_FW_CHECK(mvm, baid >= ARRAY_SIZE(mvm->baid_map),
+			 "Got out-of-range BAID %u in reorder_data=0x%x\n",
+			 baid, reorder_data))
+		return;
 
 	rcu_read_lock();
 

@@ -2417,6 +2417,10 @@ static void iwl_mld_update_last_rx_timestamp(struct iwl_mld *mld, u8 baid)
 	unsigned long timeout;
 	struct iwl_mld_baid_data *ba_data;
 
+	if (IWL_FW_CHECK(mld, baid >= ARRAY_SIZE(mld->fw_id_to_ba),
+			 "Got out-of-range BAID %u\n", baid))
+		return;
+
 	ba_data = rcu_dereference(mld->fw_id_to_ba[baid]);
 	if (!ba_data) {
 		IWL_DEBUG_HT(mld, "BAID %d not found in map\n", baid);
