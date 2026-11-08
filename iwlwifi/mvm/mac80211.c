@@ -1982,8 +1982,10 @@ static void iwl_mvm_mac_remove_interface(struct ieee80211_hw *hw,
 	 * interface is be handled as part of the stop_ap flow.
 	 */
 	if (vif->type == NL80211_IFTYPE_AP ||
-	    vif->type == NL80211_IFTYPE_ADHOC)
+	    vif->type == NL80211_IFTYPE_ADHOC) {
+		RCU_INIT_POINTER(mvm->vif_id_to_mac[mvmvif->id], NULL);
 		goto out;
+	}
 
 	iwl_mvm_power_update_mac(mvm);
 
