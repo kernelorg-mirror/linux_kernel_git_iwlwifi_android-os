@@ -2155,13 +2155,13 @@ static void iwl_mvm_parse_wowlan_info_notif(struct iwl_mvm *mvm,
 	iwl_mvm_convert_bigtk(status, data->bigtk);
 	status->replay_ctr = le64_to_cpu(data->replay_ctr);
 	status->pattern_number = le16_to_cpu(data->pattern_number);
-	status->tid_offloaded_tx = data->tid_offloaded_tx;
 	if (IWL_FW_CHECK(mvm,
 			 data->tid_offloaded_tx >=
 			 ARRAY_SIZE(status->qos_seq_ctr),
 			 "tid_offloaded_tx is out of bound %d\n",
 			 data->tid_offloaded_tx))
 		data->tid_offloaded_tx = 0;
+	status->tid_offloaded_tx = data->tid_offloaded_tx;
 	status->qos_seq_ctr[data->tid_offloaded_tx] =
 		le16_to_cpu(data->qos_seq_ctr);
 	status->wakeup_reasons = le32_to_cpu(data->wakeup_reasons);
