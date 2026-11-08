@@ -46,7 +46,7 @@ static int iwl_mvm_mld_mac_add_interface(struct ieee80211_hw *hw,
 
 	ret = iwl_mvm_mld_mac_ctxt_add(mvm, vif);
 	if (ret)
-		return ret;
+		goto out_clear_vif;
 
 	/* beacon filtering */
 	ret = iwl_mvm_disable_beacon_filter(mvm, vif);
@@ -106,6 +106,9 @@ static int iwl_mvm_mld_mac_add_interface(struct ieee80211_hw *hw,
  out_remove_mac:
 	mvmvif->link[0] = NULL;
 	iwl_mvm_mld_mac_ctxt_remove(mvm, vif);
+ out_clear_vif:
+	/* mac80211 won't call remove_interface if add_interface fails */
+	RCU_INIT_POINTER(mvm->vif_id_to_mac[mvmvif->id], NULL);
 	return ret;
 }
 

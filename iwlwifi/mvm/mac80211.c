@@ -1840,7 +1840,7 @@ static int iwl_mvm_mac_add_interface(struct ieee80211_hw *hw,
 	/* Allocate resources for the MAC context, and add it to the fw  */
 	ret = iwl_mvm_mac_ctxt_init(mvm, vif);
 	if (ret)
-		goto out;
+		goto out_unlock;
 
 	rcu_assign_pointer(mvm->vif_id_to_mac[mvmvif->id], vif);
 
@@ -1867,7 +1867,7 @@ static int iwl_mvm_mac_add_interface(struct ieee80211_hw *hw,
 
 	ret = iwl_mvm_mac_ctxt_add(mvm, vif);
 	if (ret)
-		goto out_unlock;
+		goto out_clear_vif;
 
 	ret = iwl_mvm_power_update_mac(mvm);
 	if (ret)
@@ -1912,11 +1912,17 @@ out:
 		     vif->type == NL80211_IFTYPE_ADHOC))
 		ret = iwl_mvm_alloc_bcast_mcast_sta(mvm, vif);
 
+	if (ret)
+		goto out_clear_vif;
+
 	goto out_unlock;
 
  out_remove_mac:
 	mvmvif->deflink.phy_ctxt = NULL;
 	iwl_mvm_mac_ctxt_remove(mvm, vif);
+ out_clear_vif:
+	/* mac80211 won't call remove_interface if add_interface fails */
+	RCU_INIT_POINTER(mvm->vif_id_to_mac[mvmvif->id], NULL);
  out_unlock:
 	mutex_unlock(&mvm->mutex);
 
