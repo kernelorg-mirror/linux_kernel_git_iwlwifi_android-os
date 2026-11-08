@@ -6696,6 +6696,14 @@ static int __ieee80211_calc_channel(struct ieee80211_sub_if_data *sdata,
 	if (IS_ERR(elems))
 		return PTR_ERR(elems);
 
+	if (mlo && conn->mode < IEEE80211_CONN_MODE_EHT) {
+		sdata_info(sdata,
+			   "Rejecting MLO as EHT cannot be used with AP %pM (mode %s)\n",
+			   cbss->bssid, ieee80211_conn_mode_str(conn->mode));
+		kfree(elems);
+		return -EINVAL;
+	}
+
 	if (mlo && !elems->ml_basic) {
 		sdata_info(sdata, "Rejecting MLO as it is not supported by AP\n");
 		kfree(elems);
