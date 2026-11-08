@@ -57,6 +57,7 @@ void iwl_xvt_send_user_rx_notif(struct iwl_xvt *xvt,
 					data, size, GFP_ATOMIC);
 		break;
 	case REPLY_RX_DSP_EXT_INFO:
+	case WIDE_ID(XVT_GROUP, RX_DSP_EXT_INFO_NOTIF):
 		if (!xvt->rx_hdr_enabled)
 			break;
 

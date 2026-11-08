@@ -664,6 +664,13 @@ enum iwl_xvt_subcmd_ids {
 	GRP_XVT_GET_SET_PHY_DB_CMD = 0x34,
 
 	/**
+	 * @RX_DSP_EXT_INFO_NOTIF: RX DSP extended info notification,
+	 * replaces the legacy REPLY_RX_DSP_EXT_INFO (0xC4)
+	 * Handled by user space component
+	 */
+	RX_DSP_EXT_INFO_NOTIF = 0xFB,
+
+	/**
 	 * @DTS_MEASUREMENT_TRIGGER_NOTIF : Notification about
 	 * DTS measurement
 	 * Handled by user space component
