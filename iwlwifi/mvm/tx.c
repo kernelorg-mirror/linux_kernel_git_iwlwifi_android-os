@@ -1734,9 +1734,15 @@ static void iwl_mvm_rx_tx_cmd_single(struct iwl_mvm *mvm,
 			iwl_mvm_toggle_tx_ant(mvm, &mvmsta->tx_ant);
 
 		if (sta->wme && tid != IWL_MGMT_TID) {
-			struct iwl_mvm_tid_data *tid_data =
-				&mvmsta->tid_data[tid];
+			struct iwl_mvm_tid_data *tid_data;
 			bool send_eosp_ndp = false;
+
+			if (IWL_FW_CHECK(mvm,
+					 tid >= ARRAY_SIZE(mvmsta->tid_data),
+					 "invalid TX_CMD tid %d\n", tid))
+				goto out;
+
+			tid_data = &mvmsta->tid_data[tid];
 
 			spin_lock_bh(&mvmsta->lock);
 
@@ -1865,6 +1871,10 @@ static void iwl_mvm_rx_tx_cmd_agg(struct iwl_mvm *mvm,
 
 	if (WARN_ON_ONCE(queue < IWL_MVM_DQA_MIN_DATA_QUEUE &&
 			 (queue != IWL_MVM_DQA_BSS_CLIENT_QUEUE)))
+		return;
+
+	if (IWL_FW_CHECK(mvm, tid >= ARRAY_SIZE(mvmsta->tid_data),
+			 "invalid TX_CMD agg tid %d\n", tid))
 		return;
 
 	iwl_mvm_rx_tx_cmd_agg_dbg(mvm, pkt);
