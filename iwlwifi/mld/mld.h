@@ -6,6 +6,7 @@
 #define __iwl_mld_h__
 
 #include <linux/leds.h>
+#include <linux/args.h>
 #include <net/mac80211.h>
 
 #include "iwl-trans.h"
@@ -586,7 +587,7 @@ iwl_mld_allocate_##_type##_fw_id(struct iwl_mld *mld,					\
 static IWL_MLD_ALLOC_FN(_type, _mac80211_type)
 
 static inline struct ieee80211_bss_conf *
-iwl_mld_fw_id_to_link_conf(struct iwl_mld *mld, u8 fw_link_id)
+_iwl_mld_fw_id_to_link_conf3(struct iwl_mld *mld, u8 fw_link_id, bool null_ok)
 {
 	struct ieee80211_bss_conf *link;
 
@@ -599,8 +600,22 @@ iwl_mld_fw_id_to_link_conf(struct iwl_mld *mld, u8 fw_link_id)
 	if (IS_ERR(link))
 		return NULL;
 
+	IWL_FW_CHECK(mld, !(null_ok || link),
+		     "No link for fw_link_id %d\n",
+		     fw_link_id);
+
 	return link;
 }
+
+static inline struct ieee80211_bss_conf *
+_iwl_mld_fw_id_to_link_conf2(struct iwl_mld *mld, u8 fw_link_id)
+{
+	return _iwl_mld_fw_id_to_link_conf3(mld, fw_link_id, true);
+}
+
+#define iwl_mld_fw_id_to_link_conf(...)				\
+	CONCATENATE(_iwl_mld_fw_id_to_link_conf,		\
+		    COUNT_ARGS(__VA_ARGS__))(__VA_ARGS__)
 
 #define MSEC_TO_TU(_msec)	((_msec) * 1000 / 1024)
 
