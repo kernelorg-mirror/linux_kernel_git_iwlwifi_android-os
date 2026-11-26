@@ -203,6 +203,12 @@ iwl_mld_wonder_set_capabilities(struct iwl_mld *mld,
 	cap->bits.channel_hopping = 1;
 	cap->bits.rate_adaptation = 1;
 	cap->bits.ampdu_aggregation = 1;
+	/* This means that the upper layers won't build A-MSDU - because we
+	 * claim we offload the A-MSDU decision logic.
+	 * Since we do NOT implement A-MSDU in iwlmld-wonder, we won't have
+	 * A-MSDUs.
+	 */
+	cap->bits.amsdu_aggregation = 1;
 	cap->bits.dynamic_fixed_tx_rate = 1;
 	cap->bits.fcs_not_support = 1;
 	cap->bits.nss = hweight8(iwl_mld_get_valid_tx_ant(mld));
