@@ -232,14 +232,11 @@ int iwl_mld_wonder_tx(struct iwl_mld_wonder_ctx *wonder_ctx,
 
 	tx_cmd->len = cpu_to_le16((u16)skb->len);
 
-	/* The transport inserts the MH pad only for non-A-MSDU frames, so
-	 * the pad bit must follow the same rule.
+	/* Set MH size; set pad bit for non-4B-aligned headers (e.g. QoS
+	 * Data).
 	 */
 	offload = (mh_len / 2) << TX_CMD_OFFLD_MH_SIZE;
-	if (ieee80211_is_data_qos(hdr->frame_control) &&
-	    (*ieee80211_get_qos_ctl(hdr) & IEEE80211_QOS_CTL_A_MSDU_PRESENT))
-		offload |= BIT(TX_CMD_OFFLD_AMSDU);
-	else if (mh_len % 4)
+	if (mh_len % 4)
 		offload |= BIT(TX_CMD_OFFLD_PAD);
 	tx_cmd->offload_assist = cpu_to_le32(offload);
 
